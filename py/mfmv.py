@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# title: multifile-mv.py
+# title: mfmv.py
 #
 # descr: searches for multifiles/mfs and then provides interactive cli for renaming/moving/mv'ing located mfs
 #
@@ -20,9 +20,9 @@
 #
 #      * mf mv is not atomic, but each individual file mv is atomic; see: https://en.wikipedia.org/wiki/Atomicity_(database_systems)
 #
-# usage: python multifile-mv.py --help
+# usage: python mfmv.py --help
 #            * provides help info on scripts cmd line args
-#        python multifile-mv.py
+#        python mfmv.py
 #            * uses default params to locate mfs and launch cli
 #
 # warns: race condition when an external process moves files currently being batch mv'd
@@ -57,7 +57,7 @@ if sys.version_info < (3,6): # version 3.6.X or newer allows f strings
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210103
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/multifile-mv.py" "-x" "mv_atomic" "except_if_not" "parse_range" "get_or_default"
+# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_not" "run_ignoring_excepts" "parse_range" "get_or_default"
 
 def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
     """Throw exception if expression is False"""
@@ -257,7 +257,7 @@ class Multifile:
     """Allows operation on a contiguous group of similarly named files"""
     #### class attributes
     prefix_style:str = r'( - |_|-|| )(cd|ep|episode|pt|part|| )( - |_|-|| )'
-    parts_lists:Optional[List[SliceableGeneratorFunction]] = None # set via 
+    parts_lists:Optional[List[SliceableGeneratorFunction]] = None # set via __set_parts_lists implicitly
     #### magic methods
     def __init__(self, file_dict:dict) -> None:
         assert all(True if k in ['dir', 'base', 'prepart', 'parts', 'postpart', 'ext'] else False for k in file_dict.keys())
