@@ -1,0 +1,2 @@
+git bash autocompleting with aliases
+	https://gist.github.com/JuggoPop/10706934

@@ -1,0 +1,66 @@
+#!/bin/bash
+###########
+sudo apt update
+sudo apt upgrade
+# update video drivers -- (Nvidia Corporation: GM204 [GeForce GTX 970])
+	# Software&Updates->AdditionalDrivers->UsingNvidia...-driver-430(preprietary,tested) then ApplyChanges
+# chrome
+	wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+	sudo dpkg -i google-chrome-stable_current_amd64.deb
+# spotify
+	curl -sS https://download.spotify.com/debian/pubkey.gpg | sudo apt-key add - 
+	echo "deb http://repository.spotify.com stable non-free" | sudo tee /etc/apt/sources.list.d/spotify.list
+	sudo apt-get update; sudo apt-get install spotify-client
+# git-etc
+	sudo apt install git
+	ssh-keygen -t rsa -C "acegene22@gmail.com"
+		# press enter until complete
+	cat .ssh/id_rsa.pub
+		# copy full string shown as output, place in git profile
+			# click profile-icon->settings->ssh-gpg-keys->new-ssh, title unimportant, key is pasted here
+	git config --global user.email "acegene22@gmail.com"
+	git config --global user.name "Gene Ayoub"
+sudo apt install bash-completion # needed for notes installed indirectly by gene-ws
+sudo apt install pkg-config      # needed for notes installed indirectly by gene-ws
+sudo apt install curl            # needed for notes installed indirectly by gene-ws
+sudo apt install make            # needed for notes installed indirectly by gene-ws
+# vscode -- dec via https://code.visualstudio.com/docs/?dv=linux64_deb
+	# extensions
+		#SettingsSync
+# gene-ws -- (personal git repo)
+	cd ~; git clone git@github.com:AceGene/gene-ws.git
+	cd ~/gene-ws; 	git submodule init
+	git submodule update
+	# to remove 644 to 755 file permision errors # TODO ensure this causes no problems 
+		cd ~/gene-ws/learnings/cpp/primer/primer-exercises-5th	
+		git config core.filemode false
+# exfat file-system support
+	sudo apt-add-repository universe
+	sudo apt install exfat-fuse exfat-utils
+# terminator
+	sudo add-apt-repository ppa:gnome-terminator
+	# Software&Updates->OtherSoftware->Rightclick-'...gnome-terminator...'->Distribution set to xenial
+	sudo apt install terminator
+# gitkraken -- deb via https://www.gitkraken.com/download (only for public repositories)
+# java # unverified instructions
+	sudo add-apt-repository ppa:linuxuprising/java
+	sudo apt-get install oracle-java13-installer
+	sudo gedit /etc/profile # add the following to the end of this file
+		JAVA_HOME=/usr/lib/jvm/java-13-oracle
+		PATH=$PATH:$HOME/bin:$JAVA_HOME/bin
+		export JAVA_HOME
+		export JRE_HOME
+		export PATH
+#####optional####
+# parsec -- deb via https://parsecgaming.com/
+	parsecd app_daemon=1 #needed to be ran for each parsec instance
+	# sign into https://ui.parsecgaming.com/
+####abandoned####
+# sublime-text-3 -- https://www.sublimetext.com/docs/3/linux_repositories.html
+	# package-control -- https://packagecontrol.io/installation
+	# sublime->preferences->settings
+		# open new files in tabs -- https://woorkup.com/sublime-text-open-files-same-window/
+			# "open_files_in_new_window": false
+		# "draw_white_space": "all"
+		# "color_scheme": "Packages/Color Scheme - Default/Monokai.sublime-color-scheme",
+		# "theme": "Adaptive.sublime-theme"
