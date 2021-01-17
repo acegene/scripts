@@ -63,36 +63,34 @@ def parse_inputs() -> None:
     parser.add_argument('--maxdepth', '--mx', default=10, type=int, help='the recursive dir searches max depth')
     parser.add_argument('--mindepth', '--mn', default=1, type=int, help='the recursive dir searches min depth')
     args = parser.parse_args()
-    #### set variables via cmd line args
-    ## return vars
-    dir_in = args.dir_in; dir_out = args.dir_out; excludes = args.excludes; files_regex = args.regex
-    inplace = args.inplace; maxdepth = args.maxdepth; mindepth = args.mindepth
-    ## non return vars used indirectly for return vars
-    part_out = args.part_out; exts = args.exts; json_exts = args.exts_json; env_exts = args.exts_env
+    #### return dict assigned from attributes of argumentparser object
+    out = {attr:val for attr, val in args.__dict__.items()}
     #### raise exceptions
-    except_if_not(ValueError, os.path.isdir(dir_in))
-    except_if_not(ValueError, dir_out == None or os.path.isdir(dir_out))
-    except_if_not(ValueError, len([True for x in [files_regex, exts, env_exts, json_exts] if x != None and x != False]) <= 1)
-    except_if_not(ValueError, maxdepth >= mindepth and mindepth > 0)
-    #### when files_regex is None then its set using exts related args
-    if files_regex == None:
-        if env_exts == True:
+    except_if_not(ValueError, os.path.isdir(out['dir_in']))
+    except_if_not(ValueError, out['dir_out'] == None or os.path.isdir(out['dir_out']))
+    except_if_not(ValueError, len([True for x in [out['regex'], out['exts'], out['exts_env'], out['exts_json']] if x != None and x != False]) <= 1)
+    except_if_not(ValueError, out['maxdepth'] >= out['mindepth'] and out['mindepth'] > 0)
+    #### when regex is None then its set using exts related args
+    if out['regex'] == None:
+        if out['exts_env'] == True:
             assert 'GWSST' in os.environ 
-            json_exts = os.path.join(os.environ['GWSST'], 'globals.json')
-        if json_exts != None:
-            assert os.path.isfile(json_exts)
-            exts = import_json_obj(json_exts, 'video_exts')
-        if exts == None:
-            exts = ['mp4', 'm4p', 'mkv', 'mpeg', 'mpg', 'avi', 'wmv', 'mov', 'qt', 'iso', 'm4v', 'flv']
-        exts = '|'.join(['\.' + ext if ext[0] != '.' else ext for ext in exts])
-        files_regex = '^.*(' + exts + ')$'
+            out['exts_json'] = os.path.join(os.environ['GWSST'], 'globals.json')
+        if out['exts_json'] != None:
+            assert os.path.isfile(out['exts_json'])
+            out['exts'] = import_json_obj(out['exts_json'], 'video_exts')
+        if out['exts'] == None:
+            out['exts'] = ['mp4', 'm4p', 'mkv', 'mpeg', 'mpg', 'avi', 'wmv', 'mov', 'qt', 'iso', 'm4v', 'flv']
+        out['exts'] = '|'.join(['\.' + ext if ext[0] != '.' else ext for ext in out['exts']])
+        out['regex'] = '^.*(' + out['exts'] + ')$'
     #### get user specified part formatting for renaming multifiles
-    parts_out = Multifile.get_part_arr_out(part_out)
-    except_if_not(ValueError, parts_out != None, "ERROR: part_out arg of '" + str(part_out) + "' is unrecognized")
-    #### return tuple containing values formed by user cmd args
-    return dir_in,dir_out,parts_out,excludes,files_regex,inplace,maxdepth,mindepth
+    out['parts_out'] = Multifile.get_part_arr_out(out['part_out'])
+    except_if_not(ValueError, out['parts_out'] != None, "ERROR: part_out arg of '" + str(out['part_out']) + "' is unrecognized")
+    #### remove entries from returned dict that are unused by the surrounding scope
+    [out.pop(k, None) for k in ['exts_env', 'exts_json', 'exts', 'part_out']]
+    #### return dictionary of modified cmd args
+    return out
 
-def listdir_dirs_recursive(directory:str='', mindepth:int=1, maxdepth:int=1, excludes:List[str]=[]) -> List[str]:
+def listdir_dirs_recursive(dir_in:str='', mindepth:int=1, maxdepth:int=1, excludes:List[str]=[]) -> List[str]:
     """Get dirs from directory within the recrusive depths mindepth-maxdepth and remove excludes"""
     #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
     dirs_walk = [d[0] for d in os.walk(dir_in) if os.walk(dir_in) and d[0][len(dir_in):].count(os.sep) <= maxdepth-1 and d[0][len(dir_in):].count(os.sep) >= mindepth-1]
@@ -277,20 +275,20 @@ class Multifile:
 ####################################################################################################
 ####################################################################################################
 def main() -> None:
-    #### parses script input to populate scripts variables
-    dir_in,dir_out,parts_out,excludes,files_regex,inplace,maxdepth,mindepth = parse_inputs()
+    #### parses script input to populate args dict
+    args = parse_inputs()
     #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
-    dirs_walk = listdir_dirs_recursive(dir_in, mindepth, maxdepth, excludes)
+    dirs_walk = listdir_dirs_recursive(args['dir_in'], args['mindepth'], args['maxdepth'], args['excludes'])
     #### print useful info
-    print('INFO: root dir to search for multifiles: ' + dir_in)
+    print('INFO: root dir to search for multifiles: ' + args['dir_in'])
     if len(dirs_walk) > 1:
-        print('INFO: searching recursively ' + str(mindepth) + '-' + str(maxdepth) + ' dirs deep... found ' + str(len(dirs_walk)) + ' dirs')
-    print("INFO: regex file filter: '" + str(files_regex) + "'")
+        print('INFO: searching recursively ' + str(args['mindepth']) + '-' + str(args['maxdepth']) + ' dirs deep... found ' + str(len(dirs_walk)) + ' dirs')
+    print("INFO: regex file filter: '" + str(args['regex']) + "'")
     #### search for multifiles in dirs_walk
-    mfs_list = [Multifile.find_multifiles(d, list_regex_filtered_files(d, files_regex)) for d in dirs_walk]
+    mfs_list = [Multifile.find_multifiles(d, list_regex_filtered_files(d, args['regex'])) for d in dirs_walk]
     print('INFO: found ' + str(sum(len(row) for row in mfs_list)) + ' multifile candidates')
     #### rename each multifile
-    [mf.mv(parts_out, dir_out, inplace) for mfs in mfs_list for mf in mfs]
+    [mf.mv(args['parts_out'], args['dir_out'], args['inplace']) for mfs in mfs_list for mf in mfs]
     print('INFO: SUCCESS')
 
 if __name__ == "__main__":
