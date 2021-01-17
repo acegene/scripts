@@ -1,7 +1,7 @@
-import os # filesystem interactions
 import argparse # cmd line arg parsing
-import json # json file i/o
+import os # filesystem interactions
 import re # regex
+import json # json file i/o
 ####################################################################################################
 ####################################################################################################
 ## files for import
