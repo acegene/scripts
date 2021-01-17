@@ -8,8 +8,10 @@ $profile_path = "$($HOME)\Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
 $profile_commands = '$FormatEnumerationLimit = -1',
                     '$env:GWSPS = "$($env:GWS)\scripts\win\ps1"',
                     '$env:GWSPY = "$($env:GWS)\scripts\py"',
+                    '$env:GWSSTOR = "$($env:GWS)\scripts\storage"',
                     '$GWSPS = "$env:GWSPS"',
-                    '$GWSPY = "$env:GWSPY"'
+                    '$GWSPY = "$env:GWSPY"',
+                    '$GWSSTOR = "$env:GWSSTOR"'
 ## check if cmds exist in file, otherwise append them
 foreach ($cmd in $profile_commands){
     $file_str = Get-Content $profile_path | Select-String -SimpleMatch $cmd
