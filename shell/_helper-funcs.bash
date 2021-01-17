@@ -7,12 +7,13 @@
 __echo(){
     #### echo that only occurs based on variables defined from the surrounding scope
     local out=''
-    local send_out='false'; local stderr='false'; local obj_set='false'
+    local send_out='false'; local stderr='false'; local obj_set='false'; local end_char='\n'
     while (( "${#}" )); do
         case "${1}" in
             --err|-e) stderr='true';;
             --verbose|-v) [ "${verbose}" == 'false' ] || send_out='true';;
             --silent|-s) [ "${silent}" == 'true' ] || send_out='true';;
+            --no-newline|-n) end_char='';;
             -*) # convert flags grouped as in -vrb to -v -r -b
                 case "${1:1}" in
                     "") echo "ERROR: arg ${1} is unexpected" && return 2;;
@@ -30,7 +31,7 @@ __echo(){
         esac
         shift
     done
-    [ "${send_out}" == 'false' ] || { [ "${stderr}" == 'true' ] && >&2 printf "${out}" || printf "${out}"; }
+    [ "${send_out}" == 'false' ] || { [ "${stderr}" == 'true' ] && >&2 printf "${out}${end_char}" || printf "${out}${end_char}"; }
 }
 
 __yes_no_prompt(){ # __yes_no_prompt "string to print as prompt" "string to print if answered no" && cmd-if-continue || cmd-if-not-yes

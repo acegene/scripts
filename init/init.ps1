@@ -15,7 +15,7 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # date of generation: 201219
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "ps1" "-w" "${GWSS}/init/init.ps1" "-r" "${GWSPS}/_helper-funcs.ps1" "-x" "Group-Unspecified-Args"
+# python "${GWSPY}/write-btw.py" "-t" "ps1" "-w" "${GWSS}/init/init.ps1" "-x" "Group-Unspecified-Args"
 
 function Group-Unspecified-Args {
     [CmdletBinding()]
@@ -65,42 +65,42 @@ function _init {
     )
     #### collect cmd args
     $named_args,$unnamed_args = Group-Unspecified-Args @unspecified_args
-    #### if no profile exists create one
-    if (!(Test-Path $profile)){New-Item -Type File -Force $profile}
     #### hardcoded values
     $path_this = $PSCommandPath # not compatible with PS version < 3.0
     $dir_this = $PSScriptRoot # not compatible with PS version < 3.0
     $dir_repo = "$(pushd $(git -C $($dir_this) rev-parse --show-toplevel); echo $PWD; popd)"
     $dir_bin = "$($dir_repo)\bin"
     $path_src = "$($dir_repo)\src\src.ps1"
-    $path_prof = "$($HOME)\Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
-    $dir_term = "$($HOME)\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState"
-    $dir_term_loc = "$($dir_repo)\win\cfg\terminal-cfg"
+    $terminal_src_path = "$($dir_repo)\win\cfg\terminal-cfg"
+    #### includes
+    . "$($dir_repo)\src\cfg.ps1"
+    #### if no profile exists create one
+    if (!(Test-Path $profile_path)){New-Item -Type File -Force $profile_path}
     #### lines to append
     $cmd_args = "$($named_args.Keys | % { "-$($_)" + " '$($named_args.Item($_))'" }) "
     $cmd_args += "$($unnamed_args | % { "'$($_)'" })"
     if ($cmd_args -eq " ''"){$cmd_args = ""}
     $prof_cmd = ". '$($path_src)' $($cmd_args)"
     #### check if lines exist in file, otherwise append them
-    if ($(((Get-Content -Raw $path_prof) -split '\n')[-1]) -ne ''){
+    if ($(((Get-Content -Raw $profile_path) -split '\n')[-1]) -ne ''){
         $prof_cmd = "`r`n$($prof_cmd)"
     }
-    $file_str = Get-Content $path_prof | Select-String -SimpleMatch $prof_cmd
+    $file_str = Get-Content $profile_path | Select-String -SimpleMatch $prof_cmd
     if ($file_str -eq $null){
-        echo $prof_cmd >> $path_prof
+        echo $prof_cmd >> $profile_path
     }
     #### cfg windows terminal
-    if (!(Test-Path $dir_term)){
-        echo "ERROR: cannot find: $dir_term, aborting terminal cfg setup"
-    }elseif(!(Test-Path $dir_term_loc)){
-        echo "ERROR: cannot find: $dir_term_loc, aborting terminal cfg setu"
-    }elseif((Get-Item $dir_term).Target -eq $null){
-        echo "INFO: terminal cfg dir orig: $($dir_term)"
-        echo "INFO: terminal cfg dir link: $($dir_term_loc)"
+    if (!(Test-Path $terminal_path)){
+        echo "ERROR: cannot find: $terminal_path, aborting terminal cfg setup"
+    }elseif(!(Test-Path $terminal_src_path)){
+        echo "ERROR: cannot find: $terminal_src_path, aborting terminal cfg setu"
+    }elseif([string]::IsNullOrEmpty((Get-Item $terminal_path).Target)){
+        echo "INFO: terminal cfg dir orig: $($terminal_path)"
+        echo "INFO: terminal cfg dir link: $($terminal_src_path)"
         $confirmation = Read-Host -Prompt 'PROMPT: replace above orig dir with link dir? y/n'
         if ($confirmation -eq 'yes' -Or $confirmation -eq 'y') {
-             Remove-Item -Recurse -Force $dir_term
-             $null = New-Item -Path $dir_term -ItemType SymbolicLink -Value $dir_term_loc
+             Remove-Item -Recurse -Force $terminal_path
+             $null = New-Item -Path $terminal_path -ItemType SymbolicLink -Value $terminal_src_path
         }else{
             echo "WARNING: aborting terminal cfg setup, consider installing and using Windows Terminal!"
         }
