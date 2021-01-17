@@ -31,7 +31,7 @@ def safe_execute(default, exception, func, *args):
     except exception:
         return default
 
-def except_if_not(exception:Exception, expression:bool, string_if_except:str=None) -> None:
+def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
     """Throw exception if expression is False"""
     if not expression:
         if string_if_except != None:
@@ -61,7 +61,8 @@ def mv_atomic(src:str, dst:str) -> None:
             raise
 
 #### https://stackoverflow.com/questions/4726168/parsing-command-line-input-for-numbers
-def parse_range(range_str:str, throw=True) -> List[int]:
+def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
+    """Generate a list from <range_str>"""
     #### local funcs
     def new_list_elems_removed(elems, lst): return list(filter(lambda x: x not in elems, lst))
     #### set and use error type for param errors
@@ -80,4 +81,9 @@ def parse_range(range_str:str, throw=True) -> List[int]:
         x = section.split('-')
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
+
+
+def ifnone(obj:Any, default:Any) -> Any:
+    """Return <default> if <obj> == None"""
+    return default if obj == None else obj
 
