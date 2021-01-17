@@ -1,5 +1,17 @@
+#!/usr/bin/python3
+#
+# title: _helper-funcs.py
+#
+# descr: collection of useful python3 funcs, with minimized external dependencies
+#
+#      * this file and its funcs need to have special formatting
+#          * func first line should comply with regex '^def .*:$'
+#          * adjacent newline characters mark the end of the func
+#      * formatting compliance enables write-btw.py to parse this files funcs
+
+#### import sys
+#### https://stackoverflow.com/questions/3160699/python-progress-bar
 def progressbar(it, prefix='', size=60, file=sys.stderr):
-    #### https://stackoverflow.com/questions/3160699/python-progress-bar
     count = len(it)
     def show(j):
         x = int(size*j/count)
@@ -24,3 +36,26 @@ def except_if_not(exception:Exception, expression:bool, string_if_except:str=Non
         if string_if_except != None:
             print(string_if_except)
         raise exception
+
+#### import errno, os, shutil, uuid
+#### os: 'Windows 10 2004'
+#### https://alexwlchan.net/2019/03/atomic-cross-filesystem-moves-in-python/
+def mv_atomic(src:str, dst:str) -> None:
+    """Atomically move <src> to <dst> even across filesystems"""
+    #### <dst> should be the target name and not the target parent dir
+    try:
+        os.rename(src, dst)
+    except OSError as err:
+        if err.errno == errno.EXDEV:
+            #### generate unique ID
+            copy_id = uuid.uuid4()
+            #### mv <src> <tmp_dst>
+            tmp_dst = "%s.%s.tmp" % (dst, copy_id)
+            shutil.copyfile(src, tmp_dst)
+            #### mv <tmp_dst> <src> # atomic mv
+            os.rename(tmp_dst, dst)
+            #### rm <src>
+            os.unlink(src)
+        else:
+            raise
+

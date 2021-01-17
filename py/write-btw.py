@@ -1,13 +1,18 @@
+#!/usr/bin/python3
+#
+# title: write-btw.py
+#
 # descr: read from file, filter and process content using user input, write output by inserting between section markers
 #
-# usage: see example_cmds variable below
+# usage: see example_cmds below
 #
 # todos: take input file from pipe
 
 import argparse # cmd line arg parsing
 import os # filesystem interactions
-import sys
 import re # regex
+import sys
+
 from datetime import date
 ####################################################################################################
 ####################################################################################################
@@ -29,25 +34,32 @@ def parse_inputs():
     files_write = args.files_write; funcs_write = args.funcs_write; funcs_type = args.funcs_type; disp = args.disp
     file_read = args.file_read; all_read = args.all_read; empty = args.empty
     #### check script vars
-    assert(len([x for x in [all_read, empty] if x != False]) <= 1)
+    assert len([x for x in [all_read, empty] if x != False]) <= 1
     if not empty:
-        assert(file_read is not None and os.path.isfile(file_read))
         if not disp and not all_read:
-            assert(funcs_write is not None)
+            assert funcs_write != None
     if not disp:
-        assert(files_write is not None)
+        assert files_write != None
         for f in files_write:
-            assert(os.path.isfile(f))
+            assert os.path.isfile(f)
     ## set pattern
     if not all_read:
         if not empty:
-            assert(funcs_type in ["bash", "ps1"])
+            assert funcs_type in ["bash", "ps1", "py"]
+            if file_read != None:
+                assert os.path.isfile(file_read)
             if funcs_type == 'bash':
-                pattern = r"(__.*?)\(\).*?\n\}"
+                file_read = os.environ['GWSSH'] + os.sep + '_helper-funcs.bash' if file_read == None and 'GWSSH' in os.environ else file_read
+                pattern = r"(__[^\n]*?)\(\).*?\n\}"
             elif funcs_type == 'ps1':
-                pattern = r"function (.*?) *\{.*?\n\}"
+                file_read = os.environ['GWSPS'] + os.sep + '_helper-funcs.ps1' if file_read == None and 'GWSPS' in os.environ else file_read
+                pattern = r"function *([^\n]*?) *\{\n.*?\n\}"
+            elif funcs_type == 'py': # cannot have multiple newline in func
+                file_read = os.environ['GWSPY'] + os.sep + '_helper-funcs.py' if file_read == None and 'GWSPY' in os.environ else file_read
+                pattern = r"\ndef *([^\n]*?)\([^\n]*\n.*?(?=\n\n)"
             else: # TODO: clean
-                assert(False)
+                assert False
+            assert file_read != None
         else:
             pattern = r"(pleasse doo not matcch)" # TODO:
     else:
@@ -58,7 +70,7 @@ def extract_funcs(f, pattern):
     with open(f, 'r') as f:
         f_str = f.read()
         match = re.finditer(pattern, f_str, flags=re.S)
-        assert(match)
+        assert match
         for m in match:
             funcs.append(m)
         return funcs
@@ -68,7 +80,7 @@ def write_over_patterns(fs, pattern, string):
         with open(f, 'r+') as f:
             f_str = f.read()
             match = re.search(pattern, f_str, flags=re.S)
-            assert(match)
+            assert match # TODO: means no patterns in file
             f.seek(0)
             f.write(f_str.replace(match.group(0), string))
             f.truncate()
@@ -90,33 +102,32 @@ for i, arg_raw in enumerate(args_raw):
             if os.environ[env_var] in arg_raw:
                 args_raw[i] = arg_raw.replace(os.environ[env_var], r'${' + env_var + r'}')
                 break
-
 _disclaimers = [
-    '# date of generation: ' + date.today().strftime("%y%m%d") ,
+    '# yymmdd: ' + date.today().strftime("%y%m%d") ,
     '# generation cmd on the following line:',
     '# python "' +  '" "'.join(args_raw) + '"'
 ]
 disclaimer = '\n'.join(_disclaimers)
-## as an fyi
+## cmds
 example_cmds = [
     '## The below cmds display the available funcs for bash and ps1 scripts',
-    'python "${GWSPY}/write-btw.py" -t bash -r "${GWSSH}/_helper-funcs.bash" -d',
-    'python "${GWSPY}/write-btw.py" -t ps1 -r "${GWSPS}/_helper-funcs.ps1" -d',
+    'python "${GWSPY}/write-btw.py" -t bash -d',
+    'python "${GWSPY}/write-btw.py" -t ps1 -d',
+    'python "${GWSPY}/write-btw.py" -t py -d',
     '## The below cmds write to specific files and can/should be ran regularly',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${GWS}/init/init.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __yes_no_prompt __check_if_obj_exists __append_line_to_file_if_not_found',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSA}/init/init.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSS}/init/init.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
-    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWS}/init/init.ps1" -r "${GWSPS}/_helper-funcs.ps1" -x Group-Unspecified-Args',
-    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSA}/init/init.ps1" -r "${GWSPS}/_helper-funcs.ps1" -x Group-Unspecified-Args',
-    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSS}/init/init.ps1" -r "${GWSPS}/_helper-funcs.ps1" -x Group-Unspecified-Args',
-    'python "${GWSPY}/write-btw.py" -t ps1 -w "${LEW}/init/init.ps1" -r "${GWSPS}/_helper-funcs.ps1" -x Group-Unspecified-Args',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${LEW}/init/init.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWS}/init/init.bash" -x __echo __yes_no_prompt __check_if_obj_exists __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSA}/init/init.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSS}/init/init.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWS}/init/init.ps1" -x Group-Unspecified-Args',
+    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSA}/init/init.ps1" -x Group-Unspecified-Args',
+    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSS}/init/init.ps1" -x Group-Unspecified-Args',
+    'python "${GWSPY}/write-btw.py" -t py -w "${GWSPY}/multifile-rename" -x except_if_not mv_atomic',
 ]
 
 if disp:
     funcs = extract_funcs(file_read, pattern)
     if not empty:
-        assert(len(funcs) > 0)
+        assert len(funcs) > 0
     print(beg)
     print(disclaimer)
     for f in funcs:
@@ -137,8 +148,8 @@ else:
     print('INFO: mode is funcs')
     funcs = extract_funcs(file_read, pattern)
     for f in funcs_write:
-        assert(f in [func.group(1) for func in funcs])
-    funcs_write = [func.group(0) for func in funcs if func.group(1) in funcs_write]
+        assert f in [func.group(1) for func in funcs]
+    funcs_write = [func.group(0).strip(' \t\n') for func in funcs if func.group(1) in funcs_write]
     txt_write = beg + '\n' + disclaimer + '\n\n' + '\n\n'.join(funcs_write) +  '\n' + end
 
 write_over_patterns(files_write, r"" + beg + ".*?" + end, txt_write)

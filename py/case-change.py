@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 #
+# title: case-change.py
+#
 # descr: allows a user to recursively change casing of files in '--dir-in'
 #
 # usage: python case-change.py
