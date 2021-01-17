@@ -11,30 +11,23 @@
 #      * formatting compliance enables write-btw.py to parse this files funcs
 
 #### from typing import Type
-def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
-    """Throw exception if expression is False"""
+def except_if_false(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
+    """Throw <exception> if <expression> == False"""
     if not expression:
         if string_if_except != None:
             print(string_if_except)
         raise exception
 
-#### from typing import Any, Callable, Tuple, Type, Union
-def run_ignoring_excepts(exceptions:Union[Type[Exception], Tuple[Type[Exception]]], call:Callable, *args) -> Any:
-    """Returns result from calling <call> with <*args>; if exception and exception in <exceptions>: return None"""
+#### from typing import Any, Callable, Sequence, Type, Union
+def try_or(exceptions:Union[Type[Exception], Sequence[Type[Exception]]], call:Callable, *args, default:Any=None, **kargs) -> Any:
+    """Returns result from calling <call> with <*args> <**kargs>; if an exception in <exceptions> occurs return default"""
     try:
-        return call(*args)
+        return call(*args, **kargs)
     except (exceptions):
-        return None
-
-#### from typing import Any, Callable, Tuple, Type, Union
-def run_ignoring_excepts_w_default(default:any, exceptions:Union[Type[Exception], Tuple[Type[Exception]]], call:Callable, *args):
-    try:
-        return call(*args)
-    except exceptions:
         return default
 
 #### from typing import Any
-def get_or_default(obj:Any, default:Any) -> Any:
+def get_with_default(obj:Any, default:Any) -> Any:
     """Return <default> if <obj> == None"""
     return default if obj == None else obj
 
@@ -84,11 +77,11 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
     return sorted(result)
 
 ##### https://stackoverflow.com/questions/19257498/combining-two-slicing-operations
-def slice_lst_merge(slice_objs:List[slice], length:int) -> slice:
+def slice_lst_merge(slices:Sequence[slice], length:int) -> slice:
     """ returns a slice that is a combination of all slices.
-    given <slice_objs> = [slice1, slice2] then the following is True
+    given <slices> = [slice1, slice2] then the following is True
     x[slice1][slice2] == x[slice_lst_merge(slice1, slice2, len(x))]
-    :param slice_objs: list of slices
+    :param slices: list of slices
     :param length: length of the first dimension of data being sliced e.g. len(x)
     """
     def slice_merge(lhs:slice, rhs:slice, length:int) -> slice:
@@ -125,7 +118,7 @@ def slice_lst_merge(slice_objs:List[slice], length:int) -> slice:
         assert length_out >= 0 and length_out <= length
         #### return combined_slice, length slice
         return slice(start, stop, step), length_out
-    out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slice_objs, (slice(0, None, 1), length))
+    out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slices, (slice(0, None, 1), length))
     return out
 
 #### import sys

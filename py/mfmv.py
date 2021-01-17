@@ -37,9 +37,9 @@
 #        allow two mvs for same mf if done partially
 #        file input for cmdargs
 #        allow custom user input auto filename formatter
-#        correct slicing for negative indexes of SliceableGeneratorFunction
 
 import argparse
+import collections
 import errno
 import functools
 import itertools
@@ -50,30 +50,30 @@ import shutil
 import sys
 import uuid
 
-from typing import Any, Callable, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Type, Union
 
 if sys.version_info < (3,6): # version 3.6.X or newer allows f strings
     raise Exception("ERROR: python version needs to be 3.6.X or newer, instead is: " + '.'.join([str(m) for m in sys.version_info[:3]]))
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210106
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_not" "run_ignoring_excepts" "parse_range" "get_or_default" "slice_lst_merge"
+# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_false" "try_or" "parse_range" "get_with_default" "slice_lst_merge"
 
-def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
-    """Throw exception if expression is False"""
+def except_if_false(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
+    """Throw <exception> if <expression> == False"""
     if not expression:
         if string_if_except != None:
             print(string_if_except)
         raise exception
 
-def run_ignoring_excepts(exceptions:Union[Type[Exception], Tuple[Type[Exception]]], call:Callable, *args) -> Any:
-    """Returns result from calling <call> with <*args>; if exception and exception in <exceptions>: return None"""
+def try_or(exceptions:Union[Type[Exception], Sequence[Type[Exception]]], call:Callable, *args, default:Any=None, **kargs) -> Any:
+    """Returns result from calling <call> with <*args> <**kargs>; if an exception in <exceptions> occurs return default"""
     try:
-        return call(*args)
+        return call(*args, **kargs)
     except (exceptions):
-        return None
+        return default
 
-def get_or_default(obj:Any, default:Any) -> Any:
+def get_with_default(obj:Any, default:Any) -> Any:
     """Return <default> if <obj> == None"""
     return default if obj == None else obj
 
@@ -117,11 +117,11 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
-def slice_lst_merge(slice_objs:List[slice], length:int) -> slice:
+def slice_lst_merge(slices:Sequence[slice], length:int) -> slice:
     """ returns a slice that is a combination of all slices.
-    given <slice_objs> = [slice1, slice2] then the following is True
+    given <slices> = [slice1, slice2] then the following is True
     x[slice1][slice2] == x[slice_lst_merge(slice1, slice2, len(x))]
-    :param slice_objs: list of slices
+    :param slices: list of slices
     :param length: length of the first dimension of data being sliced e.g. len(x)
     """
     def slice_merge(lhs:slice, rhs:slice, length:int) -> slice:
@@ -158,7 +158,7 @@ def slice_lst_merge(slice_objs:List[slice], length:int) -> slice:
         assert length_out >= 0 and length_out <= length
         #### return combined_slice, length slice
         return slice(start, stop, step), length_out
-    out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slice_objs, (slice(0, None, 1), length))
+    out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slices, (slice(0, None, 1), length))
     return out
 ################&&!%@@%!&&################ AUTO GENERATED CODE ABOVE THIS LINE ################&&!%@@%!&&################
 def alpha_from_int(x:int) -> str:
@@ -203,7 +203,7 @@ def parse_inputs() -> dict:
         """Returns json object associated with key from file"""
         with open(f, 'r') as json_file:
             data = json.load(json_file)
-            except_if_not(ValueError, key in data)
+            except_if_false(ValueError, key in data)
             return data[key]
     #### cmd line args parser
     parser = argparse.ArgumentParser()
@@ -224,10 +224,10 @@ def parse_inputs() -> dict:
     #### return dict assigned from attributes of argumentparser object
     out = {attr:val for attr, val in args.__dict__.items()}
     #### raise exceptions
-    except_if_not(ValueError, os.path.isdir(out['dir_in']))
-    except_if_not(ValueError, out['dir_out'] == None or os.path.isdir(out['dir_out']))
-    except_if_not(ValueError, len([True for x in [out['regex'], out['exts'], out['exts_env'], out['exts_json']] if x != None and x != False]) <= 1)
-    except_if_not(ValueError, out['maxdepth'] >= out['mindepth'] and out['mindepth'] > 0)
+    except_if_false(ValueError, os.path.isdir(out['dir_in']))
+    except_if_false(ValueError, out['dir_out'] == None or os.path.isdir(out['dir_out']))
+    except_if_false(ValueError, len([True for x in [out['regex'], out['exts'], out['exts_env'], out['exts_json']] if x != None and x != False]) <= 1)
+    except_if_false(ValueError, out['maxdepth'] >= out['mindepth'] and out['mindepth'] > 0)
     #### convert range search range from alpha to int if given an alpha range
     out['range_search'] = [int_from_alpha(x) if isinstance(x, str) else x for x in out['range_search']]
     #### when regex is None then its set using exts related args
@@ -245,13 +245,13 @@ def parse_inputs() -> dict:
     #### get user specified part formatting for renaming multifiles
     out['parts_out'] = Multifile.get_parts_out_list(out['part_out'])
     assert out['parts_out'] is not None
-    except_if_not(ValueError, out['parts_out'] != None, "ERROR: part_out arg of '" + str(out['part_out']) + "' is unrecognized")
+    except_if_false(ValueError, out['parts_out'] != None, "ERROR: part_out arg of '" + str(out['part_out']) + "' is unrecognized")
     #### remove entries from returned dict that are unused by the surrounding scope
     [out.pop(k, None) for k in ['exts_env', 'exts_json', 'exts', 'part_out']]
     #### return dictionary of modified cmd args
     return out
 
-def listdir_dirs(dir_in:str='', mindepth:int=1, maxdepth:int=1, excludes:List[str]=[]) -> List[str]:
+def listdir_dirs(dir_in:str='', mindepth:int=1, maxdepth:int=1, excludes:Sequence[str]=[]) -> List[str]:
     """Get dirs from directory within the recursive depths mindepth-maxdepth and remove excludes"""
     #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
     dirs_walk = [d[0] for d in os.walk(dir_in) if os.walk(dir_in) and d[0][len(dir_in):].count(os.sep) <= maxdepth-1 and d[0][len(dir_in):].count(os.sep) >= mindepth-1]
@@ -263,46 +263,66 @@ def listdir_files(dir_in:str='.', regex:str='.*') -> List[str]:
     files = [f for f in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, f))]
     return [f for f in files if re.search(regex, f, re.IGNORECASE) != None]
 
-class SliceableGeneratorFunction():
-    """Wrapper for generator function <gen_func> to enable indexing, slicing, and iterating of <gen_func>()"""
-    def __init__(self, gen_func:Callable[..., Iterable], args:Union[List[Any], Tuple[Any, ...]]=[], slice_objs:Union[List[slice], Tuple[slice, ...]]=[], gen_func_sliceable=False):
-        #### object attributes
-        self.__sliceable_gen_func:Callable = gen_func if gen_func_sliceable else SliceableGeneratorFunction.__wrap_sliceable_gen_func(gen_func)
-        self.__sliceable_gen_func_args = tuple(*args)
-        self.__slice_objs = slice_objs
+class SequenceWrappedGeneratorFunction(collections.abc.Sequence):
+    """Wrapper for allowing access of <gen_func>() as if it were an immutable sequence"""
+    def __init__(self, gen_func:Callable[..., Iterable], args:Sequence[Any]=[], kargs:Mapping={}, slices:Sequence[slice]=[], gen_func_sliceable=False):
+        assert isinstance(args, collections.abc.Sequence)
+        assert isinstance(slices, collections.abc.Sequence)
+        #### private attributes
+        self.__sliceable_gen_func = gen_func if gen_func_sliceable else SequenceWrappedGeneratorFunction.__wrap_sliceable(gen_func)
+        self.__args = tuple(*args)
+        self.__kargs = dict(**kargs)
+        self.__slices = slices
     #### magic methods
-    def __getitem__(self, i: Union[int, slice]) -> Any:
+    def __contains__(self, val:Any) -> bool:
+        return val in self.__iter__()
+    def __getitem__(self, i: Union[int, slice, Sequence[slice]]) -> Any:
         if isinstance(i, slice):
-            return SliceableGeneratorFunction(self.__sliceable_gen_func, self.__sliceable_gen_func_args, self.__slice_objs + [i], gen_func_sliceable=True)
-        elif isinstance(i, list):
+            return SequenceWrappedGeneratorFunction(self.__sliceable_gen_func, self.__args, self.__kargs, self.__slices + [i], gen_func_sliceable=True)
+        elif isinstance(i, Sequence):
             assert all([isinstance(s, slice) for s in i])
-            return SliceableGeneratorFunction(self.__sliceable_gen_func, self.__sliceable_gen_func_args, self.__slice_objs + i, gen_func_sliceable=True)
+            return SequenceWrappedGeneratorFunction(self.__sliceable_gen_func, self.__args, self.__kargs, self.__slices + i, gen_func_sliceable=True)
         else:
-            return next(self.__sliceable_gen_func(self.__slice_objs + [slice(i, i+1, 1)], *self.__sliceable_gen_func_args))
-    def __iter__(self):
-        return self.__sliceable_gen_func(self.__slice_objs, *self.__sliceable_gen_func_args)
-    def __len__(self):
-        return len([_ for _ in self.__sliceable_gen_func(self.__slice_objs, *self.__sliceable_gen_func_args)])
-    def __repr__(self): ## TODO: WARNING: this significantly can impact performance if len is large
-        return f"[{', '.join([str(x) for x in self.__sliceable_gen_func(self.__slice_objs, *self.__sliceable_gen_func_args)])}]"
-    def __str__(self):
+            return next(self.__sliceable_gen_func(self.__slices + [slice(i, i+1, 1)], *self.__args, **self.__kargs))
+    def __iter__(self) -> Iterable:
+        return self.__sliceable_gen_func(self.__slices, *self.__args, **self.__kargs)
+    def __len__(self) -> int:
+        return functools.reduce(lambda x, y: x + 1, self.__iter__(), 0) # avoiding simpler approaches to reduce worst case memory footprint
+    def __repr__(self) -> str:
+        return '[' + ', '.join([str(x) for x in self.__sliceable_gen_func(self.__slices, *self.__args, **self.__kargs)]) + ']'
+    def __reversed__(self) -> Iterable:
+        return self.__sliceable_gen_func(self.__slices + [slice(None, None, -1)], *self.__args, **self.__kargs)
+    def __str__(self) -> str:
         return self.__repr__()
-    #### static methods
-    def __wrap_sliceable_gen_func(gen_func):
-        def sliceable_gen_func(gen_func, slice_obj, *args):
+    #### public methods
+    def count(self, val:Any) -> int:
+        count = 0
+        for i, x in enumerate(self.__iter__()):
+            if x == val:
+                count += 1
+        return count
+    def index(self, val:Any) -> int:
+        for i, x in enumerate(self.__iter__()):
+            if x == val:
+                return i
+        raise ValueError("'" + str(val) + "' not in sequence")
+    #### private static methods
+    def __wrap_sliceable(gen_func:Callable[..., Iterable]) -> Callable[..., Iterable]:
+        """returns a generator function wrapped to take a slice list"""
+        def sliceable_gen_func(gen_func, slice_, *args):
             for i, n in enumerate(gen_func(*args)):
-                if i >= get_or_default(slice_obj.stop, sys.maxsize):
+                if i >= get_with_default(slice_.stop, sys.maxsize):
                     break
-                if i >= get_or_default(slice_obj.start, 0):
-                    if (i - get_or_default(slice_obj.start, 0)) % get_or_default(slice_obj.step, 1) == 0:
+                if i >= get_with_default(slice_.start, 0):
+                    if (i - get_with_default(slice_.start, 0)) % get_with_default(slice_.step, 1) == 0:
                         yield n
         return functools.partial(sliceable_gen_func, gen_func)
 
-class Multifile:
+class Multifile():
     """Allows operation on a contiguous group of similarly named files"""
-    #### class attributes
-    prefix_style:str = r'( - |_|-|| )(cd|ep|episode|pt|part|| )( - |_|-|| )'
-    parts_lists:Optional[List[SliceableGeneratorFunction]] = None # set via __set_parts_lists implicitly
+    #### private class attributes
+    __prefix_style:str = r'( - |_|-|| )(cd|ep|episode|pt|part|| )( - |_|-|| )'
+    _parts_lists:Optional[List[Sequence]] = None # set via __set_parts_lists implicitly
     #### magic methods
     def __init__(self, file_dict:dict) -> None:
         assert all(True if k in ['dir', 'base', 'prepart', 'parts', 'postpart', 'ext'] else False for k in file_dict.keys())
@@ -310,8 +330,9 @@ class Multifile:
         self.file_dict:dict = file_dict
     def __getitem__(self, key:Union[str,int]) -> Any:
         return self.file_dict[key] if isinstance(key, str) else self.__get_nth_file(key)
-    #### methods that manipulate the state of the multifile or its referenced contents
-    def mv(self, parts_lst:SliceableGeneratorFunction, dir_out:Optional[str]=None, range_mv:Optional[List[int]]=None, inplace:bool=False) -> Optional['Multifile']:
+    #### public methods
+    ## methods that manipulate the state of the multifile or its referenced contents
+    def mv(self, parts_lst:Sequence, dir_out:Optional[str]=None, range_mv:Optional[Sequence[int]]=None, inplace:bool=False) -> Optional['Multifile']:
         """Move this object's files using the pattern specified by parts"""
         #### asserts
         assert self.ismultifile()
@@ -392,7 +413,7 @@ class Multifile:
                     if new in out_exists:
                         print(f"ERROR: mv sim error: os.path.isfile(new)==True: mv '{old}' '{new}'")
                         sim_failed = True; break
-                    run_ignoring_excepts(ValueError, out_exists.remove, old)
+                    try_or(ValueError, out_exists.remove, old)
                     out_exists.append(new)
                 if sim_failed:
                     continue
@@ -447,7 +468,7 @@ class Multifile:
                 print("ERROR: invalid input for prompt")
             print("#######################################################")
         return None
-    #### methods to retrieve details about the multifile
+    ## methods that examine the state of the multifile or its referenced contents
     def ismultifile(self) -> bool:
         """Ensure this object has at least two valid and contiguous files"""
         return all([os.path.isfile(f) for f in self.to_list()]) and self.size() > 1 
@@ -456,6 +477,7 @@ class Multifile:
     def to_list(self, exc_dir:bool=False, inplace:bool=True) -> List[str]:
         """Return this object's files to a list of strings"""
         return [self.__get_nth_file(i, exc_dir, inplace) for i in range(self.size())]
+    #### private methods
     def __get_nth_file(self, n:int, exc_dir:bool=False, inplace:bool=True) -> str:
         """Get this multifiles n'th file"""
         assert n < self.size(), f"ERROR: DEBUG: {str(n)}:{str(self.file_dict)}"
@@ -514,7 +536,7 @@ class Multifile:
                         break
                     num_files += 1
                 if num_files > 1:
-                    m = re.search(r'^(.*?)' + cls.prefix_style + r'$', base, re.IGNORECASE)
+                    m = re.search(r'^(.*?)' + cls.__prefix_style + r'$', base, re.IGNORECASE)
                     base = m.group(1)
                     mf = cls({'dir':dir_in, 'base':base, 'prepart':m.group(2) + m.group(3) + m.group(4), 'parts':parts_lst[part_index:part_index+num_files], 'postpart':postpart, 'ext':ext})
                     assert all([True if os.path.isfile(x) else False for x in mf.to_list()]), f"ERROR: {mf.to_list()}"
@@ -526,7 +548,7 @@ class Multifile:
             return [out] + cls.extract_multifiles(dir_in=dir_in, files=files, min_in=min_in, max_in=max_in)
         return []
     @classmethod
-    def get_parts_out_list(cls, part_out:str) -> Optional[SliceableGeneratorFunction]:
+    def get_parts_out_list(cls, part_out:str) -> Optional[Sequence]:
         """Get the parts generator that will become the rhs for mv operations"""
         match = re.sub("[^0-9]", "", part_out)
         num = int(match) if match != '' else int_from_alpha(part_out[-1])
@@ -536,54 +558,54 @@ class Multifile:
                     continue
             except StopIteration:
                 continue
-            regex = '^' + cls.prefix_style + '(' + parts_lst[num] +')$'
+            regex = '^' + cls.__prefix_style + '(' + parts_lst[num] +')$'
             result = re.search(regex, part_out)
             if result != None:
-                def make_parts_out_gen(prepend, slice_obj):
-                    def parts_out_gen(slice_obj, slice_objs):
-                        for part in parts_lst[[slice_obj] + slice_objs]:
+                def make_parts_out_gen(prepend, slice_):
+                    def parts_out_gen(slice_, slices):
+                        for part in parts_lst[[slice_] + slices]:
                             if part != None:
                                 yield prepend + part
                             else:
                                 yield None
-                    return functools.partial(parts_out_gen, slice_obj)
-                return SliceableGeneratorFunction(make_parts_out_gen(result.group(1) + result.group(2) + result.group(3), slice_obj=slice(num, None, None)), gen_func_sliceable=True)
+                    return functools.partial(parts_out_gen, slice_)
+                return SequenceWrappedGeneratorFunction(make_parts_out_gen(result.group(1) + result.group(2) + result.group(3), slice_=slice(num, None, None)), gen_func_sliceable=True)
         else:
             print(f"WARNING: could not find parts array for input '{part_out}'")
             return None
     @classmethod
-    def __get_parts_lists(cls) -> List[SliceableGeneratorFunction]:
+    def __get_parts_lists(cls) -> List[Sequence]:
         """Get the parts generators for finding contiguous files"""
-        if cls.parts_lists == None:
+        if cls._parts_lists == None:
             cls.__set_parts_lists()
-        assert cls.parts_lists != None
-        return cls.parts_lists
+        assert cls._parts_lists != None
+        return cls._parts_lists
     @classmethod
     def __set_parts_lists(cls) -> None:
-        """Set the static variable parts_lists"""
+        """Set the static variable _parts_lists"""
         length = 999999999 # arbitrarily set to max of 1 billion - 1
         length = max(length, 26); length = min(length, 999999999)
         #### function generators for numbers and lowercase letters
-        def nums(slice_objs):
-            slice_obj = slice_lst_merge(slice_objs, length+1)
-            for n in range(*slice_obj.indices(length+1)):
+        def nums(slices):
+            slice_ = slice_lst_merge(slices, length+1)
+            for n in range(*slice_.indices(length+1)):
                 yield str(n)
-        def alphas(slice_objs):
+        def alphas(slices):
             lst = [None, 'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-            slice_obj = slice_lst_merge(slice_objs, len(lst))
-            for n in range(*slice_obj.indices(length)):
+            slice_ = slice_lst_merge(slices, len(lst))
+            for n in range(*slice_.indices(length)):
                 yield lst[n]
         #### function generators for numbers padded with zeros
-        padded_nums_wrapped_lst:List[Callable[[], str]] = []
         def make_padded_nums(digits):
-            def padded_nums(slice_objs):
-                for i, part in enumerate((nums(slice_objs))):
+            def padded_nums(slices):
+                for i, part in enumerate((nums(slices))):
                     if i >= 10**int(digits):
                         return
                     yield part.zfill(digits)
             return padded_nums
-        #### set static variable parts_lists
-        cls.parts_lists = [SliceableGeneratorFunction(gf, gen_func_sliceable=True) for gf in [nums, alphas] + [make_padded_nums(i) for i in reversed(range(2,len(str(length))+1))]]
+        #### set static variable _parts_lists
+        cls._parts_lists = [SequenceWrappedGeneratorFunction(gf, gen_func_sliceable=True) for gf in [nums, alphas] + [make_padded_nums(i) for i in reversed(range(2,len(str(length))+1))]]
+        assert all([isinstance(s, Sequence) for s in cls._parts_lists])
 ####################################################################################################
 ####################################################################################################
 def main() -> None:
