@@ -6,17 +6,21 @@
 #
 #        python multi-file-rename.py -p=-pt1 -n -x .git third-party --mx 6
 #
+# warns: beta
+#
 # todos: create --help manpage
 #        handle files without extensions better
 #        proper cmd args mutual exclusion
+#        handle zero padding
 
 import os # filesystem interactions
 import sys
-from multiprocessing import Pool, freeze_support
+from multiprocessing import Pool, freeze_support, Process, Queue
 import time
 import argparse # cmd line arg parsing
 import re # regex
 import json # json file i/o
+import time # debugging
 ####################################################################################################
 #################################################################################################### 
 def parse_inputs():
@@ -148,9 +152,10 @@ class MultiFile:
         return None
     @staticmethod
     def get_part_arrs():
-        length_arrays = 1000
-        part_array_A = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'] + [None]*(length_arrays-27) # vidnameA, vidnameB, etc.
-        part_array_B = [str(val) for val in range(1,length_arrays)] # vidname1, vidname2, etc.
+        length_arrays = 99; length_arrays = max(26, length_arrays) # HARDCODED
+        nones = [None]*(length_arrays-26) if length_arrays >= 26 else []
+        part_array_A = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'] + nones # vidnameA, vidnameB, etc.
+        part_array_B = [str(val) for val in range(1,length_arrays+1)] # vidname1, vidname2, etc.
         part_array_C = ['0' + val for val in part_array_B] # vidname01, vidname02, etc. 
         part_array_D = ['00' + val for val in part_array_B] # vidname001, vidname002, etc.
         part_array_E = ['cd' + val for val in part_array_B] # vidnamecd1, vidnamecd2, etc.
@@ -205,29 +210,29 @@ class MultiFile:
                 if pt == None:
                     continue
                 matches_all = []
-                for x in range(max_length):
+                for x in range(max_length+1):
                     regex = '(.{' + str(x) + '})' + MultiFile.part_prefix + '(' + pt +')(.*)(' + exts + ')$'
                     matches = [re.search(regex, f, re.IGNORECASE) for f in files if re.search(regex, f, re.IGNORECASE) != None]
                     matches_all.append(matches)
-                for matched_files in matches_all:
-                    for f in matched_files:
-                        base = f.group(1); prepart = f.group(2); part = f.group(3); postpart = f.group(4); ext = f.group(5)
+                for matches in matches_all:
+                    for m in matches:
+                        base = m.group(1); prepart = m.group(2); part = m.group(3); postpart = m.group(4); ext = m.group(5)
                         match = False
                         num_files = 0
-                        for x in part_arrays_inv[j][:-i]:
+                        for x in part_arrays_inv[j][:len(part_arrays_inv[j])-i]:
                             num_files += 1
                             part_match = ''.join(c for c in part if not c.isdigit()) # TODO: check
                             x = re.sub(part_match, part_match, x, re.IGNORECASE)
-                            file_out = os.path.join(directory, str(base) + str(prepart) + str(x) + str(postpart) + str(ext))
-                            if not os.path.isfile(file_out):
+                            file_out = base + prepart + x + postpart + ext
+                            if not os.path.isfile(os.path.join(directory, file_out)) or file_out not in files:
                                 match = False
                                 break
                             else:
                                 match = True
                         if match == True and num_files > 1:
                             mf = MultiFile(num_files, directory, base, prepart, part_arrays_inv[j], postpart, ext)
-                            assert(all([True for x in mf.to_list() if os.path.isfile(x)]))
-                            assert(all([True for x in mf.to_list(exc_dir=True) if x in files]))
+                            assert(all([True if os.path.isfile(x) else False for x in mf.to_list()]))
+                            assert(all([True if x in files else False for x in mf.to_list(exc_dir=True)]))
                             mfs_out.append(mf)
                     list_mfs_out.append(mfs_out)
                 max_mf_size = 0
@@ -243,6 +248,12 @@ class MultiFile:
                     return [out] + MultiFile.find_multi_files(directory=directory, files=files, exts=exts)
         return mfs_out
     @staticmethod
+    def find_multi_files_queue(directory, exts=None, queue=None):
+        out = []
+        for d in directory:
+            out = out + MultiFile.find_multi_files(d, exts)
+        queue.put(out)
+    @staticmethod
     def find_multi_files_multi(directory, exts=None, files=None):
         # print('MULTIPROCESS')
         out = []
@@ -252,6 +263,8 @@ class MultiFile:
 ####################################################################################################
 ####################################################################################################
 if __name__ == '__main__':
+    times = []
+    times.append((time.time(),'t0')) # 0
     #### default values
     dir_in = None; dir_out = None; part_out = None
     inplace = None; maxdepth = None; mindepth = None; multiprocesses = None
@@ -267,22 +280,46 @@ if __name__ == '__main__':
     #### rename each multifile
     print('INFO: searching for multi-files in ' + str(len(dirs_walk)) + ' directories')
     #### when multiprocesses benefits execution time is still being determined...
+    times.append((time.time(),' tinputs')) # 1
+    mfs = []
     if multiprocesses == None:
+        times.append((time.time(),'tpreproc')) # 2
         for dir_walk in dirs_walk:
-            for mf in MultiFile.find_multi_files(dir_walk, exts=exts):
-                print("[" + str(len(mf.to_list())) + "] " + str(mf.to_list()))
-                # mf.mv(MultiFile.get_part_arr_out(part_out), dir_out, inplace)
+            mfs += MultiFile.find_multi_files(dir_walk, exts=exts)
+        times.append((time.time(),'   tproc')) # 3
         print('SUCCESS: SINGLEPROCESS')
     else:
-        #### break list into list of lists then convert to list of tuples of lists
-        dirs_per_pool = 10 # TODO: find appropriate value, improve grouping to be more sophisticated?
-        pool_args = [dirs_walk[d * dirs_per_pool:(d + 1) * dirs_per_pool] for d in range((len(dirs_walk) + dirs_per_pool - 1) // dirs_per_pool )]
-        pool_args = [(a, [exts] * len(a)) for a in pool_args]
         freeze_support() # TODO: research ramifications
-        with Pool() as pool:
-            data = pool.starmap(MultiFile.find_multi_files_multi, pool_args)
-        for process_data in data:
-            for mf in process_data:
-                print("[" + str(len(mf.to_list())) + "] " + str(mf.to_list()))
-                # mf.mv(MultiFile.get_part_arr_out(part_out), dir_out, inplace)
-        print('SUCCESS: MULTIPROCESSES')
+        dirs_per_pool = 20 # TODO: find appropriate value, improve grouping to be more sophisticated?
+        pool_args = [dirs_walk[d * dirs_per_pool:(d + 1) * dirs_per_pool] for d in range((len(dirs_walk) + dirs_per_pool - 1) // dirs_per_pool )]
+        if multiprocesses != 0:
+            #### break list into list of lists then convert to list of tuples of lists
+            pool_args = [(a, [exts] * len(a)) for a in pool_args]
+            times.append((time.time(),'tpreproc')) # 2
+            with Pool() as pool:
+                data = pool.starmap(MultiFile.find_multi_files_multi, pool_args)
+            times.append((time.time(),'   tproc')) # 3
+            [mfs := mfs + d for d in data]
+            print('SUCCESS: MULTIPOOL')
+        else:
+            processes = []; queues = []; queues_out = []
+            times.append((time.time(),'tpreproc')) # 2
+            for dir_walk in pool_args:
+                q = Queue()
+                queues.append(q)
+                p = Process(target=MultiFile.find_multi_files_queue,args=(dir_walk,exts,q))
+                p.start()
+                processes.append(p)
+            [(queues_out.append(queues[i].get())) for i, p in enumerate(processes)]
+            times.append((time.time(),'   tproc')) # 3
+            [mfs := mfs + q for q in queues_out]
+            print('SUCCESS: MULTIPROCESSES')
+    for mf in mfs:
+        print("[" + str(mf.num_files) + "] " + str(mf.to_list()))
+        # mf.mv(MultiFile.get_part_arr_out(part_out), dir_out, inplace)
+    times.append((time.time(),'  tfinal')) # 4
+    for i, t in enumerate(times):
+        if i == 0:
+            continue
+        print('TIMES: '+ str(times[i][1]) + "=" + str(times[i][0]-times[i-1][0]))
+    print('TIMES:    total=' + str(times[len(times)-1][0]-times[0][0]))

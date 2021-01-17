@@ -1,6 +1,6 @@
 # nord-switch.ps1
 #
-# descr: script to enable quick switching of nordvpn's connected country
+# descr: quick switching of nordvpn's connected country
 #
 # usage: nord-switch.ps1
 #            auto rotate to the next preconfigured location (see $country_keys and $country_vals below)
