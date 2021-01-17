@@ -51,9 +51,9 @@ for (( i = 0; i < "${#ext_vars[@]}"; i++ )); do [[ "${ext_vars[i]}" == "${ext}" 
 __remove_and_sort_array_duplicates "${ext_vars_minus_arg[@]}"
 } # __print_all_other_case_variations_of_ext
 
-_rename_extensions_to_lowercase() {
+_exts_lowercase() {
 local scriptpath="$( cd "$(dirname "$0")" ; pwd -P )/"
-local src1="${scriptpath}__supplemental-functions.bash"; local src2="${scriptpath}"_lew-source.bash
+local src1="${scriptpath}_helper-funcs.bash"; local src2="${scriptpath}"_lew-source.bash
 [[ -f "${src1}" ]] && . "${src1}" || ! echo "${src1} not found" || return 3
 [[ -f "${src2}" ]] && . "${src2}" || ! echo "${src2} not found" || return 4
 
@@ -84,6 +84,6 @@ for ext in "${ext_args[@]}" ; do
     done
 done
 echo 'renaming finished'
-} # _rename_extensions_to_lowercase
+}
 
-_rename_extensions_to_lowercase "${@}" || exit "${?}"
+_exts_lowercase "${@}" || exit "${?}"

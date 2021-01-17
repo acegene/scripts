@@ -5,10 +5,10 @@ import json # json file i/o
 ####################################################################################################
 ####################################################################################################
 ## files for import
-if 'GWSSTOR' in os.environ:
-    json_globals_file = os.path.join(os.environ['GWSSTOR'], 'globals.json')
+if 'GWSST' in os.environ:
+    json_globals_file = os.path.join(os.environ['GWSST'], 'globals.json')
 else:
-    print('WARNING: could not find GWSSTOR environment var')
+    print('WARNING: could not find GWSST environment var')
     json_globals_file = None
 ####################################################################################################
 #################################################################################################### 

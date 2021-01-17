@@ -85,7 +85,7 @@ done
 
 _rename_subdir_files() {
 local scriptpath="$( cd "$(dirname -- "$0")" ; pwd -P )/"
-local src1="${scriptpath}__supplemental-functions.bash"
+local src1="${scriptpath}_helper-funcs.bash"
 [[ -f "${src1}" ]] && . "${src1}" || ! echo "${src1} not found" || return 6
 
 local dir="${PWD}/" # default

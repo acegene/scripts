@@ -7,11 +7,11 @@ set -u
 _init() {
     #### hardcoded vars
     ## dirs
-    local script_path="${BASH_SOURCE[0]}"
-    local dir_script="$(cd "$(dirname "${script_path}")"; pwd -P)" && [ "${dir_script}" != '' ] || ! __echo -se "ERROR: dir_script=''" || return 1
-    local dir_repo="$(cd "${dir_script}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
+    local path_this="${BASH_SOURCE[0]}"
+    local dir_this="$(cd "$(dirname "${path_this}")"; pwd -P)" && [ "${dir_this}" != '' ] || ! __echo -se "ERROR: dir_this=''" || return 1
+    local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
     ## includes
-    . "${dir_repo}/shell/__supplemental-functions.bash" || ! echo "ERROR: sourcing failed" || return 1
+    . "${dir_repo}/shell/_helper-funcs.bash" || ! echo "ERROR: sourcing failed" || return 1
     ## files
     local bash_aliases="${HOME}/.bash_aliases"
     local bashrc="${HOME}/.bashrc"

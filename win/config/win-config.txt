@@ -12,7 +12,7 @@ automated applications install
 			Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 			# TODO: insert some type of curl cmd for choco_installs.ps1 # see script for known non working installs
 install windowsSubsystemLinux
-	via 'powershell'
+	via admin powershell
 		dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
 		dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
 		# restart machine
