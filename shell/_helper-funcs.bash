@@ -24,13 +24,13 @@ __echo(){
                 set -- 'dummy' $(for ((i=1;i<${#1};i++)); do echo "-${1:$i:1}"; done) "${@:2}" # implicit shift
                 ;;
             *)
-                [ "${obj_set}" == 'false' ] && obj_set='true' || ! __echo -se "ERROR: too many objs for __echo" || return 2
-                out="${out}"
+                [ "${obj_set}" == 'false' ] && obj_set='true' || ! echo "ERROR: too many objs for __echo" || return 2
+                out="${1}"
                 ;;
         esac
         shift
     done
-    [ "${send_out}" != 'false' ] || { [ "${stderr}" == 'true' ] && >&2 printf "${out}" || printf "${out}"; }
+    [ "${send_out}" == 'false' ] || { [ "${stderr}" == 'true' ] && >&2 printf "${out}" || printf "${out}"; }
 }
 
 __yes_no_prompt(){ # __yes_no_prompt "string to print as prompt" "string to print if answered no" && cmd-if-continue || cmd-if-not-yes
@@ -94,7 +94,7 @@ __check_if_obj_exists() {
     case "${type}" in
         file|f) cmd='touch'; flag='f';;
         dir|d) cmd='mkdir'; flag='d';;
-        *) __echo -se "ERROR: arg ${1} for type is unexpected" && return 5;;
+        *) __echo -se "ERROR: arg type '${1}' unexpected" && return 5;;
     esac
 
     if [ "${create}" == 'true' ] && [ ! -"${flag}" "${obj}" ]; then

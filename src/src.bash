@@ -13,6 +13,7 @@ _src(){
     export GWSS="${dir_repo}"
     export GWSPS="${dir_repo}/win/ps1"
     export GWSPY="${dir_repo}/py"
+    export GWSSH="${dir_repo}/shell"
     export GWSST="${dir_repo}/storage"
     #### aliases
     alias gwss="cd ${GWSS} && git status -sb"

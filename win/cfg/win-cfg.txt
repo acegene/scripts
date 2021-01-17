@@ -1,17 +1,17 @@
 enable windowsDeveloperMode
 install powershell7
-	via administrativePowershell
+	via admin powershell
 		iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI"
 automated applications install
 	option 1: ninite
 		ninite-7z-chrome-discord-firefox-itunes-notepad-python3-spotify-steam-teamviewer-vlc-code.exe
 		nordvpn/xampp/utorr/plex/ahk/razer install manually # TODO: add malawarebytes
 	option 2: chocolatey # https://chocolatey.org/install
-		via administrative powershell
+		via admin powershell
 			Set-ExecutionPolicy RemoteSigned -Force
 			Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 			# TODO: insert some type of curl cmd for choco_installs.ps1 # see script for known non working installs
-install windowsSubsystemLinux
+install wsl aka windowsSubsystemLinux
 	via admin powershell
 		dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
 		dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
@@ -31,12 +31,6 @@ config nordvpn # https://nordvpn.com/download/
 		auto-connectOnWi-Fi set to allNetworks
 	killSwitch -> 'internetKillSwitch set to on'
 	advanced -> 'helpUsImprove set to off'
-config xampps
-	httpd.conf
-		DocumentRoot "C:/xampp/htdocs/lew"
-		<Directory "C:/xampp/htdocs/lew">
-	via powershell
-	New-Item -ItemType SymbolicLink -Path "C:\xampp\htdocs\lew\storage-regex-lew.txt" -Target "$(LEWSTOR)\storage-regex-lew.txt"
 install mmo-mouse
 	mouse-mmo-installer-utechsmart-venus\AUTORUN.exe
 	load profile

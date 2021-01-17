@@ -24,7 +24,7 @@ regex = '.*(\.git|System Volume Information|RECYCLE\.BIN|tumblr|!!pics|!!currtrr
 regex_vids = '^.*(' + exts + ')$'
 # print(regex_vids)
 def choice_rm_files_root(files, files_protected, root):
-    print('enter yes/no/quit on whether to delete the above files')
+    print('PROMPT: enter yes/no/quit on whether to delete the above files')
     while True:
         choice = input().lower()
         if choice == 'yes' or choice == 'y':

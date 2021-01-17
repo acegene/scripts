@@ -13,8 +13,7 @@ function Group-Unspecified-Args {
             # Parameter names start with '-'
             if ($CurrentParamName) {
                 # Have a param name w/o a value; assume it's a switch
-                # If a value had been found, $CurrentParamName would have
-                # been nulled out again
+                # If a value had been found, $CurrentParamName would have been nulled out again
                 $ParamHashTable.$CurrentParamName = $true
             }
 

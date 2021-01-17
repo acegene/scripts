@@ -23,6 +23,8 @@ function _src {
     function global:gwspy {cd $global:GWSPY && git status -sb}
     function global:gwssh {cd $global:GWSSH && git status -sb}
     function global:gwsst {cd $global:GWSST && git status -sb}
+    ## nordvpn
+    function global:nvs {& "$($GWSPS)\nord-switch.ps1" @args}
 }
 
 _src @args
