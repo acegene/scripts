@@ -14,6 +14,13 @@
 				choco_installs.ps1
 					# battle.net not working
 					# xampp not working
+	wsl
+		windows powershell
+			dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+			dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+			# restart machine
+			# wsl --set-default-version 2 # TODO: figure out why not working
+			# install linux distro from microsoft store
 	cd C:/Users/acege/gene-ws/
 	git submodule update --init --recursive
 	nordvpn config # https://nordvpn.com/download/
@@ -48,3 +55,5 @@
 		needed?
 			library-name->manage-library->edit->advanced->agent=personal-media
 		settings->library->emptry-trash-auto=uncheck
+	pathnames limit remove
+		registry HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled->1 # create if needed via  New->DWORD (32-bit) Value
