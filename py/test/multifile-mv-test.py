@@ -1,11 +1,11 @@
 
 #!/usr/bin/python3
 #
-# title: multifile-rename-test.py
+# title: multifile-mv-test.py
 #
-# descr: tests multifile-rename.py
+# descr: tests multifile-mv.py
 #
-# usage: python multifile-rename-test.py
+# usage: python multifile-mv-test.py
 #
 # notes: version 0.8
 #        tested on 'Windows 10 2004' # TODO: testing with OSX and linux
@@ -24,10 +24,10 @@ from parameterized import parameterized # pip install parameterized
 from typing import List # declaration of parameter and return types
 from unittest.mock import patch
 
-multifile_rename = importlib.import_module("multifile-rename")
+multifile_mv = importlib.import_module("multifile-mv")
 ####################################################################################################
 #################################################################################################### 
-coverage = 'mid'
+coverage = 'high'
 print('INFO: testing with coverage set to: ' + coverage)
 if coverage == 'low':
     part_symbols = ['-']
@@ -43,16 +43,16 @@ elif coverage == 'high':
     part_symbols = ['_', '-', ' ', '']
     part_word = ['pt', 'part', '']
     dirs_out = [None, '.', '..', 'test', 'test' + os.sep + 'level1']
-    part_out = ['a', '1', 'part_a', ' pt0']
+    part_out = ['a', '1', 'part_a', ' pt0', 'cd 6']
 else:
     raise
 params = [w for w in dirs_out]
 params = [[p, x+y+z] for p in params for x in part_symbols for y in part_word for z in part_symbols]
 params = [p + [o] for p in params for o in part_out]
 
-class MultifileRenameTestCase(unittest.TestCase):
+class MultifileMvTestCase(unittest.TestCase):
     def setUp(self):
-        default_parser_args = {'dir_in':'.','dir_out':None,'excludes':[],'regex':None,'inplace': False,'maxdepth':5,'mindepth':1,'part_out':'1','part_final':'1000','exts':['mp4', 'txt'],'exts_json':None,'exts_env':None}
+        default_parser_args = {'dir_in':'.','dir_out':None,'excludes':[],'regex':None,'inplace': False,'maxdepth':5,'mindepth':1,'part_out':'1','part_final':'1000','exts':['mp4', 'txt'],'exts_json':None,'exts_env':None,'range_search':[0,1],'range_mv':None}
         self.args = lambda: None # hack to 'forward declare' variable
         self.setCmdArgs(default_parser_args)
         self.base = 'base'; self.ext = '.mp4'
@@ -100,7 +100,7 @@ class MultifileRenameTestCase(unittest.TestCase):
             return True
         return False
 
-    def rename_side_effect(self, *args, **kwargs):
+    def multifile_mv_side_effect(self, *args, **kwargs):
         self.mvd.append((args[0], args[1]))
 
     def runTest(self, args, files_in, files_out):
@@ -108,17 +108,17 @@ class MultifileRenameTestCase(unittest.TestCase):
         self.dir_mv = self.args.dir_out if self.args.dir_out != None else self.args.dir_in
         mv_pairs =  [(os.path.join(self.args.dir_in, i), os.path.join(self.dir_mv, o)) for i, o in zip(self.files_in, self.files_out)]
         with patch('argparse.ArgumentParser.parse_args', return_value=copy.deepcopy(self.args)): # hardcode user cmd line args
-            with patch('multifile-rename.listdir_dirs', side_effect=self.listdir_dirs_side_effect):
+            with patch('multifile-mv.listdir_dirs', side_effect=self.listdir_dirs_side_effect):
                 with patch('builtins.input', side_effect=self.input_side_effect): # hardcode user input
                     with patch('os.path.isfile', side_effect=self.isfile_side_effect):
                         with patch('os.path.isdir', side_effect=self.isdir_side_effect):
                             with patch('os.listdir', side_effect=self.listdir_side_effect):
-                                with patch('multifile-rename.mv_atomic', side_effect=self.rename_side_effect) as rename:
-                                    # with patch('builtins.print'): # silence output and speed up test
-                                    multifile_rename.main()
-                                    assert len(rename.call_args_list) == len(mv_pairs), f"{len(rename.call_args_list)} != {len(mv_pairs)}"
-                                    for (args, kwargs), mv_pair in zip(rename.call_args_list, mv_pairs):
-                                        assert args == mv_pair, f"{args} != {mv_pair}"
+                                with patch('multifile-mv.mv_atomic', side_effect=self.multifile_mv_side_effect) as mv:
+                                    with patch('built`ins.print'): # silence output and speed up test
+                                        multifile_mv.main()
+                                        assert len(mv.call_args_list) == len(mv_pairs), f"{len(mv.call_args_list)} != {len(mv_pairs)}"
+                                        for (args, kwargs), mv_pair in zip(mv.call_args_list, mv_pairs):
+                                            assert args == mv_pair, f"{args} != {mv_pair}"
 
     @parameterized.expand(params)
     def testNo1(self, dir_out, prepart, part_out):
@@ -135,11 +135,9 @@ class MultifileRenameTestCase(unittest.TestCase):
         self.runTest(args, files_in, files_out)
     @parameterized.expand(params)
     def testNo3(self, dir_out, prepart, part_out):
-        args = {'dir_out':dir_out, 'part_out':part_out}
+        args = {'dir_out':dir_out, 'part_out':part_out, 'range_search':[0,2]}
         files_in = [self.base + prepart + str(p) + self.ext for p in self.nums[2:] if prepart + str(self.nums[2]) != part_out]
         files_out = [self.base + part_out[:-1]  + str(p) + self.ext for i, p in enumerate(self.gen_parts(part_out[-1], len(files_in))) if i < len(files_in)]
-        print(files_in)
-        print(files_out)
         self.runTest(args, files_in, files_out)
 
 if __name__ == '__main__':

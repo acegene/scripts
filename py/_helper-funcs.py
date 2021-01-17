@@ -7,6 +7,7 @@
 #      * this file and its funcs need to have special formatting
 #          * func first line should comply with regex '^def .*:$'
 #          * adjacent newline characters mark the end of the func
+#          * file must end with two newline characters
 #      * formatting compliance enables write-btw.py to parse this files funcs
 
 #### import sys
@@ -49,7 +50,7 @@ def mv_atomic(src:str, dst:str) -> None:
         if err.errno == errno.EXDEV:
             #### generate unique ID
             copy_id = uuid.uuid4()
-            #### mv <src> <tmp_dst>
+            #### cp <src> <tmp_dst> # cp across filesystems to tmp location
             tmp_dst = "%s.%s.tmp" % (dst, copy_id)
             shutil.copyfile(src, tmp_dst)
             #### mv <tmp_dst> <src> # atomic mv
@@ -58,4 +59,25 @@ def mv_atomic(src:str, dst:str) -> None:
             os.unlink(src)
         else:
             raise
+
+#### https://stackoverflow.com/questions/4726168/parsing-command-line-input-for-numbers
+def parse_range(range_str:str, throw=True) -> List[int]:
+    #### local funcs
+    def new_list_elems_removed(elems, lst): return list(filter(lambda x: x not in elems, lst))
+    #### set and use error type for param errors
+    error = None
+    error = TypeError if not error and not isinstance(range_str, str) else error
+    error = ValueError if not error and range_str == '' else error
+    error = ValueError if not error and not all([c.isdigit() for c in new_list_elems_removed(['-', ','], range_str)]) else error
+    error = ValueError if not error and not all([c.isdigit() for c in [range_str[0], range_str[-1]]]) else error
+    if error:
+        print('ERROR: expect str with only positive ints, commas and hyphens, given ' + range_str)
+        if throw:
+            raise error
+        return None
+    result = []
+    for section in range_str.split(','):
+        x = section.split('-')
+        result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
+    return sorted(result)
 
