@@ -98,7 +98,7 @@ __check_if_obj_exists() {
     esac
 
     if [ "${create}" == 'true' ] && [ ! -"${flag}" "${obj}" ]; then
-        "${cmd}" "${obj}" && __echo -ve "NOTE: created ${type}: ${obj}" || ! __echo -se "ERROR: could not create ${type}: ${obj}" || return 4
+        "${cmd}" "${obj}" && __echo -ve "INFO: created ${type}: ${obj}" || ! __echo -se "ERROR: could not create ${type}: ${obj}" || return 4
         [ "${send_out}" == 'true' ] && out='created'
     fi
     [ ! -"${flag}" "${obj}" ] && __echo -ve "ERROR: ${obj} does not exist" && return 1
@@ -160,7 +160,7 @@ __append_line_to_file_if_not_found() {
     for line in "${lines[@]}"; do
         if ! grep -qF -- "${line}" "${file}"; then
             [ "$(tail -c 1 "${file}")" != '' ] && printf '\n' >> "${file}" # ensure trailing new line
-            printf "${line}\n" >> "${file}" && __echo -ve "NOTE: '${line}' added to '${file}'" || ! __echo -se "ERROR: could not add ${line} to ${file}" || return 1
+            printf "${line}\n" >> "${file}" && __echo -ve "INFO: '${line}' added to '${file}'" || ! __echo -se "ERROR: could not add ${line} to ${file}" || return 1
         fi
     done
 }

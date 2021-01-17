@@ -51,7 +51,7 @@ function _nord-switch {
             $group = 'United States'
             Write-Output "WARNING: state for country '$($state)' unrecognized, using '$($group)'"
         } else {
-            Write-Output "NOTE: state for country should switch from '$($state)' to '$($group)'"
+            Write-Output "INFO: state for country should switch from '$($state)' to '$($group)'"
         }
     }
     #### execute in cmd prompt nordvpn country switch

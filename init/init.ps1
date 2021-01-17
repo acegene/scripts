@@ -95,8 +95,8 @@ function _init {
     }elseif(!(Test-Path $dir_term_loc)){
         echo "ERROR: cannot find: $dir_term_loc, aborting terminal cfg setu"
     }elseif((Get-Item $dir_term).Target -eq $null){
-        echo "NOTE: terminal cfg dir orig: $($dir_term)"
-        echo "NOTE: terminal cfg dir link: $($dir_term_loc)"
+        echo "INFO: terminal cfg dir orig: $($dir_term)"
+        echo "INFO: terminal cfg dir link: $($dir_term_loc)"
         $confirmation = Read-Host -Prompt 'PROMPT: replace above orig dir with link dir? y/n'
         if ($confirmation -eq 'yes' -Or $confirmation -eq 'y') {
              Remove-Item -Recurse -Force $dir_term

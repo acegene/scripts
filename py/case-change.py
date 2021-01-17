@@ -72,7 +72,7 @@ def rename_from_lambdas(directory, namer_tmp, namer_new, force):
         if force:
             os.rename(tmp, new)
         else:
-            print('NOTE: this is just a test, to perform renames try --force option')
+            print('INFO: this is just a test, to perform renames try --force option')
 
         print('EXEC: mv ' + str(orig) + ' ' + str(new))
 ####################################################################################################

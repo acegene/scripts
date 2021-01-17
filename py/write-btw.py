@@ -72,7 +72,7 @@ def write_over_patterns(fs, pattern, string):
             f.seek(0)
             f.write(f_str.replace(match.group(0), string))
             f.truncate()
-            print('NOTE: wrote to file: ' + str(f.name))
+            print('INFO: wrote to file: ' + str(f.name))
 ####################################################################################################
 ####################################################################################################
 #### default values
@@ -127,14 +127,14 @@ if disp:
     sys.exit()
 
 if empty:
-    print('NOTE: mode is empty')
+    print('INFO: mode is empty')
     txt_write = beg + '\n' + end
 elif all_read:
-    print('NOTE: mode is all_read')
+    print('INFO: mode is all_read')
     with open(file_read, 'r') as f:
         txt_write = beg + '\n' + f.read() + '\n' + end
 else:
-    print('NOTE: mode is funcs')
+    print('INFO: mode is funcs')
     funcs = extract_funcs(file_read, pattern)
     for f in funcs_write:
         assert(f in [func.group(1) for func in funcs])

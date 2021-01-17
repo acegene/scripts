@@ -12,6 +12,8 @@
 
 import os # filesystem interactions
 import sys
+from multiprocessing import Pool, freeze_support
+import time
 import argparse # cmd line arg parsing
 import re # regex
 import json # json file i/o
@@ -21,7 +23,7 @@ def parse_inputs():
     """Parse cmd line inputs; set, check, and fix script's default variables"""
     ## global vars
     global dir_in; global dir_out; global part_out
-    global exts; global excludes
+    global exts; global excludes; global multiprocesses
     global inplace; global maxdepth; global mindepth
     #### local funcs
     def import_json_obj(f, key):
@@ -39,18 +41,18 @@ def parse_inputs():
     parser.add_argument('--exts-json', '-j')
     parser.add_argument('--exts-env', '-n', action='store_true')
     parser.add_argument('--excludes', '-x', nargs='+')
-    parser.add_argument('--inplace', '-c', action='store_true')
+    parser.add_argument('--inplace', '--inp', action='store_true')
+    parser.add_argument('--multiprocesses', '-m', default=None, type=int)
     parser.add_argument('--maxdepth', '--mx', default=1, type=int)
     parser.add_argument('--mindepth', '--mn', default=0, type=int)
     args = parser.parse_args()
     #### set variables via cmd line args
     dir_in = args.dir_in; dir_out = args.dir_out; part_out = args.part_out
-    maxdepth = args.maxdepth; mindepth = args.mindepth
+    maxdepth = args.maxdepth; mindepth = args.mindepth; multiprocesses = args.multiprocesses
     exts = args.exts; json_exts = args.exts_json; env_exts = args.exts_env; excludes = args.excludes
     #### check and fix variables
     assert(os.path.isdir(dir_in))
     assert(dir_out == None or os.path.isdir(dir_out))
-    assert(part_out != None and part_out != '')
     assert(len([True for x in [exts, env_exts, json_exts] if x != None and x != False]) <= 1)
     if env_exts == True:
         assert('GWSST' in os.environ)
@@ -82,6 +84,9 @@ class MultiFile:
                 path = os.path.join(self.directory, path)
             out.append(path)
         return out
+    def get_nth_file(self, n=0):
+        assert(n <= self.num_files)
+        return ''.join([str(x) for x in [self.base, self.prepart, self.parts[n], self.postpart, self.ext] if x is not None])
     def isfiles(self):
         files = self.to_list()
         if len(files) <= 1:
@@ -107,12 +112,15 @@ class MultiFile:
                 if out_dir != None:
                     tmp = os.path.join(out_dir, tmp)
                 files_out.append(tmp)
+            if self.num_files > len([p for p in parts if p != None]):
+                print("WARNING: too many files (" + str(self.num_files) + ") of form '" + self.get_nth_file(0)  + "' for part-out '" + str(parts[0]) + "', skipping...")
+                return self
             target_exists = False
             for o, n in zip(self.to_list(), files_out):
                 if o == n:
                     print("WARNING: target '" + str(n) + "' exists, skipping...")
                     return self
-            print('NOTE: multi-file ready to be moved, displaying rename cmds')
+            print('INFO: multi-file ready to be moved, displaying rename cmds')
             for o, n in zip(self.to_list(), files_out):
                 print('mv ' + str(o) + ' ' + str(n))
             print('PROMPT: (c)ontinue; (b)ase-rename name; (d)ir-rename name; (e)xt-rename name; (i)nplace; (s)kip; (q)uit; ')
@@ -125,7 +133,7 @@ class MultiFile:
             elif choice == 'inplace' or choice == 'i':
                 inplace = not inplace
             elif choice == 'skip' or choice == 's':
-                print('NOTE: skipping rename of this batch of multifiles')
+                print('INFO: skipping rename of this batch of multifiles')
                 break
             elif choice == 'quit' or choice == 'q':
                 sys.exit()
@@ -140,8 +148,9 @@ class MultiFile:
         return None
     @staticmethod
     def get_part_arrs():
-        part_array_A = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'] # vidnameA, vidnameB, etc.
-        part_array_B = [str(val) for val in range(1,27)] # vidname1, vidname2, etc.
+        length_arrays = 1000
+        part_array_A = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'] + [None]*(length_arrays-27) # vidnameA, vidnameB, etc.
+        part_array_B = [str(val) for val in range(1,length_arrays)] # vidname1, vidname2, etc.
         part_array_C = ['0' + val for val in part_array_B] # vidname01, vidname02, etc. 
         part_array_D = ['00' + val for val in part_array_B] # vidname001, vidname002, etc.
         part_array_E = ['cd' + val for val in part_array_B] # vidnamecd1, vidnamecd2, etc.
@@ -150,7 +159,6 @@ class MultiFile:
         part_array_H = ['p' + val for val in part_array_B] # vidnamep1, vidnamep2, etc.
         ## ordering of return value is necessary to allow prioritization of which part_array to match against
         return [list(a) for a in zip(part_array_A,part_array_E,part_array_F,part_array_G,part_array_H,part_array_D,part_array_C,part_array_B)],[part_array_A,part_array_E,part_array_F,part_array_G,part_array_H,part_array_D,part_array_C,part_array_B]
-        # return [part_array_A,part_array_E,part_array_F,part_array_G,part_array_H,part_array_D,part_array_C,part_array_B]
     @staticmethod
     def get_part_arr_out(part):
         part_arrays,part_arrays_inv = MultiFile.get_part_arrs()
@@ -158,9 +166,9 @@ class MultiFile:
             regex = '^' + MultiFile.part_prefix + '(' + part_array[0] +')$'
             result = re.search(regex, part_out)
             if result != None:
-                return [result.group(1) + val for val in part_array]
+                return [result.group(1) + val if val != None else None for val in part_array]
         else:
-            print('ERROR: --part-out arg of \'' + part_out + '\' is not recognized')
+            print("ERROR: --part-out arg of '" + part_out + "' is not recognized")
             sys.exit()
     @staticmethod
     def multi_files_files_equal(lhs, rhs):
@@ -173,7 +181,7 @@ class MultiFile:
                 return False
         return True
     @staticmethod
-    def find_multi_files(directory, files=None, exts=None):
+    def find_multi_files(directory, exts=None, files=None):
         """Returns a list of MultiFile objects in directory"""
         #### check and set inputs
         assert(os.path.isdir(directory))
@@ -194,6 +202,8 @@ class MultiFile:
         #### TODO: explain iteration direction
         for i, part_array in enumerate(reversed(part_arrays)):
             for j, pt in enumerate(part_array):
+                if pt == None:
+                    continue
                 matches_all = []
                 for x in range(max_length):
                     regex = '(.{' + str(x) + '})' + MultiFile.part_prefix + '(' + pt +')(.*)(' + exts + ')$'
@@ -232,22 +242,47 @@ class MultiFile:
                         files.remove(mf)
                     return [out] + MultiFile.find_multi_files(directory=directory, files=files, exts=exts)
         return mfs_out
+    @staticmethod
+    def find_multi_files_multi(directory, exts=None, files=None):
+        # print('MULTIPROCESS')
+        out = []
+        for d, e in zip(directory, exts):
+            out = out + MultiFile.find_multi_files(d, e)
+        return out
 ####################################################################################################
 ####################################################################################################
-#### default values
-dir_in = None; dir_out = None; part_out = None
-inplace = None; maxdepth = None; mindepth = None 
-exts = None; json_exts = None; excludes = None
-#### checks and overwrites default values using script input
-parse_inputs()
-#### recursively find all dirs in dir_in between leveles mindepth and maxdepth
-dirs_walk = [val[0] for val in os.walk(dir_in) if os.walk(dir_in) and val[0][len(dir_in):].count(os.sep) <= maxdepth-1 and val[0][len(dir_in):].count(os.sep) >= mindepth-1]
-#### removing all excludes from dirs
-if excludes != None:
-    for exclude in excludes:
-        dirs_walk = [val for val in dirs_walk if exclude.lower() not in val.lower()]
-#### rename each multifile
-for dir_walk in dirs_walk:
-    # print('NOTE: searching for multi-files in: ' + str(dir_walk))
-    for mf in MultiFile.find_multi_files(dir_walk, exts=exts):
-        mf.mv(MultiFile.get_part_arr_out(part_out), dir_out, inplace)
+if __name__ == '__main__':
+    #### default values
+    dir_in = None; dir_out = None; part_out = None
+    inplace = None; maxdepth = None; mindepth = None; multiprocesses = None
+    exts = None; json_exts = None; excludes = None
+    #### checks and overwrites default values using script input
+    parse_inputs()
+    #### recursively find all dirs in dir_in between leveles mindepth and maxdepth
+    dirs_walk = [val[0] for val in os.walk(dir_in) if os.walk(dir_in) and val[0][len(dir_in):].count(os.sep) <= maxdepth-1 and val[0][len(dir_in):].count(os.sep) >= mindepth-1]
+    #### removing all excludes from dirs
+    if excludes != None:
+        for exclude in excludes:
+            dirs_walk = [val for val in dirs_walk if exclude.lower() not in val.lower()]
+    #### rename each multifile
+    print('INFO: searching for multi-files in ' + str(len(dirs_walk)) + ' directories')
+    #### when multiprocesses benefits execution time is still being determined...
+    if multiprocesses == None:
+        for dir_walk in dirs_walk:
+            for mf in MultiFile.find_multi_files(dir_walk, exts=exts):
+                print("[" + str(len(mf.to_list())) + "] " + str(mf.to_list()))
+                # mf.mv(MultiFile.get_part_arr_out(part_out), dir_out, inplace)
+        print('SUCCESS: SINGLEPROCESS')
+    else:
+        #### break list into list of lists then convert to list of tuples of lists
+        dirs_per_pool = 10 # TODO: find appropriate value, improve grouping to be more sophisticated?
+        pool_args = [dirs_walk[d * dirs_per_pool:(d + 1) * dirs_per_pool] for d in range((len(dirs_walk) + dirs_per_pool - 1) // dirs_per_pool )]
+        pool_args = [(a, [exts] * len(a)) for a in pool_args]
+        freeze_support() # TODO: research ramifications
+        with Pool() as pool:
+            data = pool.starmap(MultiFile.find_multi_files_multi, pool_args)
+        for process_data in data:
+            for mf in process_data:
+                print("[" + str(len(mf.to_list())) + "] " + str(mf.to_list()))
+                # mf.mv(MultiFile.get_part_arr_out(part_out), dir_out, inplace)
+        print('SUCCESS: MULTIPROCESSES')
