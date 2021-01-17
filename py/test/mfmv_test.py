@@ -18,13 +18,18 @@ import argparse
 import copy
 import importlib
 import os
+import sys
 import unittest
 
 from parameterized import parameterized # pip install parameterized
 from typing import List # declaration of parameter and return types
 from unittest.mock import patch
 
-import mfmv
+try:
+    import mfmv
+except:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    import mfmv
 ####################################################################################################
 #################################################################################################### 
 coverage = 'high'
