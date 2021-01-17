@@ -10,33 +10,33 @@
 #          * file must end with two newline characters
 #      * formatting compliance enables write-btw.py to parse this files funcs
 
-#### import sys
-#### https://stackoverflow.com/questions/3160699/python-progress-bar
-def progressbar(it, prefix='', size=60, file=sys.stderr):
-    count = len(it)
-    def show(j):
-        x = int(size*j/count)
-        file.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), j, count))
-        file.flush()
-    show(0)
-    for i, item in enumerate(it):
-        yield item
-        show(i+1)
-    file.write("\n")
-    file.flush()
-
-def safe_execute(default, exception, func, *args):
-    try:
-        return function(*args)
-    except exception:
-        return default
-
+#### from typing import Type
 def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
     """Throw exception if expression is False"""
     if not expression:
         if string_if_except != None:
             print(string_if_except)
         raise exception
+
+#### from typing import Any, Callable, Tuple, Type, Union
+def run_ignoring_excepts(exceptions:Union[Type[Exception], Tuple[Type[Exception]]], call:Callable, *args) -> Any:
+    """Returns result from calling <call> with <*args>; if exception and exception in <exceptions>: return None"""
+    try:
+        return call(*args)
+    except (exceptions):
+        return None
+
+#### from typing import Any, Callable, Tuple, Type, Union
+def run_ignoring_excepts_w_default(default:any, exceptions:Union[Type[Exception], Tuple[Type[Exception]]], call:Callable, *args):
+    try:
+        return call(*args)
+    except exceptions:
+        return default
+
+#### from typing import Any
+def get_or_default(obj:Any, default:Any) -> Any:
+    """Return <default> if <obj> == None"""
+    return default if obj == None else obj
 
 #### import errno, os, shutil, uuid
 #### os: 'Windows 10 2004'
@@ -60,6 +60,7 @@ def mv_atomic(src:str, dst:str) -> None:
         else:
             raise
 
+#### from typing import Optional, Type
 #### https://stackoverflow.com/questions/4726168/parsing-command-line-input-for-numbers
 def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
     """Generate a list from <range_str>"""
@@ -82,8 +83,18 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
-
-def ifnone(obj:Any, default:Any) -> Any:
-    """Return <default> if <obj> == None"""
-    return default if obj == None else obj
+#### import sys
+#### https://stackoverflow.com/questions/3160699/python-progress-bar
+def progressbar(it, prefix='', size=60, file=sys.stderr):
+    count = len(it)
+    def show(j):
+        x = int(size*j/count)
+        file.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), j, count))
+        file.flush()
+    show(0)
+    for i, item in enumerate(it):
+        yield item
+        show(i+1)
+    file.write("\n")
+    file.flush()
 

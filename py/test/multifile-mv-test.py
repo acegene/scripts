@@ -114,7 +114,7 @@ class MultifileMvTestCase(unittest.TestCase):
                         with patch('os.path.isdir', side_effect=self.isdir_side_effect):
                             with patch('os.listdir', side_effect=self.listdir_side_effect):
                                 with patch('multifile-mv.mv_atomic', side_effect=self.multifile_mv_side_effect) as mv:
-                                    with patch('built`ins.print'): # silence output and speed up test
+                                    with patch('builtins.print'): # silence output and speed up test
                                         multifile_mv.main()
                                         assert len(mv.call_args_list) == len(mv_pairs), f"{len(mv.call_args_list)} != {len(mv_pairs)}"
                                         for (args, kwargs), mv_pair in zip(mv.call_args_list, mv_pairs):

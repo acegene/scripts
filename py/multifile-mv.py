@@ -49,14 +49,14 @@ import shutil
 import sys
 import uuid
 
-from typing import Any, Callable, List, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Type, TypeVar, Union
 
 if sys.version_info < (3,6): # version 3.6.X or newer allows f strings
     raise Exception("ERROR: python version needs to be 3.6.X or newer, instead is: " + '.'.join([str(m) for m in sys.version_info[:3]]))
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210103
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/multifile-mv.py" "-x" "mv_atomic" "except_if_not" "parse_range" "ifnone"
+# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/multifile-mv.py" "-x" "mv_atomic" "except_if_not" "parse_range" "get_or_default"
 
 def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
     """Throw exception if expression is False"""
@@ -64,6 +64,13 @@ def except_if_not(exception:Type[Exception], expression:bool, string_if_except:s
         if string_if_except != None:
             print(string_if_except)
         raise exception
+
+def run_ignoring_excepts(exceptions:Union[Type[Exception], Tuple[Type[Exception]]], call:Callable, *args) -> Any:
+    """Returns result from calling <call> with <*args>; if exception and exception in <exceptions>: return None"""
+    try:
+        return call(*args)
+    except (exceptions):
+        return None
 
 def mv_atomic(src:str, dst:str) -> None:
     """Atomically move <src> to <dst> even across filesystems"""
@@ -105,7 +112,7 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
-def ifnone(obj, default):
+def get_or_default(obj, default):
     """Return <default> if <obj> == None"""
     return default if obj == None else obj
 ################&&!%@@%!&&################ AUTO GENERATED CODE ABOVE THIS LINE ################&&!%@@%!&&################
@@ -131,7 +138,6 @@ def parse_range_alpha(range_str:str, throw=True) -> Union[List[int], List[str], 
     error = None
     error = TypeError if not error and not isinstance(range_str, str) else error
     error = ValueError if not error and range_str == '' else error
-    mid = all(x.isdigit() for x in newListRemove('-', newListRemove(',', range_str)))
     if error:
         print(f"ERROR: expect str with only positive ints, commas and hyphens, given '{range_str}'")
         if throw:
@@ -212,7 +218,7 @@ def listdir_files(dir_in:str='.', regex:str='.*') -> List[str]:
 
 class ListWrappedGeneratorFunction():
     """Allows iterating/splicing on internal generator function as if it were a list"""
-    def __init__(self, generator_function:Callable, slice_obj:slice=slice(sys.maxsize)):
+    def __init__(self, generator_function:Callable[[slice], Iterable], slice_obj:slice=slice(sys.maxsize)):
         #### object attributes
         self.generator_function:Callable = generator_function
         self.start:int = slice_obj.start
@@ -228,7 +234,7 @@ class ListWrappedGeneratorFunction():
         return f"[{', '.join([str(x) for x in self.generator_function(*self.__get_internal_slice())])}]"
     def __get_internal_slice(self, i=None):
         start = sum([s for s in [self.start, getattr(i, 'start', None)] if s != None], 0)
-        stop = min([s for s in [self.stop, ifnone(getattr(i, 'stop', None), sys.maxsize) + ifnone(self.start, 0)] if s != None])
+        stop = min([s for s in [self.stop, get_or_default(getattr(i, 'stop', None), sys.maxsize) + get_or_default(self.start, 0)] if s != None])
         step = functools.reduce(lambda x, y: x * y, [s for s in [self.step, getattr(i, 'step', None)] if s != None], 1)
         return slice(start, stop, step)
 
@@ -259,7 +265,7 @@ class Multifile:
             parts_lst = parts_lst[:self.size()]
         else:
             if str(parts_lst[0][-1]).isalpha() != str(range_mv[0]).isalpha():
-                print('ERROR: range and parts input must both be alpha characters or both be ints')
+                print(f"WARNING: parts input ({str(parts_lst[0][-1])}) and range ({str(range_mv[0])}) should both be alpha characters or both be ints")
             parts_lst = parts_lst[:len(range_mv)]
         #### describe the state of the potential mv
         print('INFO: printing potential mv cmds to be executed...')
@@ -276,30 +282,30 @@ class Multifile:
             out_dict['parts'] = parts_lst[:len(reduced_list)]
             #### create mf object based on out_dict which is manipulated by user input
             out_mf = Multifile(out_dict)
-            out_list = out_mf.to_list(inplace=inplace)
+            new_list = out_mf.to_list(inplace=inplace)
             length = len(reduced_list)
-            out_length = len(out_list)
-            if length != out_length:
-                print(f"ERROR: multifile length mismatch for lhs ({length}) and rhs ({out_length})")
-            for i, (old, new) in enumerate(itertools.zip_longest(reduced_list, out_list, fillvalue='NO_EQUIVALENT_VALUE')):
+            new_length = len(new_list)
+            if length != new_length:
+                print(f"ERROR: multifile length mismatch for lhs ({length}) and rhs ({new_length})")
+            for i, (old, new) in enumerate(itertools.zip_longest(reduced_list, new_list, fillvalue='NO_EQUIVALENT_VALUE')):
                 if old == new:
                     print(f"WARNING: target '{new}' exists")
                     break
-                if max(length, out_length) < 10:
+                if max(length, new_length) < 10:
                     print(f"  mv {old} {new}")
                 else:
-                    if i in [0, 1, 2, max(length, out_length)-3, max(length, out_length)-2, max(length, out_length)-1]:
+                    if i in [0, 1, 2, max(length, new_length)-3, max(length, new_length)-2, max(length, new_length)-1]:
                         print(f"  mv {old} {new}")
                     if i == 3:
-                        print(f"  ... {max(length, out_length)} files total")
+                        print(f"  ... {max(length, new_length)} files total")
             print('PROMPT: (c)ontinue; (d)ir str; (b)ase str; (p)art str; (e)xt str; (r)ange_mv str; (i)nplace; (s)kip; (q)uit')
             choice = input()
             if choice == 'continue' or choice == 'c':
-                if length != out_length:
+                if length != new_length:
                     continue
-                if not all([True if old not in out_list else False for old in reduced_list]):
-                    if not all([old != new for old, new in zip(reduced_list, out_list)]):
-                        print(f"ERROR: src and target have overlap of some/all files:\nERROR: src: {reduced_list}\nERROR: targ: {out_list}")
+                if not all([True if old not in new_list else False for old in reduced_list]):
+                    if not all([old != new for old, new in zip(reduced_list, new_list)]):
+                        print(f"ERROR: src and target have overlap of some/all files:\nERROR: src: {reduced_list}\nERROR: targ: {new_list}")
                         continue
                     # TODO: hack to reverse lists to avoid mf overwriting itself during mv
                     old_char = self['parts'][0][-1]
@@ -307,17 +313,35 @@ class Multifile:
                     if old_char.isdigit():
                         if int(old_char) < int(new_char):
                             reduced_list.reverse()
-                            out_list.reverse()
+                            new_list.reverse()
                     else:
                         if old_char < new_char:
                             reduced_list.reverse()
-                            out_list.reverse()
-                assert self.ismultifile() # TODO: simulate mv of all files and determine if it is possible
-                for old, new in zip(reduced_list, out_list):
-                    # TODO: check all the files not in old do not exist
+                            new_list.reverse()
+                assert self.ismultifile()
+                #### simulate mv and perform preliminary checks to avoid unwanted partial mvs
+                sim_failed = False
+                out_exists = [f for f in new_list if os.path.isfile(f)]
+                for old, new in zip(reduced_list, new_list):
+                    if old == new:
+                        print(f"ERROR: mv sim error: old==new: mv '{old}' '{new}'")
+                        sim_failed = True; break
+                    if not os.path.isfile(old):
+                        print(f"ERROR: mv sim error: os.path.isfile(old)==False: mv '{old}' '{new}'")
+                        sim_failed = True; break
+                    if new in out_exists:
+                        print(f"ERROR: mv sim error: os.path.isfile(new)==True: mv '{old}' '{new}'")
+                        sim_failed = True; break
+                    run_ignoring_excepts(ValueError, out_exists.remove, old)
+                    out_exists.append(new)
+                if sim_failed:
+                    continue
+                if not all([True if ol in out_exists else False for ol in new_list]):
+                    print(f"ERROR: mv sim error: new_list != out_list\nERROR: new_list: {new_list}\nERROR: out_exists: {out_exists}")
+                    continue
+                #### mv the files, they are assumed
+                for old, new in zip(reduced_list, new_list):
                     #### asserts to prepare for mv
-                    assert old != new, f"ERROR: mv '{old}' '{new}'"
-                    assert os.path.isfile(old), f"ERROR: mv '{old}' '{new}'"
                     assert not os.path.isfile(new), f"ERROR: mv '{old}' '{new}'"
                     #### basic mv operation on single file
                     mv_atomic(old, new)
@@ -447,7 +471,10 @@ class Multifile:
         match = re.sub("[^0-9]", "", part_out)
         num = int(match) if match != '' else int_from_alpha(part_out[-1])
         for parts_lst in cls.__get_parts_lists():
-            if parts_lst[num] == None:
+            try:
+                if parts_lst[num] == None:
+                    continue
+            except StopIteration:
                 continue
             regex = '^' + cls.prefix_style + '(' + parts_lst[num] +')$'
             result = re.search(regex, part_out)
@@ -474,11 +501,11 @@ class Multifile:
         length = 999999999 # arbitrarily set to max of 1 billion - 1
         length = max(length, 26); length = min(length, 999999999)
         def nums(slice_obj):
-            for n in range(ifnone(slice_obj.start, 0), ifnone(slice_obj.stop, length+1), ifnone(slice_obj.step, 1)):
+            for n in range(get_or_default(slice_obj.start, 0), min(get_or_default(slice_obj.stop, length+1), length+1), get_or_default(slice_obj.step, 1)):
                 yield str(n)
         def alphas(slice_obj):
             lst = [None, 'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-            for n in range(ifnone(slice_obj.start, 0), ifnone(slice_obj.stop, 27), ifnone(slice_obj.step, 1)):
+            for n in range(get_or_default(slice_obj.start, 0), min(get_or_default(slice_obj.stop, 27), 27), get_or_default(slice_obj.step, 1)):
                 yield lst[n]
         nums_wrapped = ListWrappedGeneratorFunction(nums)
         alphas_wrapped = ListWrappedGeneratorFunction(alphas)
