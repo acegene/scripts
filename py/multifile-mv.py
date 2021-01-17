@@ -37,6 +37,7 @@
 #        allow two mvs for same mf if done partially
 #        file input for cmdargs
 #        allow custom user input auto filename formatter
+#        allow more efficient slicing of generator function object if internal generator function object takes a slice object
 
 import argparse
 import errno
@@ -216,33 +217,47 @@ def listdir_files(dir_in:str='.', regex:str='.*') -> List[str]:
     files = [f for f in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, f))]
     return [f for f in files if re.search(regex, f, re.IGNORECASE) != None]
 
-class ListWrappedGeneratorFunction():
-    """Allows iterating/splicing on internal generator function as if it were a list"""
-    def __init__(self, generator_function:Callable[[slice], Iterable], slice_obj:slice=slice(sys.maxsize)):
+class SliceableGeneratorFunction():
+    """Wrapper for <generator_function> to enable splicing and iterating"""
+    def __init__(self, generator_function:Callable[[Any], Iterable], args:List[Any]=[], slice_obj:slice=slice(sys.maxsize)):
         #### object attributes
-        self.generator_function:Callable = generator_function
-        self.start:int = slice_obj.start
-        self.stop:int = slice_obj.stop
-        self.step:int = slice_obj.step
+        self.__sliceable_gen_func:Callable = self.__wrap_sliceable_generator_function(generator_function, args)
+        self.__start:int = slice_obj.start
+        self.__stop:int = slice_obj.stop
+        self.__step:int = slice_obj.step
     def __getitem__(self, i: Union[int, slice]) -> Any:
-        return ListWrappedGeneratorFunction(self.generator_function, self.__get_internal_slice(i)) if isinstance(i, slice) else next(itertools.islice(self.generator_function(self.__get_internal_slice()), i, None))
+        if isinstance(i, slice):
+            return SliceableGeneratorFunction(functools.partial(self.__sliceable_gen_func, slice(sys.maxsize)), slice_obj=self.__get_slice(i))
+        else:
+            return next(itertools.islice(self.__sliceable_gen_func(self.__get_slice()), i, None))
     def __iter__(self):
-        return self.generator_function(self.__get_internal_slice())
+        return self.__sliceable_gen_func(self.__get_slice())
     def __len__(self):
-        return len([_ for _ in self.generator_function(self.__get_internal_slice())])
-    def __str__(self): ## TODO: WARNING: this significantly can impact performance if len is large
-        return f"[{', '.join([str(x) for x in self.generator_function(*self.__get_internal_slice())])}]"
-    def __get_internal_slice(self, i=None):
-        start = sum([s for s in [self.start, getattr(i, 'start', None)] if s != None], 0)
-        stop = min([s for s in [self.stop, get_or_default(getattr(i, 'stop', None), sys.maxsize) + get_or_default(self.start, 0)] if s != None])
-        step = functools.reduce(lambda x, y: x * y, [s for s in [self.step, getattr(i, 'step', None)] if s != None], 1)
+        return len([_ for _ in self.__sliceable_gen_func(self.__get_slice())])
+    def __repr__(self): ## TODO: WARNING: this significantly can impact performance if len is large
+        return f"[{', '.join([str(x) for x in self.__sliceable_gen_func(self.__get_slice())])}]"
+    def __str__(self):
+        return self.__repr__()
+    def __get_slice(self, i=None):
+        start = sum([s for s in [self.__start, getattr(i, 'start', None)] if s != None], 0)
+        stop = min([s for s in [self.__stop, get_or_default(getattr(i, 'stop', None), sys.maxsize) + get_or_default(self.__start, 0)] if s != None])
+        step = functools.reduce(lambda x, y: x * y, [s for s in [self.__step, getattr(i, 'step', None)] if s != None], 1)
         return slice(start, stop, step)
+    def __wrap_sliceable_generator_function(self, generator_function, args):
+        def sliceable_generator_function(slice_obj, generator_function=generator_function):
+            for i, n in enumerate(generator_function(*args)):
+                if i >= get_or_default(slice_obj.stop, sys.maxsize):
+                    break
+                if i >= get_or_default(slice_obj.start, 0):
+                    if (i - get_or_default(slice_obj.start, 0)) % get_or_default(slice_obj.step, 1) == 0:
+                        yield n
+        return sliceable_generator_function
 
 class Multifile:
     """Allows operation on a contiguous group of similarly named files"""
     #### class attributes
     prefix_style:str = r'( - |_|-|| )(cd|ep|episode|pt|part|| )( - |_|-|| )'
-    parts_lists:Optional[List[ListWrappedGeneratorFunction]] = None # set via 
+    parts_lists:Optional[List[SliceableGeneratorFunction]] = None # set via 
     #### magic methods
     def __init__(self, file_dict:dict) -> None:
         assert all(True if k in ['dir', 'base', 'prepart', 'parts', 'postpart', 'ext'] else False for k in file_dict.keys())
@@ -251,7 +266,7 @@ class Multifile:
     def __getitem__(self, key:Union[str,int]) -> Any:
         return self.file_dict[key] if isinstance(key, str) else self.__get_nth_file(key)
     #### methods that manipulate the state of the multifile or its referenced contents
-    def mv(self, parts_lst:ListWrappedGeneratorFunction, dir_out:Optional[str]=None, range_mv:Optional[List[int]]=None, inplace:bool=False) -> Optional['Multifile']:
+    def mv(self, parts_lst:SliceableGeneratorFunction, dir_out:Optional[str]=None, range_mv:Optional[List[int]]=None, inplace:bool=False) -> Optional['Multifile']:
         """Move this object's files using the pattern specified by parts"""
         #### asserts
         assert self.ismultifile()
@@ -466,7 +481,7 @@ class Multifile:
             return [out] + cls.extract_multifiles(dir_in=dir_in, files=files, min_in=min_in, max_in=max_in)
         return []
     @classmethod
-    def get_parts_out_list(cls, part_out:str) -> Optional[ListWrappedGeneratorFunction]:
+    def get_parts_out_list(cls, part_out:str) -> Optional[SliceableGeneratorFunction]:
         """Get the parts generator that will become the rhs for mv operations"""
         match = re.sub("[^0-9]", "", part_out)
         num = int(match) if match != '' else int_from_alpha(part_out[-1])
@@ -480,12 +495,14 @@ class Multifile:
             result = re.search(regex, part_out)
             if result != None:
                 def make_parts_out_gen(prepend):
-                    def parts_out_gen(slice_obj):
-                        for part in parts_lst[slice_obj]:
+                    def parts_out_gen():
+                        for part in parts_lst:
                             if part != None:
                                 yield prepend + part
+                            else:
+                                yield None
                     return parts_out_gen
-                return ListWrappedGeneratorFunction(make_parts_out_gen(result.group(1) + result.group(2) + result.group(3)), slice(num, None, None))
+                return SliceableGeneratorFunction(make_parts_out_gen(result.group(1) + result.group(2) + result.group(3)), slice_obj=slice(num, None, None))
         else:
             print(f"WARNING: could not find parts array for input '{part_out}'")
             return None
@@ -500,29 +517,25 @@ class Multifile:
         """Set the static variable parts_lists"""
         length = 999999999 # arbitrarily set to max of 1 billion - 1
         length = max(length, 26); length = min(length, 999999999)
-        def nums(slice_obj):
-            for n in range(get_or_default(slice_obj.start, 0), min(get_or_default(slice_obj.stop, length+1), length+1), get_or_default(slice_obj.step, 1)):
+        #### function generators for numbers and lowercase letters
+        def nums():
+            for n in range(0,length+1):
                 yield str(n)
-        def alphas(slice_obj):
+        def alphas():
             lst = [None, 'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-            for n in range(get_or_default(slice_obj.start, 0), min(get_or_default(slice_obj.stop, 27), 27), get_or_default(slice_obj.step, 1)):
+            for n in range(0, len(lst)):
                 yield lst[n]
-        nums_wrapped = ListWrappedGeneratorFunction(nums)
-        alphas_wrapped = ListWrappedGeneratorFunction(alphas)
-        #### array of arrays with length and zero padding incrementing based on the number of digits of length
+        #### function generators for numbers padded with zeros
         padded_nums_wrapped_lst = []
         def make_padded_nums(digits):
-            def padded_nums(slice_obj):
-                for i, part in enumerate(nums_wrapped[slice_obj]):
-                    if part != None:
-                        if i >= 10**int(digits):
-                            return
-                        yield part.zfill(digits)
+            def padded_nums():
+                for i, part in enumerate((nums())):
+                    if i >= 10**int(digits):
+                        return
+                    yield part.zfill(digits)
             return padded_nums
-        for i in reversed(range(2,len(str(length))+1)):
-            padded_nums_wrapped_lst.append(ListWrappedGeneratorFunction(make_padded_nums(i)))
         #### set static variable parts_lists
-        cls.parts_lists = [alphas_wrapped, nums_wrapped] + padded_nums_wrapped_lst
+        cls.parts_lists = [SliceableGeneratorFunction(gf) for gf in [nums, alphas] + [make_padded_nums(i) for i in reversed(range(2,len(str(length))+1))]]
 ####################################################################################################
 ####################################################################################################
 def main() -> None:
