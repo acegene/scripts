@@ -1,3 +1,12 @@
+# choco_installs.ps1
+#
+# descr: iterate over hardcoded lists of apps and install them via the choco application manager
+#
+# usage: choco_installs.ps1
+#
+# todos: allow user response and choice of apps
+#        output meaningful error report
+
 Set-ExecutionPolicy RemoteSigned -Force
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +22,7 @@ try {choco -v} catch {
     	Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 }
 
-$pkgs_always = '7zip','autohotkey','discord','ffmpeg','firefox','git','gitkraken','googlechrome'
+$pkgs_always = '7zip','autohotkey','discord','ffmpeg','firefox','git','gitkraken','googlechrome',
 			   'malwarebytes','microsoft-windows-terminal','nordvpn','notepadplusplus','python3',
 			   'spotify','steam','teamviewer','vlc','vscode'
 $pkgs_maybe = 'bitnami-xampp','itunes','javaruntime','razer-synapse-2'

@@ -16,7 +16,7 @@ def import_vid_exts(f=json_globals_file):
     """Returns extensions from global file f"""
     with open(f, 'r') as json_file:
         data = json.load(json_file)
-        return data['globals']['video_extensions']
+        return data['globals']['video_exts']
 exts = '|'.join(['.' + val for val in import_vid_exts()])
 path = 'E:'
 # path = os.path.normpath(path)

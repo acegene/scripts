@@ -1,5 +1,3 @@
 {
-    "globals": {
-        "video_extensions": ["mp4", "m4p", "mkv", "mpeg", "mpg", "avi", "wmv", "mov", "qt", "iso", "m4v", "flv"]
-    }
+    "video_exts": ["mp4", "m4p", "mkv", "mpeg", "mpg", "avi", "wmv", "mov", "qt", "iso", "m4v", "flv"]
 }

@@ -1,10 +1,12 @@
 #!/bin/bash
-
+#
 # descr: assisted manual renaming and movement of files/dirs to parent_dir/out_dir
+# 
 # usage: _rename-subdir-files.bash --dir /abc/def --outdir /abc/def/ will list files/dirs inside of 'dir'. Selecting a dir will then
-#        list all of its files/dirs selected. Selecting a file will allow options of actions to take (rename, mv to parent). Enabling
-#        'use_out_dir' via 'TURN ON/OFF MV TO OUT_DIR' allows any selected files/dirs to be moved to 'out_dir'
-
+#            list all of its files/dirs selected. Selecting a file will allow options of actions to take (rename, mv to parent). Enabling
+#
+# notes: 'use_out_dir' via 'TURN ON/OFF MV TO OUT_DIR' allows any selected files/dirs to be moved to 'out_dir'
+#
 # todos: auto creating of out_dir
 #        consider to utilize $REPLY to take in ranges for select
 #        consider reverse option

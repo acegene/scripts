@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+#
+# descr: removes various filetypes that mac autogenerates
+
 import os # os.walk, os.path, os.stat, os.path.join, os.path.isdir, os.path.isfile
 import argparse # argparse.ArgumentParser
 import sys # sys.exit production ready
@@ -9,16 +13,13 @@ def parse_inputs():
     global dir_walk
     ## cmd line args parser
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dir", "-d", default='./')
+    parser.add_argument("--dir", "-d", default='.')
     args = parser.parse_args()
     ## set variables via cmd line args
     dir_walk = args.dir
     ## check and fix variables
-    if dir_walk == None:
-        dir_walk = '.'
-    if not os.path.isdir(dir_walk):
-        print('ERROR: the following directory seems to not exist: ' + dir_orig)
-        sys.exit(1)
+    assert(os.path.isdir(dir_walk))
+
 def get_rm_objs(files_bad, dirs_bad):
     """Return lists of files/dirs that needs to be rm'd based on bad files/dirs parameters"""
     files_rm = []; dirs_rm = []
@@ -35,10 +36,9 @@ def get_rm_objs(files_bad, dirs_bad):
                     dirs_rm.append(os.path.join(currentpath, dir))
     files_rm = sorted(files_rm, key=lambda x: os.stat(x).st_size)
     dirs_rm = sorted(dirs_rm, key=lambda x: os.stat(x).st_size)
-    if len(files_rm) == 0 and len(dirs_rm) == 0:
-        print('NOTE: there were no objects to remove')
-        sys.exit(0)
+    assert(len(files_rm) + len(dirs_rm) > 0)
     return files_rm, dirs_rm
+
 def print_user_feedback(files_rm, dirs_rm):
     """Print some useful info to the user of what objects are ready for rm"""
     rm_max_sz_width = '{0:>' + str(len(str(max([os.stat(val).st_size for val in dirs_rm + files_rm])))) + '}' # formatting
@@ -48,6 +48,7 @@ def print_user_feedback(files_rm, dirs_rm):
     print('#### FILES ####')
     for f_rm in files_rm:
         print(rm_max_sz_width.format(str(os.stat(f_rm).st_size)) + ' - ' + f_rm)
+
 def rm_objs_user_prompt(files_rm, dirs_rm):
     print('enter yes/no on whether to delete the above files')
     choice = input().lower()
@@ -65,16 +66,16 @@ def rm_objs_user_prompt(files_rm, dirs_rm):
         print("ERROR: respond with yes/no")
 ####################################################################################################
 ####################################################################################################
-## default values
+#### default values
 dir_walk = ''
-## checks and overwrites default values using script input
+#### checks and overwrites default values using script input
 parse_inputs()
-## hardcoded
+#### hardcoded values
 files_bad = ['.com.apple.timemachine.donotpresent', '.DS_Store', '.apDisk', '.VolumeIcon.icns', '.fseventsd', '.TemporaryItems']
 dirs_bad = ['.Spotlight-V100', '.Trash', '.Trashes', '.fseventsd', '.TemporaryItems']
-## get objects to remove using lists of bad objects
+#### get objects to remove using lists of bad objects
 files_rm, dirs_rm = get_rm_objs(files_bad, dirs_bad)
-## print candidates for removal
+#### print candidates for removal
 print_user_feedback(files_rm, dirs_rm)
-## ask for user feedback on whether to remove the listed objects, then delete
+#### ask for user feedback on whether to remove the listed objects, then delete
 rm_objs_user_prompt(files_rm, dirs_rm)

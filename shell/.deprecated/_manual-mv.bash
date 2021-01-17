@@ -1,8 +1,10 @@
 #!/bin/bash
-
+#
 # descr: assisted manual renaming of files that match glob 'pattern' arg, then moves to 'outdir' if defined
-# usage: _manual_mv.bash *.txt --outdir /abc/def/ will assist renaming of all .txt files in current dir and place files into /abc/def/
-
+#
+# usage: _manual_mv.bash *.txt --outdir /abc/def/
+#            will assist renaming of all .txt files in current dir and place files into /abc/def/
+#
 # todos: show why the regex is failing
 #        consider purging from display files already renamed (maybe refresh entire search as an option after purge)
 #        when using -o arg you are stuck moving a file unless you enter nothing

@@ -1,4 +1,5 @@
 # descr: read from file, filter and process content using user input, write output by inserting between section markers
+#
 # usage: see example_cmds variable below
 #
 # todos: take input file from pipe
@@ -8,7 +9,6 @@ import os # filesystem interactions
 import sys
 import re # regex
 from datetime import date
-
 ####################################################################################################
 ####################################################################################################
 def parse_inputs():
@@ -52,7 +52,6 @@ def parse_inputs():
             pattern = r"(pleasse doo not matcch)" # TODO:
     else:
         pattern = r"(.*)"
-            
 
 def extract_funcs(f, pattern):
     funcs = []
@@ -79,7 +78,7 @@ def write_over_patterns(fs, pattern, string):
 #### default values
 files_write = []; funcs_write = []; funcs_type = ''; file_read = ''; disp = False; all_read = False; empty = False
 pattern = None
-## checks and overwrites default values using script input
+#### checks and overwrites default values using script input
 parse_inputs()
 #### hardcoded values
 beg = '################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################'
