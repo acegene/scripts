@@ -28,7 +28,7 @@
 # warns: race condition when an external process moves files currently being batch mv'd
 #            * each file is safe, but in the worst case an abort occurs and only a portion of the mf's files will mv
 #
-# notes: version 0.9
+# notes: version 1.0
 #        tested on 'Windows 10 2004' # TODO: testing with OSX and linux
 #
 # todos: handle files without extensions
@@ -55,9 +55,9 @@ from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, T
 if sys.version_info < (3,6): # version 3.6.X or newer allows f strings
     raise Exception("ERROR: python version needs to be 3.6.X or newer, instead is: " + '.'.join([str(m) for m in sys.version_info[:3]]))
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
-# yymmdd: 210106
+# yymmdd: 210116
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_false" "try_or" "parse_range" "get_with_default" "slice_lst_merge"
+# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_false" "try_or" "parse_range" "get_with_default" "slice_clean" "slice_is_negative" "slice_length" "slice_lst_merge"
 
 def except_if_false(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
     """Throw <exception> if <expression> == False"""
@@ -117,6 +117,32 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
+def slice_clean(slice_:slice, length:int) -> slice: # TODO: slice(None, None, -1)
+    """Get rid of None's, overly large indices, and negative indices"""
+    #### (except -1 for backward slices that go down to first element) # TODO:
+    start, stop, step = slice_.indices(length)
+    # get number of steps & remaining
+    n, r = divmod(stop - start, step)
+    if n < 0 or (n==0 and r==0):
+        return slice(0,0,1)
+    if r != 0: # its a "stop" index, not an last index
+        n += 1
+    if step < 0:
+        start, stop, step = start+(n-1)*step, start-step, -step
+    else: # step > 0, step == 0 is not allowed
+        stop = start+n*step
+    stop = min(stop, length)
+    return slice(start, stop, step)
+
+def slice_is_negative(slice_:slice) -> bool:
+    return get_with_default(slice_.start, 0) < 0 or get_with_default(slice_.stop, 0) < 0
+
+def slice_length(slice_:slice) -> int:
+    assert slice_.stop != None
+    start = get_with_default(slice_.start, 0)
+    step = get_with_default(slice_.step, 1)
+    return max((slice_.stop - start) // step, 1)
+
 def slice_lst_merge(slices:Sequence[slice], length:int) -> slice:
     """ returns a slice that is a combination of all slices.
     given <slices> = [slice1, slice2] then the following is True
@@ -155,7 +181,7 @@ def slice_lst_merge(slices:Sequence[slice], length:int) -> slice:
                 length_out = start
         else:
             length_out = stop
-        assert length_out >= 0 and length_out <= length
+        assert length_out >= 0 and length_out <= length, "length_out=%s length=%s" % (length_out, length) # TODO: check
         #### return combined_slice, length slice
         return slice(start, stop, step), length_out
     out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slices, (slice(0, None, 1), length))
@@ -265,33 +291,44 @@ def listdir_files(dir_in:str='.', regex:str='.*') -> List[str]:
 
 class SequenceWrappedGeneratorFunction(collections.abc.Sequence):
     """Wrapper for allowing access of <gen_func>() as if it were an immutable sequence"""
-    def __init__(self, gen_func:Callable[..., Iterable], args:Sequence[Any]=[], kargs:Mapping={}, slices:Sequence[slice]=[], gen_func_sliceable=False):
+    def __init__(self, gen_func:Callable[..., Iterable], args:Sequence[Any]=[], kargs:Mapping={}, size_internal:Optional[int]=None, slices:Sequence[slice]=[], gen_func_sliceable=False):
         assert isinstance(args, collections.abc.Sequence)
         assert isinstance(slices, collections.abc.Sequence)
         #### private attributes
-        self.__sliceable_gen_func = gen_func if gen_func_sliceable else SequenceWrappedGeneratorFunction.__wrap_sliceable(gen_func)
+        self.__sliceable_gen_func = gen_func if gen_func_sliceable else self.__wrap_sliceable(gen_func)
         self.__args = tuple(*args)
         self.__kargs = dict(**kargs)
+        self.__size_internal = size_internal
         self.__slices = slices
     #### magic methods
     def __contains__(self, val:Any) -> bool:
         return val in self.__iter__()
     def __getitem__(self, i: Union[int, slice, Sequence[slice]]) -> Any:
         if isinstance(i, slice):
-            return SequenceWrappedGeneratorFunction(self.__sliceable_gen_func, self.__args, self.__kargs, self.__slices + [i], gen_func_sliceable=True)
+            return SequenceWrappedGeneratorFunction(self.__sliceable_gen_func, self.__args, self.__kargs, self.__size_internal, self.__slices + [i], True)
         elif isinstance(i, Sequence):
             assert all([isinstance(s, slice) for s in i])
-            return SequenceWrappedGeneratorFunction(self.__sliceable_gen_func, self.__args, self.__kargs, self.__slices + i, gen_func_sliceable=True)
-        else:
-            return next(self.__sliceable_gen_func(self.__slices + [slice(i, i+1, 1)], *self.__args, **self.__kargs))
+            return SequenceWrappedGeneratorFunction(self.__sliceable_gen_func, self.__args, self.__kargs, self.__size_internal, self.__slices + i, True)
+        else: # TODO: assert
+            return next(self.__iter_internal(self.__slices + [slice(i, i+1, 1)]))
     def __iter__(self) -> Iterable:
-        return self.__sliceable_gen_func(self.__slices, *self.__args, **self.__kargs)
+        return self.__iter_internal(self.__slices)
     def __len__(self) -> int:
-        return functools.reduce(lambda x, y: x + 1, self.__iter__(), 0) # avoiding simpler approaches to reduce worst case memory footprint
+        if self.__size_internal != None:
+            if len(self.__slices) == 0:
+                slice_ = slice(0, None, 1)
+            elif len(self.__slices) == 1:
+                slice_ = self.__slices[0] if not slice_is_negative(self.__slices[0]) else slice_clean(self.__slices[0], self.__size_internal)
+            else:
+                slice_ = slice_clean(slice_lst_merge(self.__slices, self.__size_internal), self.__size_internal)
+            slice_ = slice_clean(slice_lst_merge([slice(self.__size_internal), slice_], self.__size_internal), self.__size_internal)
+            assert slice_.stop != None, "ERROR: slice: " + str(slice_) + ": " + str(self.__slices)
+            return slice_length(slice_)
+        return functools.reduce(lambda x, y: x + 1, self.__iter__(), 0) # TODO: rework maybe
     def __repr__(self) -> str:
         return '[' + ', '.join([str(x) for x in self.__sliceable_gen_func(self.__slices, *self.__args, **self.__kargs)]) + ']'
     def __reversed__(self) -> Iterable:
-        return self.__sliceable_gen_func(self.__slices + [slice(None, None, -1)], *self.__args, **self.__kargs)
+        return self.__iter_internal(self.__slices + [slice(None, None, -1)])
     def __str__(self) -> str:
         return self.__repr__()
     #### public methods
@@ -306,17 +343,31 @@ class SequenceWrappedGeneratorFunction(collections.abc.Sequence):
             if x == val:
                 return i
         raise ValueError("'" + str(val) + "' not in sequence")
-    #### private static methods
-    def __wrap_sliceable(gen_func:Callable[..., Iterable]) -> Callable[..., Iterable]:
+    #### private methods
+    def __iter_internal(self, slices:Sequence[slice]=[]) -> Iterable:
+        return self.__sliceable_gen_func(slices, *self.__args, **self.__kargs)
+    def __len_internal(self) -> int:
+        if self.__size_internal == None:
+            self.__size_internal = functools.reduce(lambda x, y: x + 1, self.__iter_internal(), 0)
+        return self.__size_internal
+    def __wrap_sliceable(self, gen_func:Callable[..., Iterable]) -> Callable[..., Iterable]: # TODO:
         """returns a generator function wrapped to take a slice list"""
-        def sliceable_gen_func(gen_func, slice_, *args):
-            for i, n in enumerate(gen_func(*args)):
-                if i >= get_with_default(slice_.stop, sys.maxsize):
-                    break
-                if i >= get_with_default(slice_.start, 0):
-                    if (i - get_with_default(slice_.start, 0)) % get_with_default(slice_.step, 1) == 0:
-                        yield n
-        return functools.partial(sliceable_gen_func, gen_func)
+        def __sliceable_gen_func(gen_func, size_callable, slices, *args):
+            if len(slices) == 0:
+                slice_ = slice(0, None, 1)
+            elif len(slices) == 1:
+                slice_ = slices[0] if not slice_is_negative(slices[0]) else slice_clean(slices[0], size_callable())
+            else:
+                for s in slices:
+                    if slice_is_negative(s):
+                        size = size_callable()
+                        slice_ = slice_clean(slice_lst_merge(slices, size), size)
+                        break
+                else:
+                    slice_ = slice_lst_merge(slices, sys.maxsize)
+            for n in itertools.islice(gen_func(*args),slice_.start,slice_.stop,slice_.step):
+                yield n
+        return functools.partial(__sliceable_gen_func, gen_func, self.__len_internal)
 
 class Multifile():
     """Allows operation on a contiguous group of similarly named files"""
@@ -476,7 +527,7 @@ class Multifile():
         return len(self['parts'])
     def to_list(self, exc_dir:bool=False, inplace:bool=True) -> List[str]:
         """Return this object's files to a list of strings"""
-        return [self.__get_nth_file(i, exc_dir, inplace) for i in range(self.size())]
+        return [self.__get_nth_file(i, exc_dir, inplace) for i in range(self.size())] #TODO: size() slow
     #### private methods
     def __get_nth_file(self, n:int, exc_dir:bool=False, inplace:bool=True) -> str:
         """Get this multifiles n'th file"""

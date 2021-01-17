@@ -76,6 +76,32 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
+def slice_clean(slice_:slice, length:int) -> slice: # TODO: slice(None, None, -1)
+    """Get rid of None's, overly large indices, and negative indices"""
+    #### (except -1 for backward slices that go down to first element) # TODO:
+    start, stop, step = slice_.indices(length)
+    # get number of steps & remaining
+    n, r = divmod(stop - start, step)
+    if n < 0 or (n==0 and r==0):
+        return slice(0,0,1)
+    if r != 0: # its a "stop" index, not an last index
+        n += 1
+    if step < 0:
+        start, stop, step = start+(n-1)*step, start-step, -step
+    else: # step > 0, step == 0 is not allowed
+        stop = start+n*step
+    stop = min(stop, length)
+    return slice(start, stop, step)
+
+def slice_is_negative(slice_:slice) -> bool:
+    return get_with_default(slice_.start, 0) < 0 or get_with_default(slice_.stop, 0) < 0
+
+def slice_length(slice_:slice) -> int:
+    assert slice_.stop != None
+    start = get_with_default(slice_.start, 0)
+    step = get_with_default(slice_.step, 1)
+    return max((slice_.stop - start) // step, 1)
+
 ##### https://stackoverflow.com/questions/19257498/combining-two-slicing-operations
 def slice_lst_merge(slices:Sequence[slice], length:int) -> slice:
     """ returns a slice that is a combination of all slices.
@@ -115,7 +141,7 @@ def slice_lst_merge(slices:Sequence[slice], length:int) -> slice:
                 length_out = start
         else:
             length_out = stop
-        assert length_out >= 0 and length_out <= length
+        assert length_out >= 0 and length_out <= length, "length_out=%s length=%s" % (length_out, length) # TODO: check
         #### return combined_slice, length slice
         return slice(start, stop, step), length_out
     out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slices, (slice(0, None, 1), length))
