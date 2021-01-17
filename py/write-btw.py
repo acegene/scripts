@@ -7,6 +7,7 @@
 # usage: see example_cmds below
 #
 # todos: take input file from pipe
+#        python properly extract oy functions even if they have extra newlines
 
 import argparse # cmd line arg parsing
 import os # filesystem interactions

@@ -6,6 +6,7 @@
 # descr: tests mfmv.py
 #
 # usage: python mfmv_test.py
+#            * need to have mfmv.py in $PYTHONPATH or place mfmv.py in parent directory
 #
 # notes: version 0.8
 #        tested on 'Windows 10 2004' # TODO: testing with OSX and linux
@@ -22,6 +23,7 @@ import unittest
 import unittest.mock
 
 import parameterized # pip install parameterized
+
 from typing import List # declaration of parameter and return types
 
 try:

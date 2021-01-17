@@ -37,7 +37,7 @@
 #        allow two mvs for same mf if done partially
 #        file input for cmdargs
 #        allow custom user input auto filename formatter
-#        allow more efficient slicing of generator function object if internal generator function object takes a slice object
+#        correct slicing for negative indexes of SliceableGeneratorFunction
 
 import argparse
 import errno
@@ -50,14 +50,14 @@ import shutil
 import sys
 import uuid
 
-from typing import Any, Callable, Iterable, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Iterable, List, Optional, Tuple, Type, Union
 
 if sys.version_info < (3,6): # version 3.6.X or newer allows f strings
     raise Exception("ERROR: python version needs to be 3.6.X or newer, instead is: " + '.'.join([str(m) for m in sys.version_info[:3]]))
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
-# yymmdd: 210103
+# yymmdd: 210106
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_not" "run_ignoring_excepts" "parse_range" "get_or_default"
+# python "${GWSPY}/write-btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "except_if_not" "run_ignoring_excepts" "parse_range" "get_or_default" "slice_lst_merge"
 
 def except_if_not(exception:Type[Exception], expression:bool, string_if_except:str=None) -> None:
     """Throw exception if expression is False"""
@@ -72,6 +72,10 @@ def run_ignoring_excepts(exceptions:Union[Type[Exception], Tuple[Type[Exception]
         return call(*args)
     except (exceptions):
         return None
+
+def get_or_default(obj:Any, default:Any) -> Any:
+    """Return <default> if <obj> == None"""
+    return default if obj == None else obj
 
 def mv_atomic(src:str, dst:str) -> None:
     """Atomically move <src> to <dst> even across filesystems"""
@@ -113,9 +117,49 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
-def get_or_default(obj, default):
-    """Return <default> if <obj> == None"""
-    return default if obj == None else obj
+def slice_lst_merge(slice_objs:List[slice], length:int) -> slice:
+    """ returns a slice that is a combination of all slices.
+    given <slice_objs> = [slice1, slice2] then the following is True
+    x[slice1][slice2] == x[slice_lst_merge(slice1, slice2, len(x))]
+    :param slice_objs: list of slices
+    :param length: length of the first dimension of data being sliced e.g. len(x)
+    """
+    def slice_merge(lhs:slice, rhs:slice, length:int) -> slice:
+        #### get step sizes
+        lhs_step = (lhs.step if lhs.step is not None else 1)
+        rhs_step = (rhs.step if rhs.step is not None else 1)
+        step = lhs_step * rhs_step
+        #### get indices from slicing with <lhs> assuming length=<length>
+        lhs_indices = lhs.indices(length)
+        #### length of slice using <lhs>
+        lhs_length = (abs(lhs_indices[1] - lhs_indices[0]) - 1) // abs(lhs_indices[2])
+        #### deterimine there is at least one datapoint when stepping from start to stop with <lhs>
+        if (lhs_indices[1] - lhs_indices[0]) * lhs_step > 0:
+            lhs_length += 1
+        else:
+            return slice(0, 0, step) # slice of zero length
+        #### get indices from slicing with <lhs> assuming length=<lhs_length>
+        rhs_indices = rhs.indices(lhs_length)
+        #### return empty slice if the resulting range is 0
+        if not (rhs_indices[1] - rhs_indices[0]) * rhs_step > 0:
+            return slice(0, 0, step)
+        #### transform <rhs_indices> using <lhs_indices[0]> and <lhs_step>
+        start = lhs_indices[0] + rhs_indices[0] * lhs_step
+        stop = lhs_indices[0] + rhs_indices[1] * lhs_step
+        #### if stop == -1: stop = None
+        if start > stop:
+            if stop < 0:
+                stop = None
+                length_out = length
+            else:
+                length_out = start
+        else:
+            length_out = stop
+        assert length_out >= 0 and length_out <= length
+        #### return combined_slice, length slice
+        return slice(start, stop, step), length_out
+    out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slice_objs, (slice(0, None, 1), length))
+    return out
 ################&&!%@@%!&&################ AUTO GENERATED CODE ABOVE THIS LINE ################&&!%@@%!&&################
 def alpha_from_int(x:int) -> str:
     """Return the alpha lowercase char associated with <x>"""
@@ -145,8 +189,10 @@ def parse_range_alpha(range_str:str, throw=True) -> Union[List[int], List[str], 
             raise error
         return None
     if range_str[0].isalpha():
-        range_str = ''.join([str(int_from_alpha(c)) if c.isalpha() else c for c in range_str])
-        return list(map(alpha_from_int, parse_range(range_str, throw)))
+        range_lst = parse_range(''.join([str(int_from_alpha(c)) if c.isalpha() else c for c in range_str]), throw)
+        if range_lst == None:
+            return None
+        return [alpha_from_int(x) for x in range_lst] if range_lst != None else None
     else:
         return parse_range(range_str, throw)
 
@@ -218,40 +264,39 @@ def listdir_files(dir_in:str='.', regex:str='.*') -> List[str]:
     return [f for f in files if re.search(regex, f, re.IGNORECASE) != None]
 
 class SliceableGeneratorFunction():
-    """Wrapper for <generator_function> to enable splicing and iterating"""
-    def __init__(self, generator_function:Callable[[Any], Iterable], args:List[Any]=[], slice_obj:slice=slice(sys.maxsize)):
+    """Wrapper for generator function <gen_func> to enable indexing, slicing, and iterating of <gen_func>()"""
+    def __init__(self, gen_func:Callable[..., Iterable], args:Union[List[Any], Tuple[Any, ...]]=[], slice_objs:Union[List[slice], Tuple[slice, ...]]=[], gen_func_sliceable=False):
         #### object attributes
-        self.__sliceable_gen_func:Callable = self.__wrap_sliceable_generator_function(generator_function, args)
-        self.__start:int = slice_obj.start
-        self.__stop:int = slice_obj.stop
-        self.__step:int = slice_obj.step
+        self.__sliceable_gen_func:Callable = gen_func if gen_func_sliceable else SliceableGeneratorFunction.__wrap_sliceable_gen_func(gen_func)
+        self.__sliceable_gen_func_args = tuple(*args)
+        self.__slice_objs = slice_objs
+    #### magic methods
     def __getitem__(self, i: Union[int, slice]) -> Any:
         if isinstance(i, slice):
-            return SliceableGeneratorFunction(functools.partial(self.__sliceable_gen_func, slice(sys.maxsize)), slice_obj=self.__get_slice(i))
+            return SliceableGeneratorFunction(self.__sliceable_gen_func, self.__sliceable_gen_func_args, self.__slice_objs + [i], gen_func_sliceable=True)
+        elif isinstance(i, list):
+            assert all([isinstance(s, slice) for s in i])
+            return SliceableGeneratorFunction(self.__sliceable_gen_func, self.__sliceable_gen_func_args, self.__slice_objs + i, gen_func_sliceable=True)
         else:
-            return next(itertools.islice(self.__sliceable_gen_func(self.__get_slice()), i, None))
+            return next(self.__sliceable_gen_func(self.__slice_objs + [slice(i, i+1, 1)], *self.__sliceable_gen_func_args))
     def __iter__(self):
-        return self.__sliceable_gen_func(self.__get_slice())
+        return self.__sliceable_gen_func(self.__slice_objs, *self.__sliceable_gen_func_args)
     def __len__(self):
-        return len([_ for _ in self.__sliceable_gen_func(self.__get_slice())])
+        return len([_ for _ in self.__sliceable_gen_func(self.__slice_objs, *self.__sliceable_gen_func_args)])
     def __repr__(self): ## TODO: WARNING: this significantly can impact performance if len is large
-        return f"[{', '.join([str(x) for x in self.__sliceable_gen_func(self.__get_slice())])}]"
+        return f"[{', '.join([str(x) for x in self.__sliceable_gen_func(self.__slice_objs, *self.__sliceable_gen_func_args)])}]"
     def __str__(self):
         return self.__repr__()
-    def __get_slice(self, i=None):
-        start = sum([s for s in [self.__start, getattr(i, 'start', None)] if s != None], 0)
-        stop = min([s for s in [self.__stop, get_or_default(getattr(i, 'stop', None), sys.maxsize) + get_or_default(self.__start, 0)] if s != None])
-        step = functools.reduce(lambda x, y: x * y, [s for s in [self.__step, getattr(i, 'step', None)] if s != None], 1)
-        return slice(start, stop, step)
-    def __wrap_sliceable_generator_function(self, generator_function, args):
-        def sliceable_generator_function(slice_obj, generator_function=generator_function):
-            for i, n in enumerate(generator_function(*args)):
+    #### static methods
+    def __wrap_sliceable_gen_func(gen_func):
+        def sliceable_gen_func(gen_func, slice_obj, *args):
+            for i, n in enumerate(gen_func(*args)):
                 if i >= get_or_default(slice_obj.stop, sys.maxsize):
                     break
                 if i >= get_or_default(slice_obj.start, 0):
                     if (i - get_or_default(slice_obj.start, 0)) % get_or_default(slice_obj.step, 1) == 0:
                         yield n
-        return sliceable_generator_function
+        return functools.partial(sliceable_gen_func, gen_func)
 
 class Multifile:
     """Allows operation on a contiguous group of similarly named files"""
@@ -494,23 +539,24 @@ class Multifile:
             regex = '^' + cls.prefix_style + '(' + parts_lst[num] +')$'
             result = re.search(regex, part_out)
             if result != None:
-                def make_parts_out_gen(prepend):
-                    def parts_out_gen():
-                        for part in parts_lst:
+                def make_parts_out_gen(prepend, slice_obj):
+                    def parts_out_gen(slice_obj, slice_objs):
+                        for part in parts_lst[[slice_obj] + slice_objs]:
                             if part != None:
                                 yield prepend + part
                             else:
                                 yield None
-                    return parts_out_gen
-                return SliceableGeneratorFunction(make_parts_out_gen(result.group(1) + result.group(2) + result.group(3)), slice_obj=slice(num, None, None))
+                    return functools.partial(parts_out_gen, slice_obj)
+                return SliceableGeneratorFunction(make_parts_out_gen(result.group(1) + result.group(2) + result.group(3), slice_obj=slice(num, None, None)), gen_func_sliceable=True)
         else:
             print(f"WARNING: could not find parts array for input '{part_out}'")
             return None
     @classmethod
-    def __get_parts_lists(cls) -> List[List[str]]:
+    def __get_parts_lists(cls) -> List[SliceableGeneratorFunction]:
         """Get the parts generators for finding contiguous files"""
         if cls.parts_lists == None:
             cls.__set_parts_lists()
+        assert cls.parts_lists != None
         return cls.parts_lists
     @classmethod
     def __set_parts_lists(cls) -> None:
@@ -518,24 +564,26 @@ class Multifile:
         length = 999999999 # arbitrarily set to max of 1 billion - 1
         length = max(length, 26); length = min(length, 999999999)
         #### function generators for numbers and lowercase letters
-        def nums():
-            for n in range(0,length+1):
+        def nums(slice_objs):
+            slice_obj = slice_lst_merge(slice_objs, length+1)
+            for n in range(*slice_obj.indices(length+1)):
                 yield str(n)
-        def alphas():
+        def alphas(slice_objs):
             lst = [None, 'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
-            for n in range(0, len(lst)):
+            slice_obj = slice_lst_merge(slice_objs, len(lst))
+            for n in range(*slice_obj.indices(length)):
                 yield lst[n]
         #### function generators for numbers padded with zeros
-        padded_nums_wrapped_lst = []
+        padded_nums_wrapped_lst:List[Callable[[], str]] = []
         def make_padded_nums(digits):
-            def padded_nums():
-                for i, part in enumerate((nums())):
+            def padded_nums(slice_objs):
+                for i, part in enumerate((nums(slice_objs))):
                     if i >= 10**int(digits):
                         return
                     yield part.zfill(digits)
             return padded_nums
         #### set static variable parts_lists
-        cls.parts_lists = [SliceableGeneratorFunction(gf) for gf in [nums, alphas] + [make_padded_nums(i) for i in reversed(range(2,len(str(length))+1))]]
+        cls.parts_lists = [SliceableGeneratorFunction(gf, gen_func_sliceable=True) for gf in [nums, alphas] + [make_padded_nums(i) for i in reversed(range(2,len(str(length))+1))]]
 ####################################################################################################
 ####################################################################################################
 def main() -> None:

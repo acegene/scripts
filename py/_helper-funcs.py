@@ -83,6 +83,51 @@ def parse_range(range_str:str, throw:bool=True) -> Optional[List[int]]:
         result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
     return sorted(result)
 
+##### https://stackoverflow.com/questions/19257498/combining-two-slicing-operations
+def slice_lst_merge(slice_objs:List[slice], length:int) -> slice:
+    """ returns a slice that is a combination of all slices.
+    given <slice_objs> = [slice1, slice2] then the following is True
+    x[slice1][slice2] == x[slice_lst_merge(slice1, slice2, len(x))]
+    :param slice_objs: list of slices
+    :param length: length of the first dimension of data being sliced e.g. len(x)
+    """
+    def slice_merge(lhs:slice, rhs:slice, length:int) -> slice:
+        #### get step sizes
+        lhs_step = (lhs.step if lhs.step is not None else 1)
+        rhs_step = (rhs.step if rhs.step is not None else 1)
+        step = lhs_step * rhs_step
+        #### get indices from slicing with <lhs> assuming length=<length>
+        lhs_indices = lhs.indices(length)
+        #### length of slice using <lhs>
+        lhs_length = (abs(lhs_indices[1] - lhs_indices[0]) - 1) // abs(lhs_indices[2])
+        #### deterimine there is at least one datapoint when stepping from start to stop with <lhs>
+        if (lhs_indices[1] - lhs_indices[0]) * lhs_step > 0:
+            lhs_length += 1
+        else:
+            return slice(0, 0, step) # slice of zero length
+        #### get indices from slicing with <lhs> assuming length=<lhs_length>
+        rhs_indices = rhs.indices(lhs_length)
+        #### return empty slice if the resulting range is 0
+        if not (rhs_indices[1] - rhs_indices[0]) * rhs_step > 0:
+            return slice(0, 0, step)
+        #### transform <rhs_indices> using <lhs_indices[0]> and <lhs_step>
+        start = lhs_indices[0] + rhs_indices[0] * lhs_step
+        stop = lhs_indices[0] + rhs_indices[1] * lhs_step
+        #### if stop == -1: stop = None
+        if start > stop:
+            if stop < 0:
+                stop = None
+                length_out = length
+            else:
+                length_out = start
+        else:
+            length_out = stop
+        assert length_out >= 0 and length_out <= length
+        #### return combined_slice, length slice
+        return slice(start, stop, step), length_out
+    out, _ = functools.reduce(lambda x, y: slice_merge(x[0], y, x[1]), slice_objs, (slice(0, None, 1), length))
+    return out
+
 #### import sys
 #### https://stackoverflow.com/questions/3160699/python-progress-bar
 def progressbar(it, prefix='', size=60, file=sys.stderr):
