@@ -1,11 +1,11 @@
 
 #!/usr/bin/python3
 #
-# title: mfmv-test.py
+# title: mfmv_test.py
 #
 # descr: tests mfmv.py
 #
-# usage: python mfmv-test.py
+# usage: python mfmv_test.py
 #
 # notes: version 0.8
 #        tested on 'Windows 10 2004' # TODO: testing with OSX and linux
@@ -16,14 +16,13 @@
 
 import argparse
 import copy
-import importlib
 import os
 import sys
 import unittest
+import unittest.mock
 
-from parameterized import parameterized # pip install parameterized
+import parameterized # pip install parameterized
 from typing import List # declaration of parameter and return types
-from unittest.mock import patch
 
 try:
     import mfmv
@@ -112,33 +111,33 @@ class MultifileMvTestCase(unittest.TestCase):
         self.setCmdArgs(args); self.files_in = copy.deepcopy(files_in); self.files_out = copy.deepcopy(files_out)
         self.dir_mv = self.args.dir_out if self.args.dir_out != None else self.args.dir_in
         mv_pairs =  [(os.path.join(self.args.dir_in, i), os.path.join(self.dir_mv, o)) for i, o in zip(self.files_in, self.files_out)]
-        with patch('argparse.ArgumentParser.parse_args', return_value=copy.deepcopy(self.args)): # hardcode user cmd line args
-            with patch('mfmv.listdir_dirs', side_effect=self.listdir_dirs_side_effect):
-                with patch('builtins.input', side_effect=self.input_side_effect): # hardcode user input
-                    with patch('os.path.isfile', side_effect=self.isfile_side_effect):
-                        with patch('os.path.isdir', side_effect=self.isdir_side_effect):
-                            with patch('os.listdir', side_effect=self.listdir_side_effect):
-                                with patch('mfmv.mv_atomic', side_effect=self.multifile_mv_side_effect) as mv:
-                                    # with patch('builtins.print'): # silence output and speed up test
+        with unittest.mock.patch('argparse.ArgumentParser.parse_args', return_value=copy.deepcopy(self.args)): # hardcode user cmd line args
+            with unittest.mock.patch('mfmv.listdir_dirs', side_effect=self.listdir_dirs_side_effect):
+                with unittest.mock.patch('builtins.input', side_effect=self.input_side_effect): # hardcode user input
+                    with unittest.mock.patch('os.path.isfile', side_effect=self.isfile_side_effect):
+                        with unittest.mock.patch('os.path.isdir', side_effect=self.isdir_side_effect):
+                            with unittest.mock.patch('os.listdir', side_effect=self.listdir_side_effect):
+                                with unittest.mock.patch('mfmv.mv_atomic', side_effect=self.multifile_mv_side_effect) as mv:
+                                    # with unittest.mock.patch('builtins.print'): # silence output and speed up test
                                     mfmv.main()
                                     assert len(mv.call_args_list) == len(mv_pairs), f"{len(mv.call_args_list)} != {len(mv_pairs)}"
                                     for (args, kwargs), mv_pair in zip(mv.call_args_list, mv_pairs):
                                         assert args == mv_pair, f"{args} != {mv_pair}"
 
-    @parameterized.expand(params)
+    @parameterized.parameterized.expand(params)
     def testNo1(self, dir_out, prepart, part_out):
         args = {'dir_out':dir_out, 'part_out':part_out}
         files_in = [self.base + prepart + str(p) + self.ext for p in self.nums[1:] if prepart + str(self.nums[1]) != part_out]
         files_out = [self.base + part_out[:-1]  + str(p) + self.ext for i, p in enumerate(self.gen_parts(part_out[-1], len(files_in))) if i < len(files_in)]
         self.runTest(args, files_in, files_out)
-    @parameterized.expand(params)
+    @parameterized.parameterized.expand(params)
     def testNo2(self, dir_out, prepart, part_out):
         args = {'dir_out':dir_out, 'part_out':part_out}
         self.input_side_effect = ['i', 'b mid', 'i', 'b final', 'e .ext', 'c']
         files_in = [self.base + prepart + str(p) + 'fluff' + self.ext for p in self.nums[1:]]
         files_out = ['final' + part_out[:-1]  + str(p) + '.ext' for i, p in enumerate(self.gen_parts(part_out[-1], len(files_in))) if i < len(files_in)]
         self.runTest(args, files_in, files_out)
-    @parameterized.expand(params)
+    @parameterized.parameterized.expand(params)
     def testNo3(self, dir_out, prepart, part_out):
         args = {'dir_out':dir_out, 'part_out':part_out, 'range_search':[0,2]}
         files_in = [self.base + prepart + str(p) + self.ext for p in self.nums[2:] if prepart + str(self.nums[2]) != part_out]
