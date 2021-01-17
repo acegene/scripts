@@ -1,0 +1,4 @@
+sessionbuddy-backups
+tampermonkey-scripts
+application-pics
+gene-ws uncommited changes

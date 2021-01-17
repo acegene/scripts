@@ -1,0 +1,50 @@
+## installs
+	enable windows developer mode
+	powershell-7
+		via administrative powershell
+			iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI"
+	automated applications install
+		option 1: ninite
+			ninite-7z-chrome-discord-firefox-itunes-notepad-python3-spotify-steam-teamviewer-vlc-code.exe
+			nordvpn/xampp/utorr/plex/ahk/razer install manually # TODO: add malawarebytes
+		option 2: chocolatey # https://chocolatey.org/install
+			via administrative powershell
+				Set-ExecutionPolicy RemoteSigned -Force
+				Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+				choco_installs.ps1
+					# battle.net not working
+					# xampp not working
+	cd C:/Users/acege/gene-ws/
+	git submodule update --init --recursive
+	nordvpn config # https://nordvpn.com/download/
+		config
+			General
+				Turn on 'Launch at Windows startup'
+			Auto-connect
+				Turn on 'Always when the app launches'
+				Select 'All networks' for 'Auto-connect on Wi-Fi'
+			Kill Switch
+				Turn on 'Internet Kill Switch'
+			Advanced
+				Turn off 'Help us improve'
+	xampps
+		httpd.conf
+			DocumentRoot "C:/xampp/htdocs/lew"
+			<Directory "C:/xampp/htdocs/lew">
+		via powershell
+		New-Item -ItemType SymbolicLink -Path "C:\xampp\htdocs\lew\storage-regex-lew.txt" -Target "$(LEWSTOR)\storage-regex-lew.txt"
+	mmo-mouse
+		mouse-mmo-installer-utechsmart-venus\AUTORUN.exe
+		load profile
+			mouse-mmo-installer-utechsmart-venus\mmo-mouse-chrome-profile.pfd
+	plex
+			Launch the Plex Web App
+			Choose Settings from the top right of the Home screen
+			Select your Plex Media Server from the settings sidebar
+			Choose Agents
+			Choose the Library Type and Agent you want to change
+			Ensure Local Media Assets is checked
+			Ensure Local Media Assets is topmost in the list
+		needed?
+			library-name->manage-library->edit->advanced->agent=personal-media
+		settings->library->emptry-trash-auto=uncheck
