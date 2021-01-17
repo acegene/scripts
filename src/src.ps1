@@ -18,6 +18,7 @@ function _src {
     $global:GWSST = "$($dir_repo)\storage"
     $env:GWSST = $global:GWSST
     $env:PATH += ";$($dir_bin)"
+    $env:PYTHONPATH += ";$($global:GWSPY)"
     #### aliases
     function global:gwss {cd $global:GWSS && git status -sb}
     function global:gwsps {cd $global:GWSPS && git status -sb}

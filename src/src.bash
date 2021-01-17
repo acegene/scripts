@@ -9,12 +9,13 @@ _src(){
     local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
     local dir_bin="${dir_repo}/bin"
     #### exports
-    export PATH="${PATH}:${dir_bin}"
     export GWSS="${dir_repo}"
     export GWSPS="${dir_repo}/win/ps1"
     export GWSPY="${dir_repo}/py"
     export GWSSH="${dir_repo}/shell"
     export GWSST="${dir_repo}/storage"
+    export PATH="${PATH}:${dir_bin}"
+    export PYTHONPATH="${PATH}:${GWSPY}"
     #### aliases
     alias gwss="cd ${GWSS} && git status -sb"
     alias gwss="cd ${GWSS} && git status -sb"

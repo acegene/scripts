@@ -2,8 +2,7 @@
 #
 # descr: allows a bash (shell?) script to prewrite input into stdin for the user
 #
-# usage: _shell_inject.py
-
+# usage: _shell-inject.py
 
 import fcntl, sys, termios
 del sys.argv[0]

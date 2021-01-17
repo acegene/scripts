@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 #
+# title: multifile-rename.py
+#
 # descr: searches for multifiles via interactive cli to enable batch file renaming
 #
 #      * a multifile is a group of files from a series e.g. file-ep-1-1080p.mp4 file-ep-2-1080p.mp4 file-ep-3-1080p.mp4
@@ -21,13 +23,14 @@
 #        allow sequences that dont start with 1 or a to be found and specified as the output
 #        performance with high quantities of files
 
-import os # filesystem interactions
-import sys # exit()
 import argparse # cmd line arg parsing
-from typing import List # declaration of parameter and return types
 import copy # deepcopy()
-import re # regex
 import json # json file i/o
+import os # filesystem interactions
+import re # regex
+import sys # exit()
+
+from typing import List # declaration of parameter and return types
 ####################################################################################################
 #################################################################################################### 
 def except_if_not(exception:Exception, expression:bool, string_if_except:str=None) -> None:
@@ -85,9 +88,16 @@ def parse_inputs() -> None:
         files_regex = '^.*(' + exts + ')$'
     #### get user specified part formatting for renaming multifiles
     parts_out = Multifile.get_part_arr_out(part_out)
-    except_if_not(ValueError, parts_out != None, "ERROR: part_out arg of '" + str(part_out) + "' is unrecognized") 
+    except_if_not(ValueError, parts_out != None, "ERROR: part_out arg of '" + str(part_out) + "' is unrecognized")
     #### return tuple containing values formed by user cmd args
     return dir_in,dir_out,parts_out,excludes,files_regex,inplace,maxdepth,mindepth
+
+def listdir_dirs_recursive(directory:str='', mindepth:int=1, maxdepth:int=1, excludes:List[str]=[]) -> List[str]:
+    """Get dirs from directory within the recrusive depths mindepth-maxdepth and remove excludes"""
+    #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
+    dirs_walk = [d[0] for d in os.walk(dir_in) if os.walk(dir_in) and d[0][len(dir_in):].count(os.sep) <= maxdepth-1 and d[0][len(dir_in):].count(os.sep) >= mindepth-1]
+    #### remove all excludes from dirs_walk
+    return [d for d in dirs_walk if all([False for e in excludes if e in d])]
 
 def list_regex_filtered_files(directory:str='.', reg:str='.*') -> List[str]:
     """Get files from directory that match the regex pattern reg"""
@@ -96,7 +106,7 @@ def list_regex_filtered_files(directory:str='.', reg:str='.*') -> List[str]:
 
 class Multifile:
     """Allows operation on a contiguous group of similarly named files"""
-    prefix_style = r'( - |_|-|| )(0|00|cd|ep|episode|pt|part|| )( - |_|-|| )'
+    prefix_style = r'( - |_|-|| )(cd|ep|episode|pt|part|| )( - |_|-|| )'
     part_arrs = None
     def __init__(self, num_files:int=0, file_dict=None) -> None:
         assert all(True if k in ['dir', 'base', 'parts', 'postpart', 'ext'] else False for k in file_dict.keys())
@@ -111,6 +121,7 @@ class Multifile:
         out = ''; out_list = []
         for s in ['base', 'parts', 'postpart', 'ext']:
             out_list += [self.file_dict.get(s, None)]
+        except_if_not(AssertionError, n < len(out_list[1]), "ERROR: debug... " + str(out_list[1]) + '#' + str(n) + '#' + str(self.file_dict))
         out_list[1] = out_list[1][n] # parts array must be indexed
         if inplace == False:
             out_list[0] = ''.join([x for x in [out_list[0], out_list[2]] if x != None])
@@ -143,12 +154,15 @@ class Multifile:
             print('INFO: printing potential rename cmds to be executed...')
             for i, (old, new) in enumerate(zip(self.to_list(), out_mf.to_list(inplace=inplace))):
                 if old == new:
-                    print("WARNING: target '" + str(new) + "' exists, skipping...")
-                    return self
-                if i in [0, 1, self.num_files-2, self.num_files-1]:
+                    print("WARNING: target '" + str(new) + "' exists")
+                    break
+                if self.num_files < 10:
                     print('  mv ' + str(old) + ' ' + str(new))
-                if i == 2:
-                    print('  ... ' + str(self.num_files) + ' files total')
+                else:
+                    if i in [0, 1, self.num_files-2, self.num_files-1]:
+                        print('  mv ' + str(old) + ' ' + str(new))
+                    if i == 2:
+                        print('  ... ' + str(self.num_files) + ' files total')
             if out_mf.nofiles == False:
                 print('WARNING: target multifile has existing files')
                 return None
@@ -156,10 +170,15 @@ class Multifile:
             choice = input()
             if choice == 'continue' or choice == 'c':
                 for old, new in zip(self.to_list(), out_mf.to_list(inplace=inplace)):
+                    if old == new:
+                        print("ERROR: target '" + str(new) + "' exists, aborting...")
+                        continue
+                for old, new in zip(self.to_list(), out_mf.to_list(inplace=inplace)):
                     assert old != new, "ERROR: target '%s' exists already" % old
                     os.rename(old, new)
-                    assert not os.path.isfile(old), "ERROR: mv %s %s failed a '%s' exists already" % old
-                    assert os.path.isfile(new)
+                    assert not os.path.isfile(old), "ERROR: old file '%s' not removed" % old
+                    assert os.path.isfile(new), "ERROR: target '%s' not created" % old
+                print('INFO: SUCCESS with multifile rename of ' + str(out_mf.num_files) + ' files')
                 return out_mf
             elif choice == 'inplace' or choice == 'i':
                 inplace = not inplace
@@ -251,23 +270,28 @@ class Multifile:
         length = max(length, 26); length = min(length, 999999) # TODO: improve handling with larger values
         alpha = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'] # namea, nameb, etc.
         nums = [str(i) for i in range(1,length+1)] # name1, name2, etc.
-        nums_padded = [[n.zfill(i) for n in nums] for i in range(2,len(str(length)))] # name01, name02, etc.
+        #### array of arrays with length and zero padding incrementing based on the number of digits of length
+        nums_padded = [[n.zfill(i) for j, n in enumerate(nums) if j < 10**i-1] for i in reversed(range(2,len(str(length))))] # name01, name02, etc.
+        #### set static variable part_arrs
         Multifile.part_arrs = [alpha, nums] + nums_padded
 ####################################################################################################
 ####################################################################################################
-#### parses script input to populate scripts variables
-dir_in,dir_out,parts_out,excludes,files_regex,inplace,maxdepth,mindepth = parse_inputs()
-#### recursively find all dirs in dir_in between levels mindepth and maxdepth
-dirs_walk = [d[0] for d in os.walk(dir_in) if os.walk(dir_in) and d[0][len(dir_in):].count(os.sep) <= maxdepth-1 and d[0][len(dir_in):].count(os.sep) >= mindepth-1]
-#### remove all excludes from dirs_walk
-dirs_walk = [d for d in dirs_walk if all([False for e in excludes if e in d])]
-#### print useful info
-print('INFO: root dir to search for multifiles: ' + dir_in)
-if len(dirs_walk) > 1:
-    print('INFO: searching recursively ' + str(mindepth) + '-' + str(maxdepth) + ' dirs deep... found ' + str(len(dirs_walk)) + ' dirs')
-print("INFO: regex file filter: '" + str(files_regex) + "'")
-#### search for multifiles in dirs_walk
-mfs_list = [Multifile.find_multifiles(d, list_regex_filtered_files(d, files_regex)) for d in dirs_walk]
-print('INFO: found ' + str(sum(len(row) for row in mfs_list)) + ' multifile candidates')
-#### rename each multifile
-[mf.mv(parts_out, dir_out, inplace) for mfs in mfs_list for mf in mfs]
+def main() -> None:
+    #### parses script input to populate scripts variables
+    dir_in,dir_out,parts_out,excludes,files_regex,inplace,maxdepth,mindepth = parse_inputs()
+    #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
+    dirs_walk = listdir_dirs_recursive(dir_in, mindepth, maxdepth, excludes)
+    #### print useful info
+    print('INFO: root dir to search for multifiles: ' + dir_in)
+    if len(dirs_walk) > 1:
+        print('INFO: searching recursively ' + str(mindepth) + '-' + str(maxdepth) + ' dirs deep... found ' + str(len(dirs_walk)) + ' dirs')
+    print("INFO: regex file filter: '" + str(files_regex) + "'")
+    #### search for multifiles in dirs_walk
+    mfs_list = [Multifile.find_multifiles(d, list_regex_filtered_files(d, files_regex)) for d in dirs_walk]
+    print('INFO: found ' + str(sum(len(row) for row in mfs_list)) + ' multifile candidates')
+    #### rename each multifile
+    [mf.mv(parts_out, dir_out, inplace) for mfs in mfs_list for mf in mfs]
+    print('INFO: SUCCESS')
+
+if __name__ == "__main__":
+    main()

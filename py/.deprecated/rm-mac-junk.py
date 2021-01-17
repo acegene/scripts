@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# descr: removes various filetypes that mac autogenerates
+# descr: removes various filetypes that OSX autogenerates
 
 import os # os.walk, os.path, os.stat, os.path.join, os.path.isdir, os.path.isfile
 import argparse # argparse.ArgumentParser
