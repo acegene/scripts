@@ -58,8 +58,9 @@ def gen_default_part_arrs():
     part_array_E = ['cd' + val for val in part_array_B] # vidnamecd1, vidnamecd2, etc.
     part_array_F = ['pt' + val for val in part_array_B] # vidnamept1, vidnamept2, etc.
     part_array_G = ['part' + val for val in part_array_B] # vidnamepart1, vidnamepart2, etc.
+    part_array_H = ['p' + val for val in part_array_B] # vidnamep1, vidnamep2, etc.
     ## ordering of return value is necessary to allow prioritization of which part_array to match against
-    return [part_array_A,part_array_E,part_array_F,part_array_G,part_array_B,part_array_C,part_array_D]
+    return [part_array_A,part_array_E,part_array_F,part_array_G,part_array_H,part_array_D,part_array_C,part_array_B]
 def get_part_array_out(part_arrays, part_out):
     for part_array in part_arrays:
         regex = '^' + part_prefix + '(' + part_array[0] +')$'
@@ -72,20 +73,25 @@ def get_part_array_out(part_arrays, part_out):
 def get_rename_arrays(files, dir, part_arrays, part_array_out):
     for f in files:
         for part_array in part_arrays:
-            regex = '^(.*?)' + part_prefix + '(' + part_array[0] +')(' + exts + ')$'
+            regex = '^(.*?)' + part_prefix + '(' + part_array[0] +')(.*)(' + exts + ')$'
             result = re.search(regex, f, re.IGNORECASE)
-            regex_out = '^(.*?)' + part_prefix + '(' + part_array_out[0] +')(' + exts + ')$'
+            regex_out = '^(.*?)' + part_prefix + '(' + part_array_out[0] +').*(' + exts + ')$'
             result_out = re.search(regex_out, f, re.IGNORECASE)
             if result != None:
                 if result_out == None: #  or len(result.group(0)) > len(result_out.group(0)):
-                    file_base = result.group(1); file_prepart = result.group(2); file_part = result.group(3); file_ext = result.group(4)
+                    file_base = result.group(1); file_prepart = result.group(2); file_part = result.group(3); file_post_part = result.group(4); file_ext = result.group(5)
+                    if len(file_post_part) != 0 and part_arrays[0] != 'A' and file_post_part[0].isnumeric(): # TODO: is a hack
+                        break
                     if file_part == part_array[0]:
-                        files_out = [file_base + file_prepart + part_array[0] + file_ext]
-                        files_out_renamed = [file_base + part_array_out[0] + file_ext]
-                        for i, (part, part_out) in enumerate(zip(part_array[1:], part_array_out[1:])): # TODO: handle more than 26
-                            if os.path.isfile(os.path.join(dir, file_base + file_prepart + part + file_ext)):
-                                files_out.append(file_base + file_prepart + part + file_ext)
-                                files_out_renamed.append(file_base + part_out + file_ext)
+                        files_out = []; files_out_renamed = []
+                        # files_out = [file_base + file_prepart + part_array[0] + file_post_part + file_ext]
+                        # files_out_renamed = [file_base + '_' + file_post_part + part_array_out[0] + file_ext]
+                        for part, part_out in zip(part_array, part_array_out): # TODO: handle more than 26
+                            file_out = file_base + file_prepart + part + file_post_part + file_ext
+                            file_out_rename = file_base + '_' + file_post_part + part_out + file_ext
+                            if os.path.isfile(os.path.join(dir, file_out)):
+                                files_out.append(file_out)
+                                files_out_renamed.append(file_out_rename)
                             else:
                                 break
                         if len(files_out) != 1:

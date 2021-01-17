@@ -1,4 +1,45 @@
-function Force-Resolve-Path {
+function Group-Unspecified-Args {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromRemainingArguments=$true)]
+        $ExtraParameters
+    )
+
+    $ParamHashTable = @{}
+    $UnnamedParams = @()
+    $CurrentParamName = $null
+    $ExtraParameters | ForEach-Object -Process {
+        if ($_ -match "^-") {
+            # Parameter names start with '-'
+            if ($CurrentParamName) {
+                # Have a param name w/o a value; assume it's a switch
+                # If a value had been found, $CurrentParamName would have
+                # been nulled out again
+                $ParamHashTable.$CurrentParamName = $true
+            }
+
+            $CurrentParamName = $_ -replace "^-|:$"
+        }
+        else {
+            # Parameter value
+            if ($CurrentParamName) {
+                $ParamHashTable.$CurrentParamName += $_
+                $CurrentParamName = $null
+            }
+            else {
+                $UnnamedParams += $_
+            }
+        }
+    } -End {
+        if ($CurrentParamName) {
+            $ParamHashTable.$CurrentParamName = $true
+        }
+    }
+
+    return $ParamHashTable,$UnnamedParams
+}
+
+function Resolve-Path-Force {
     <#
     .SYNOPSIS
         Calls Resolve-Path but works for files that don't exist.
