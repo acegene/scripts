@@ -116,13 +116,19 @@ example_cmds = [
     'python "${GWSPY}/write-btw.py" -t ps1 -d',
     'python "${GWSPY}/write-btw.py" -t py -d',
     '## The below cmds write to specific files and can/should be ran regularly',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${GWS}/init/init.bash" -x __echo __yes_no_prompt __check_if_obj_exists __append_line_to_file_if_not_found',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSA}/init/init.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
-    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSS}/init/init.bash" -x __echo __check_if_obj_exists __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t py -w "${GWSPY}/mfmv" -x except_if_not mv_atomic',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWS}/init/init.bash" -x __echo __yes_no_prompt __check_if_objs_exist __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSA}/init/init.bash" -x __echo __check_if_objs_exist __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSM}/init/init.bash" -x __echo __check_if_objs_exist __append_line_to_file_if_not_found',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSS}/init/init.bash" -x __echo __check_if_objs_exist __append_line_to_file_if_not_found',
     'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWS}/init/init.ps1" -x Group-Unspecified-Args',
     'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSA}/init/init.ps1" -x Group-Unspecified-Args',
+    'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSM}/init/init.ps1" -x Group-Unspecified-Args',
     'python "${GWSPY}/write-btw.py" -t ps1 -w "${GWSS}/init/init.ps1" -x Group-Unspecified-Args',
-    'python "${GWSPY}/write-btw.py" -t py -w "${GWSPY}/multifile-rename" -x except_if_not mv_atomic',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWS}/.git-hooks/gitignore/gitignore-gen.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_objs_exist',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSA}/.git-hooks/gitignore/gitignore-gen.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_objs_exist',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSM}/.git-hooks/gitignore/gitignore-gen.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_objs_exist',
+    'python "${GWSPY}/write-btw.py" -t bash -w "${GWSS}/.git-hooks/gitignore/gitignore-gen.bash" -r "${GWSSH}/_helper-funcs.bash" -x __echo __check_if_objs_exist'
 ]
 
 if disp:

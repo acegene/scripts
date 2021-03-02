@@ -13,7 +13,7 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 }
 
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
-# date of generation: 201219
+# yymmdd: 210228
 # generation cmd on the following line:
 # python "${GWSPY}/write-btw.py" "-t" "ps1" "-w" "${GWSS}/init/init.ps1" "-x" "Group-Unspecified-Args"
 

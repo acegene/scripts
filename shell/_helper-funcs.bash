@@ -5,7 +5,7 @@
 # set -e # will cause the scipt to exit on certain types of errors it wouldnt normally
 
 __echo(){
-    #### echo that only occurs based on variables defined from the surrounding scope
+    #### echo that can watch the silent and verbose variables from the scope it was called from
     local out=''
     local send_out='false'; local stderr='false'; local obj_set='false'; local end_char='\n'
     while (( "${#}" )); do
@@ -57,8 +57,8 @@ __source_if_found(){
     [[ -f "${1}" ]] || ! echo "file=${1} not found"
 }
 
-__check_if_obj_exists() {
-    local obj=''; local type=''; local out=''
+__check_if_objs_exist() {
+    local objs=(); local type=''; local out=''
     local create='false'; local verbose='false'; local silent='false'; local send_out='false'; local obj_set='false'
     while (( "${#}" )); do
         case "${1}" in
@@ -82,14 +82,10 @@ __check_if_obj_exists() {
                 esac
                 set -- 'dummy' $(for ((i=1;i<${#1};i++)); do echo "-${1:$i:1}"; done) "${@:2}" # implicit shift
                 ;;
-            *)
-                [ "${obj_set}" == 'false' ] && obj_set='true' || ! __echo -se "ERROR: too many objs for __check_if_obj_exists" || return 2
-                obj="${1}"
-                ;;
+            *) objs+=("${1}");;
         esac
         shift
     done
-    [ "${#}" -le 1 ] && for x in "${@}"; do obj="${x}"; done || ! __echo -se "ERROR: too many objs for __check_if_obj_exists" || return 2
 
     local cmd=''; local flag=''
     case "${type}" in
@@ -97,13 +93,13 @@ __check_if_obj_exists() {
         dir|d) cmd='mkdir'; flag='d';;
         *) __echo -se "ERROR: arg type '${1}' unexpected" && return 5;;
     esac
-
-    if [ "${create}" == 'true' ] && [ ! -"${flag}" "${obj}" ]; then
-        "${cmd}" "${obj}" && __echo -ve "INFO: created ${type}: ${obj}" || ! __echo -se "ERROR: could not create ${type}: ${obj}" || return 4
-        [ "${send_out}" == 'true' ] && out='created'
-    fi
-    [ ! -"${flag}" "${obj}" ] && __echo -ve "ERROR: ${obj} does not exist" && return 1
-
+    for ((i=0; i<${#objs[@]}; i++)); do
+        if [ "${create}" == 'true' ] && [ ! -"${flag}" "${objs[$i]}" ]; then
+            "${cmd}" "${objs[$i]}" && __echo -ve "INFO: created ${type}: ${objs[$i]}" || ! __echo -se "ERROR: could not create ${type}: ${objs[$i]}" || return 4
+            [ "${send_out}" == 'true' ] && out='created'
+        fi
+        [ ! -"${flag}" "${objs[$i]}" ] && __echo -ve "ERROR: ${objs[$i]} does not exist" && return 1
+    done
     printf "${out}"
 }
 

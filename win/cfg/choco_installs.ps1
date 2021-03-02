@@ -25,7 +25,7 @@ try {choco -v} catch {
 $pkgs_always = '7zip','autohotkey','discord','ffmpeg','firefox','git','gitkraken','googlechrome',
 			   'malwarebytes','microsoft-windows-terminal','nordvpn','notepadplusplus','python3',
 			   'spotify','steam','teamviewer','vlc','vscode'
-$pkgs_maybe = 'bitnami-xampp','itunes','javaruntime','razer-synapse-2'
+$pkgs_maybe = 'bitnami-xampp','itunes','javaruntime','razer-synapse-2', 'qbittorrent'
 $pkgs_broken = 'battle.net', 'utorrent'
 
 ForEach ($PackageName in $Packages)
