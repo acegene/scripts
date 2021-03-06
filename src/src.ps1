@@ -20,11 +20,11 @@ function _src {
     $env:PATH += ";$($dir_bin)"
     $env:PYTHONPATH += ";$($global:GWSPY)"
     #### aliases
-    function global:gwss {cd $global:GWSS && git status -sb}
-    function global:gwsps {cd $global:GWSPS && git status -sb}
-    function global:gwspy {cd $global:GWSPY && git status -sb}
-    function global:gwssh {cd $global:GWSSH && git status -sb}
-    function global:gwsst {cd $global:GWSST && git status -sb}
+    function global:gwss {cd $global:GWSS; if($?){git status -sb}}
+    function global:gwsps {cd $global:GWSPS; if($?){git status -sb}}
+    function global:gwspy {cd $global:GWSPY; if($?){git status -sb}}
+    function global:gwssh {cd $global:GWSSH; if($?){git status -sb}}
+    function global:gwsst {cd $global:GWSST; if($?){git status -sb}}
     ## nordvpn
     function global:nvs {& "$($GWSPS)\nord-switch.ps1" @args}
 }

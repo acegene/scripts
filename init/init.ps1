@@ -76,6 +76,7 @@ function _init {
     . "$($dir_repo)\src\cfg.ps1"
     #### if no profile exists create one
     if (!(Test-Path $profile_path)){New-Item -Type File -Force $profile_path}
+    if (!(Test-Path $profile_path_2)){New-Item -Type File -Force $profile_path_2}
     #### lines to append
     $cmd_args = "$($named_args.Keys | % { "-$($_)" + " '$($named_args.Item($_))'" }) "
     $cmd_args += "$($unnamed_args | % { "'$($_)'" })"
