@@ -90,6 +90,13 @@ function _init {
     if ($file_str -eq $null){
         echo $prof_cmd >> $profile_path
     }
+    if ($(((Get-Content -Raw $profile_path_2) -split '\n')[-1]) -ne ''){
+        $prof_cmd = "`r`n$($prof_cmd)"
+    }
+    $file_str = Get-Content $profile_path_2 | Select-String -SimpleMatch $prof_cmd
+    if ($file_str -eq $null){
+        echo $prof_cmd >> $profile_path_2
+    }
     #### cfg windows terminal
     if (!(Test-Path $terminal_path)){
         echo "ERROR: cannot find: $terminal_path, aborting terminal cfg setup"
