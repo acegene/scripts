@@ -129,7 +129,6 @@ _gitattributes_gen() {
         __check_if_objs_exist --verbose --type 'file' "${file_gitattributes_backup}" || return 1
         cat "${file_gitattributes_backup}" > "${file_gitattributes}"
     fi
-    exit 1
 }
 
 _gitattributes_gen "${@}" || exit "${?}"

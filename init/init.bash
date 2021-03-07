@@ -126,6 +126,8 @@ _init() {
     local dir_this="$(cd "$(dirname "${path_this}")"; pwd -P)" && [ "${dir_this}" != '' ] || ! __echo -se "ERROR: dir_this=''" || return 1
     local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
     local dir_git_hooks="${dir_repo}/.git-hooks"
+    local path_postcheckout_hook_gitignore="${dir_git_hooks}/gitignore/gitignore-gen.bash"
+    local path_postcheckout_hook_gitattributes="${dir_git_hooks}/gitattributes/gitattributes-gen.bash"
     ## files
     local bash_aliases="${HOME}/.bash_aliases"
     local bashrc="${HOME}/.bashrc"
@@ -134,6 +136,8 @@ _init() {
     local dir_git_hooks_config="$(git config --local core.hooksPath)"
     [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && [ "${dir_git_hooks_config}" != '' ] && echo "WARNING: ${path_this}: overwriting old 'git config --local core.hooksPath' value of '${dir_git_hooks_config}'"
     [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && echo "EXEC: git config --local core.hooksPath ${dir_git_hooks}" && (cd "${dir_repo}"; git config --local core.hooksPath "${dir_git_hooks}")
+    [ -f "${path_postcheckout_hook_gitignore}" ] && { "${path_postcheckout_hook_gitignore}" && echo "EXEC: ${path_postcheckout_hook_gitignore}" || echo "ERROR: gitignore-gen.bash failed"; }
+    [ -f "${path_postcheckout_hook_gitattributes}" ] && { "${path_postcheckout_hook_gitattributes}" && echo "EXEC: ${path_postcheckout_hook_gitattributes}" || echo "ERROR: gitattributes-gen.bash failed"; }
     #### lines to add to files
     local lines_bash_aliases=('[ -f '"'${src}'"' ] && . '"'${src}'")
     #### create files/dirs if not found

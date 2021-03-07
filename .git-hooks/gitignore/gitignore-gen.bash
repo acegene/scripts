@@ -127,7 +127,6 @@ _gitignore_gen() {
         __check_if_objs_exist --verbose --type 'file' "${file_gitignore_backup}" || return 1
         cat "${file_gitignore_backup}" > "${file_gitignore}"
     fi
-    exit 1
 }
 
 _gitignore_gen "${@}" || exit "${?}"
