@@ -5,7 +5,7 @@
 # descr: convert all files matching case variations of 'ext_args' to use 'ext_args' themselves
 # usage: _ext-to-lowercase mp4 jpeg # will rename files in the current directory, ie abc.MP4 --> abc.mp4 and def.JpEg --> def.jpeg
 
-__parse_script_arguments() {
+__parse_args(){
     local ext_args_supplied='false'
     while (( "${#}" )); do
         case "${1}" in
@@ -63,7 +63,7 @@ _exts_lowercase() {
     local rename='false' # default
     local suppress='false' # default
     local ext_args=("${DEFAULT_EXTS[@]}") # default
-    __parse_script_arguments "${@}" || return "${?}"
+    __parse_args "${@}" || return "${?}"
 
     echo "${ext_args[@]}"
     __yes_no_prompt "Ensure ext arg(s) above are intended and only contain alphanumeric characters (y/n): " "aborting..." || return 5

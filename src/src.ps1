@@ -9,7 +9,7 @@ function _src {
     $path_this = $PSCommandPath # not compatible with PS version < 3.0
     $dir_this = $PSScriptRoot # not compatible with PS version < 3.0
     $dir_repo = "$(pushd $(git -C $($dir_this) rev-parse --show-toplevel); echo $PWD; popd)"
-    $dir_bin = "$($dir_repo)\bin"
+    $dir_bin = "$($dir_repo)\win\bin"
     #### exports
     $global:GWSS = $dir_repo
     $global:GWSPS = "$($dir_repo)\win\ps1"

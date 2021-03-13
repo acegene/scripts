@@ -13,7 +13,7 @@
 #        consider exempt file extensions
 #        return propagation
 
-__parse_script_arguments() {
+__parse_args(){
 	while (( "${#}" )); do
 		case "${1}" in
 			-d|--dir)
@@ -97,7 +97,7 @@ _rename_subdir_files() {
 	local trash_dir="~/.trash/"
 	local rename='false' # default
 	local suppress='false' # default
-	__parse_script_arguments "${@}" || return "${?}"
+	__parse_args "${@}" || return "${?}"
 
 	while true; do
 		local i=0

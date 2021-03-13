@@ -8,6 +8,11 @@
 
 set -u
 
+PATH_THIS="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)/"$(basename -- "${BASH_SOURCE[0]}")""
+DIR_THIS="$(dirname -- "${PATH_THIS}")"
+BASE_THIS="$(basename -- "${PATH_THIS}")"
+[ -f "${PATH_THIS}" ] && [ -d "${DIR_THIS}" ] && [ -f "${DIR_THIS}/${BASE_THIS}" ] || ! >&2 echo "ERROR: could not generate paths" || exit 1
+
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210228
 # generation cmd on the following line:
@@ -95,14 +100,12 @@ _gitignore_gen() {
     local gitignore_string='batch,bazel,c,c++,clion,diff,git,java,jupyternotebooks,linux,macos,matlab,nohup,powershell,python,vim,visualstudio,visualstudiocode,windows,zsh' # comma separated list
     #### hardcoded vars
     ## paths
-    local path_this="${BASH_SOURCE[0]}"
-    local dir_this="$(cd "$(dirname "${path_this}")"; pwd -P)" && [ "${dir_this}" != '' ] || ! __echo -se "ERROR: dir_this=''" || return 1
-    local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
+    local dir_repo="$(cd -- "${DIR_THIS}" && cd -- "$(git rev-parse --show-toplevel)" && echo "${PWD}")" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
     ## files
     local file_gitignore="${dir_repo}/.gitignore"
-    local file_gitignore_backup="${dir_this}/.gitignore-backup"
-    local file_gitignore_prepend="${dir_this}/.gitignore-prepend"
-    local file_gitignore_append="${dir_this}/.gitignore-append"
+    local file_gitignore_backup="${DIR_THIS}/.gitignore-backup"
+    local file_gitignore_prepend="${DIR_THIS}/.gitignore-prepend"
+    local file_gitignore_append="${DIR_THIS}/.gitignore-append"
     #### check if files exist, assign to variables accordingly
     if __check_if_objs_exist --verbose --type 'file' "${file_gitignore_prepend}" "${file_gitignore_append}"; then
         local gitignore_append=$(cat "${file_gitignore_append}")
@@ -122,8 +125,8 @@ _gitignore_gen() {
         printf "${gitignore_prepend}\n${curled_gitignore}\n${gitignore_append}" > "${file_gitignore_backup}"
         printf "${gitignore_prepend}\n${curled_gitignore}\n${gitignore_append}" > "${file_gitignore}"
     else
-        echo "WARNING: ${path_this}: using ${file_gitignore_backup} due to curl errors below"
-        printf "ERROR: ${path_this}: ${errors}"
+        echo "WARNING: ${PATH_THIS}: using ${file_gitignore_backup} due to curl errors below"
+        printf "ERROR: ${PATH_THIS}: ${errors}"
         __check_if_objs_exist --verbose --type 'file' "${file_gitignore_backup}" || return 1
         cat "${file_gitignore_backup}" > "${file_gitignore}"
     fi

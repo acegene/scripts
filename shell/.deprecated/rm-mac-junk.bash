@@ -1,6 +1,6 @@
 #!/bin/bash
 
-__parse_script_arguments() {
+__parse_args(){
     while (( "${#}" )); do
         case "${1}" in
             -d|--dir) dir=$(__dir_relative_to_absolute "${2}") && shift || ! echo "invalid --dir arg" || return 1 ;;
@@ -26,7 +26,7 @@ _rm_mac_junk() {
     local remove='false' # default
     local total_file_size='0'
     local file_size='0'
-    __parse_script_arguments "${@}" || return "${?}"
+    __parse_args "${@}" || return "${?}"
 
     unset mac_files_print i
     while IFS= read -r -d $'\0' f; do mac_files_print[i++]="$f"; done < <(find "${dir}" -maxdepth "${depth}" -type f  -regex '.+/\._.+' -print0 | xargs -0n 1 du -0k | sort -nz | cut -z -f2 | xargs -0 du -0sh)

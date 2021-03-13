@@ -10,6 +10,11 @@
 
 set -u
 
+PATH_THIS="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)/"$(basename -- "${BASH_SOURCE[0]}")""
+DIR_THIS="$(dirname -- "${PATH_THIS}")"
+BASE_THIS="$(basename -- "${PATH_THIS}")"
+[ -f "${PATH_THIS}" ] && [ -d "${DIR_THIS}" ] && [ -f "${DIR_THIS}/${BASE_THIS}" ] || ! >&2 echo "ERROR: could not generate paths" || exit 1
+
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210228
 # generation cmd on the following line:
@@ -97,14 +102,12 @@ _gitattributes_gen() {
     local gitattributes_string='c++,common,java,matlab,python,swift,vim,visualstudio' # comma separated list
     #### hardcoded vars
     ## paths
-    local path_this="${BASH_SOURCE[0]}"
-    local dir_this="$(cd "$(dirname "${path_this}")"; pwd -P)" && [ "${dir_this}" != '' ] || ! __echo -se "ERROR: dir_this=''" || return 1
-    local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
+    local dir_repo="$(cd -- "${DIR_THIS}" && cd -- "$(git rev-parse --show-toplevel)" && echo "${PWD}")" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
     ## files
     local file_gitattributes="${dir_repo}/.gitattributes"
-    local file_gitattributes_backup="${dir_this}/.gitattributes-backup"
-    local file_gitattributes_prepend="${dir_this}/.gitattributes-prepend"
-    local file_gitattributes_append="${dir_this}/.gitattributes-append"
+    local file_gitattributes_backup="${DIR_THIS}/.gitattributes-backup"
+    local file_gitattributes_prepend="${DIR_THIS}/.gitattributes-prepend"
+    local file_gitattributes_append="${DIR_THIS}/.gitattributes-append"
     #### check if files exist, assign to variables accordingly
     if __check_if_objs_exist --verbose --type 'file' "${file_gitattributes_prepend}" "${file_gitattributes_append}"; then
         local gitattributes_append=$(cat "${file_gitattributes_append}")
@@ -117,15 +120,15 @@ _gitattributes_gen() {
     local url='https://gitattributes.io/api/'
     #### curl auto concatenated template
     local errors=''
-    local curled_gitattributes=''; curled_gitattributes=$(curl --silent "${url}${gitattributes_string}") || errors="curl request failed, perhaps a bad url\n"
+    local curled_gitattributes=''; curled_gitattributes=$(curl --silent --insecure "${url}${gitattributes_string}") || errors="curl request failed, perhaps a bad url\n"
     [ "${errors}" == '' ] && errors=$(echo "${curled_gitattributes}" | grep 'ERROR:')
     #### overwrite content of root .gitattributes file
     if [ "${errors}" == '' ]; then
         printf "${gitattributes_prepend}\n${curled_gitattributes}\n${gitattributes_append}" > "${file_gitattributes_backup}"
         printf "${gitattributes_prepend}\n${curled_gitattributes}\n${gitattributes_append}" > "${file_gitattributes}"
     else
-        echo "WARNING: ${path_this}: using ${file_gitattributes_backup} due to curl errors below"
-        printf "ERROR: ${path_this}: ${errors}"
+        echo "WARNING: ${PATH_THIS}: using ${file_gitattributes_backup} due to curl errors below"
+        printf "ERROR: ${PATH_THIS}: ${errors}"
         __check_if_objs_exist --verbose --type 'file' "${file_gitattributes_backup}" || return 1
         cat "${file_gitattributes_backup}" > "${file_gitattributes}"
     fi

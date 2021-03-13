@@ -7,9 +7,9 @@
 # notes: * this is ran after the contents of the repo are checked ouut
 
 _post_checkout() {
-    local path_this="${BASH_SOURCE[0]}"
-    local dir_this="$(cd "$(dirname "${path_this}")"; pwd -P)" && [ "${dir_this}" != '' ] || ! echo "ERROR: dir_this=''" || return 1
-    local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! echo "ERROR: dir_repo=''" || return 1
+    local PATH_THIS="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)/$(basename -- "${BASH_SOURCE[0]}")"
+    local DIR_THIS="$(dirname -- "${PATH_THIS}")"
+    local dir_repo="$(cd "${DIR_THIS}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! echo "ERROR: dir_repo=''" || return 1
     #### hardcoded vars
     local file_gitignore="${dir_repo}/.git-hooks/gitignore/gitignore-gen.bash"
     local file_gitattributes="${dir_repo}/.git-hooks/gitattributes/gitattributes-gen.bash"

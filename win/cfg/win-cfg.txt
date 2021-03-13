@@ -1,9 +1,10 @@
 enable windowsDeveloperMode
 install powershell7
 	via admin powershell
+		Set-ExecutionPolicy RemoteSigned -Force
 		iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI"
 automated applications install
-	option 1: ninite
+	option 1: ninite # this is the simpler option but has less programs
 		ninite-7z-chrome-discord-firefox-itunes-notepad-python3-spotify-steam-teamviewer-vlc-code.exe
 		nordvpn/xampp/utorr/plex/ahk/razer install manually # TODO: add malawarebytes
 	option 2: chocolatey # https://chocolatey.org/install
@@ -13,11 +14,21 @@ automated applications install
 			# TODO: insert some type of curl cmd for choco_installs.ps1 # see script for known non working installs
 install wsl aka windowsSubsystemLinux
 	via admin powershell
-		dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-		dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-		# restart machine
-		# wsl --set-default-version 2 # TODO: figure out why not working
-		# install linux distro from microsoft store
+		install: https://docs.microsoft.com/en-us/windows/wsl/install-win10
+			```
+			Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+			dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+			dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+			# restart machine
+			# install 'WSL2 Linux kernel update package for x64 machines' if using a x64 based machine
+			# NOTE: as of 210314 wsl 2 is slow for interactions such as 'git status' on a windows filesystem repo
+			wsl --set-default-version 2 # can be non admin powershell
+			# install linux distro from microsoft store # Ubuntu 20.04 LTS recommended for year 2021
+			```
+	via ubuntu-20.04 shell
+		```
+		sudo apt update && sudo apt upgrade -y
+		```
 config windowsTerminal
 via gitBash
 	ssh-keygen -t rsa

@@ -4,6 +4,11 @@
 
 set -u
 
+PATH_THIS="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)/"$(basename -- "${BASH_SOURCE[0]}")""
+DIR_THIS="$(dirname -- "${PATH_THIS}")"
+BASE_THIS="$(basename -- "${PATH_THIS}")"
+[ -f "${PATH_THIS}" ] && [ -d "${DIR_THIS}" ] && [ -f "${DIR_THIS}/${BASE_THIS}" ] || ! >&2 echo "ERROR: could not generate paths" || exit 1
+
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210228
 # generation cmd on the following line:
@@ -122,9 +127,7 @@ __append_line_to_file_if_not_found() {
 _init() {
     #### hardcoded vars
     ## dirs
-    local path_this="${BASH_SOURCE[0]}"
-    local dir_this="$(cd "$(dirname "${path_this}")"; pwd -P)" && [ "${dir_this}" != '' ] || ! __echo -se "ERROR: dir_this=''" || return 1
-    local dir_repo="$(cd "${dir_this}" && cd $(git rev-parse --show-toplevel) && echo ${PWD})" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
+    local dir_repo="$(cd -- "${DIR_THIS}" && cd -- "$(git rev-parse --show-toplevel)" && echo "${PWD}")" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
     local dir_git_hooks="${dir_repo}/.git-hooks"
     local path_postcheckout_hook_gitignore="${dir_git_hooks}/gitignore/gitignore-gen.bash"
     local path_postcheckout_hook_gitattributes="${dir_git_hooks}/gitattributes/gitattributes-gen.bash"
@@ -133,13 +136,13 @@ _init() {
     local bashrc="${HOME}/.bashrc"
     local src="${dir_repo}/src/src.bash"
     #### setup git hooks
-    local dir_git_hooks_config="$(git config --local core.hooksPath)"
-    [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && [ "${dir_git_hooks_config}" != '' ] && echo "WARNING: ${path_this}: overwriting old 'git config --local core.hooksPath' value of '${dir_git_hooks_config}'"
-    [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && echo "EXEC: git config --local core.hooksPath ${dir_git_hooks}" && (cd "${dir_repo}"; git config --local core.hooksPath "${dir_git_hooks}")
+    local dir_git_hooks_config="$(git -C "${dir_repo}" config --local core.hooksPath)"
+    [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && [ "${dir_git_hooks_config}" != '' ] && echo "WARNING: ${PATH_THIS}: overwriting old 'git config --local core.hooksPath' value of '${dir_git_hooks_config}'"
+    [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && echo "EXEC: git -C ${dir_repo} config --local core.hooksPath ${dir_git_hooks}" && (git -C "${dir_repo}" config --local core.hooksPath "${dir_git_hooks}")
     [ -f "${path_postcheckout_hook_gitignore}" ] && { "${path_postcheckout_hook_gitignore}" && echo "EXEC: ${path_postcheckout_hook_gitignore}" || echo "ERROR: gitignore-gen.bash failed"; }
     [ -f "${path_postcheckout_hook_gitattributes}" ] && { "${path_postcheckout_hook_gitattributes}" && echo "EXEC: ${path_postcheckout_hook_gitattributes}" || echo "ERROR: gitattributes-gen.bash failed"; }
     #### lines to add to files
-    local lines_bash_aliases=('[ -f '"'${src}'"' ] && . '"'${src}'")
+    local lines_bash_aliases=("[ -f '${src}' ] && . '${src}'")
     #### create files/dirs if not found
     __check_if_objs_exist -ct 'file' "${bash_aliases}" || return "${?}"
     local status=''; status="$(__check_if_objs_exist -cot 'file' "${bashrc}")" || return "${?}"; [ "${status}" == 'created' ] && echo ". '${bash_aliases}'" >> "${bashrc}"

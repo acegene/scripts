@@ -1,5 +1,4 @@
-﻿Esc::ExitApp
-;-----------------------------------
+﻿;-----------------------------------
 ;  Macro Recorder v2.1  By FeiYue
 ;
 ;  Description: This script records the mouse
@@ -365,3 +364,4 @@ Log(str:="", Keyboard:=0) {
 ;============ The End ============
 
 ;
+Esc::ExitApp

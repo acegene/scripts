@@ -9,7 +9,7 @@
 #        consider purging from display files already renamed (maybe refresh entire search as an option after purge)
 #        when using -o arg you are stuck moving a file unless you enter nothing
 
-__parse_script_arguments() {
+__parse_args(){
     local out_dir_set='false'
     local num_other_args=0
     while (( "${#}" )); do
@@ -51,7 +51,7 @@ _manual_mv () {
     local pattern='*' # default
     local rename='false' # default
     local suppress='false' # default
-    __parse_script_arguments "${@}" || return "${?}"
+    __parse_args "${@}" || return "${?}"
 
     echo "searching dir=${dir} for pattern=${pattern} with depth=${depth} to move to out_dir=${out_dir}"; echo
     local break_while=0

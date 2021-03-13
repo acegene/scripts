@@ -69,50 +69,36 @@ function _init {
     $path_this = $PSCommandPath # not compatible with PS version < 3.0
     $dir_this = $PSScriptRoot # not compatible with PS version < 3.0
     $dir_repo = "$(pushd $(git -C $($dir_this) rev-parse --show-toplevel); echo $PWD; popd)"
-    $dir_bin = "$($dir_repo)\bin"
+    # $dir_bin = "$($dir_repo)\bin"
     $path_src = "$($dir_repo)\src\src.ps1"
-    $terminal_src_path = "$($dir_repo)\win\cfg\terminal-cfg"
+    $terminal_script_path = "$($dir_repo)\win\cfg\terminal-cfg\terminal-cfg.ps1"
     #### includes
     . "$($dir_repo)\src\cfg.ps1"
     #### if no profile exists create one
-    if (!(Test-Path $profile_path)){New-Item -Type File -Force $profile_path}
-    if (!(Test-Path $profile_path_2)){New-Item -Type File -Force $profile_path_2}
+    if (!(Test-Path $path_ps_profile)){New-Item -Type File -Force $path_ps_profile}
+    if (!(Test-Path $path_ps_profile_2)){New-Item -Type File -Force $path_ps_profile_2}
     #### lines to append
     $cmd_args = "$($named_args.Keys | % { "-$($_)" + " '$($named_args.Item($_))'" }) "
     $cmd_args += "$($unnamed_args | % { "'$($_)'" })"
     if ($cmd_args -eq " ''"){$cmd_args = ""}
     $prof_cmd = ". '$($path_src)' $($cmd_args)"
     #### check if lines exist in file, otherwise append them
-    if ($(((Get-Content -Raw $profile_path) -split '\n')[-1]) -ne ''){
+    if ($(((Get-Content -Raw $path_ps_profile) -split '\n')[-1]) -ne ''){
         $prof_cmd = "`r`n$($prof_cmd)"
     }
-    $file_str = Get-Content $profile_path | Select-String -SimpleMatch $prof_cmd
+    $file_str = Get-Content $path_ps_profile | Select-String -SimpleMatch $prof_cmd
     if ($file_str -eq $null){
-        echo $prof_cmd >> $profile_path
+        echo $prof_cmd >> $path_ps_profile
     }
-    if ($(((Get-Content -Raw $profile_path_2) -split '\n')[-1]) -ne ''){
+    if ($(((Get-Content -Raw $path_ps_profile_2) -split '\n')[-1]) -ne ''){
         $prof_cmd = "`r`n$($prof_cmd)"
     }
-    $file_str = Get-Content $profile_path_2 | Select-String -SimpleMatch $prof_cmd
+    $file_str = Get-Content $path_ps_profile_2 | Select-String -SimpleMatch $prof_cmd
     if ($file_str -eq $null){
-        echo $prof_cmd >> $profile_path_2
+        echo $prof_cmd >> $path_ps_profile_2
     }
     #### cfg windows terminal
-    if (!(Test-Path $terminal_path)){
-        echo "ERROR: cannot find: $terminal_path, aborting terminal cfg setup"
-    }elseif(!(Test-Path $terminal_src_path)){
-        echo "ERROR: cannot find: $terminal_src_path, aborting terminal cfg setu"
-    }elseif([string]::IsNullOrEmpty((Get-Item $terminal_path).Target)){
-        echo "INFO: terminal cfg dir orig: $($terminal_path)"
-        echo "INFO: terminal cfg dir link: $($terminal_src_path)"
-        $confirmation = Read-Host -Prompt 'PROMPT: replace above orig dir with link dir? y/n'
-        if ($confirmation -eq 'yes' -Or $confirmation -eq 'y') {
-             Remove-Item -Recurse -Force $terminal_path
-             $null = New-Item -Path $terminal_path -ItemType SymbolicLink -Value $terminal_src_path
-        }else{
-            echo "WARNING: aborting terminal cfg setup, consider installing and using Windows Terminal!"
-        }
-    }
+    & $terminal_script_path
 }
 
 _init @args
