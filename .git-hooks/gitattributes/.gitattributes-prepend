@@ -1,6 +1,0 @@
-#### non templatized auto prepended content below this line ####
-* filter=gitignore-gen
-.gitattributes    eol=lf
-.gitignore    eol=lf
-.git-hooks/**    eol=lf
-#### non templatized auto prepended content above this line ####
