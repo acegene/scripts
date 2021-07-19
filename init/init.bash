@@ -7,7 +7,7 @@ set -u
 PATH_THIS="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)/"$(basename -- "${BASH_SOURCE[0]}")""
 DIR_THIS="$(dirname -- "${PATH_THIS}")"
 BASE_THIS="$(basename -- "${PATH_THIS}")"
-[ -f "${PATH_THIS}" ] && [ -d "${DIR_THIS}" ] && [ -f "${DIR_THIS}/${BASE_THIS}" ] || ! >&2 echo "ERROR: could not generate paths" || exit 1
+[ -f "${PATH_THIS}" ] && [ -d "${DIR_THIS}" ] && [ -f "${DIR_THIS}/${BASE_THIS}" ] || ! >&2 echo "ERROR: ${BASE_THIS}: could not generate paths" || exit 1
 
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210228
