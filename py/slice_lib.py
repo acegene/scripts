@@ -6,7 +6,7 @@ def in_slice(index:int, slice_:slice, length:int) -> bool:
     """Return 'container[<index>] in container[<slice_>]' when len(container) = <length>
 
     Args:
-        index (int): Index to check for existence of in <slice_> 
+        index (int): Index to check for existence of in <slice_>
         slice_ (slice): Slice to check if <index> is contained within
         length (int): Length of the first dimension of the container being sliced
 
@@ -22,7 +22,7 @@ def in_slice(index:int, slice_:slice, length:int) -> bool:
     else:
         if index_normalized > start or index_normalized <= stop:
             return False
-    _, r = divmod(index_normalized - start, step) 
+    _, r = divmod(index_normalized - start, step)
     return r == 0
 
 def is_slice_empty(slice_:slice, length:int) -> bool:
@@ -114,13 +114,13 @@ def slice_index(index:int, slice_:slice, length:int) -> int:
     """Return <index_container> such that 'container[<index_container>] == container[<slice_>][<index>]' when len(container) = <length>
 
     Args:
-        index (int): Index of <slice_> to locate in original container 
+        index (int): Index of <slice_> to locate in original container
         slice_ (slice): Slice to find the corresponding containers index from
         length (int): Length of the first dimension of the container being sliced
 
     Returns:
         int: index_container such that 'container[<index_container>] == container[<slice_>][<index>]' when len(container) = <length>
-    
+
     Raises:
         IndexError: If container[<slice_>][<index>] would raise a IndexError when len(container) = <length>
     """

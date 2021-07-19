@@ -19,7 +19,7 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
     import wrapped_indexable_callable
 ####################################################################################################
-#################################################################################################### 
+####################################################################################################
 
 def zip_equal(*iterables):
     """Zip and raise exception if lengths are not equal.

@@ -131,16 +131,16 @@ class TestMv(TestCase):
         self.assertRaises(FileExistsError, mv.mv, self.old, self.new)
         self.assert_exists(2, 0, self.old, self.new)
 
+    def test__mv__file_old_not_exist_new_exists__raise_file_exists(self):
+        self.create_files(self.new)
+        self.assertRaises(FileNotFoundError, mv.mv, self.old, self.new)
+        self.assert_exists(1, 0, self.new)
+
     def test__mv__file_new_is_old__raise_file_exists(self):
         self.new = self.old
         self.create_files(self.old)
         self.assertRaises(FileExistsError, mv.mv, self.old, self.new)
         self.assert_exists(1, 0, self.old)
-
-    def test__mv__file_old_not_exist_new_exists__raise_file_exists(self):
-        self.create_files(self.new)
-        self.assertRaises(FileNotFoundError, mv.mv, self.old, self.new)
-        self.assert_exists(1, 0, self.new)
 
     def test__mv__file_old_dir_not_exists__raise_not_a_directory(self):
         dir_1 = self.dir + 'dir_1/'
@@ -160,6 +160,14 @@ class TestMv(TestCase):
         self.create_files(self.old)
         self.assertRaises(NotADirectoryError, mv.mv, self.old, self.new)
         self.assert_exists(1, 1, self.old, dir_1)
+
+    def test__mv__file_old_dir_not_exists_new_dir_not_exists__raise_not_a_directory(self):
+        dir_1 = self.dir + 'dir_1/'
+        dir_2 = self.dir + 'dir_2/'
+        self.old = dir_1 + 'old.txt'
+        self.new = dir_2 + 'new.txt'
+        self.assertRaises(NotADirectoryError, mv.mv, self.old, self.new)
+        self.assert_exists(0, 0)
 
     def test__mv__dir_base_case__success(self):
         self.old = self.dir + 'old_dir/'
@@ -202,7 +210,7 @@ class TestMv(TestCase):
         self.assert_exists(0, 1, self.old)
 
     @unittest.mock.patch('mv.os.rename', side_effect=mock_os_rename_fail_once())
-    def test__mv__across_fs__success(self, mock_os_rename_):
+    def test__mv__file_across_fs__success(self, mock_os_rename_):
         dir_1 = self.dir + 'dir_1/'
         dir_2 = self.dir + 'dir_2/'
         self.create_dirs(dir_1, dir_2)
@@ -248,7 +256,7 @@ class TestMvMulti(TestCase):
             self.assertFalse(os.path.exists(f))
             self.fs.create_file(f)
             self.assertTrue(os.path.exists(f))
-    
+
     def assert_exists(self, num_files, num_dirs, *objects):
         counted_files = 0
         counted_dirs = 0
@@ -310,15 +318,20 @@ class TestMvMulti(TestCase):
         self.assertRaises(PermissionError, mv.mv_multi, self.old, self.new)
         self.assert_exists(13, 0, *self.old, old_lock, new_lock)
 
-    def test__mv_multi__files_old_not_exist__raise_file_not_found(self):
+    def test__mv_multi__files_old_not_exists__raise_file_not_found(self):
         self.create_files(*self.old[:-1])
         self.assertRaises(FileNotFoundError, mv.mv_multi, self.old, self.new)
         self.assert_exists(10, 0, *self.old[:-1])
 
-    def test__mv_multi__files_new_exist__raise_file_exists(self):
+    def test__mv_multi__files_new_exists__raise_file_exists(self):
         self.create_files(*self.old, self.new[0])
         self.assertRaises(FileExistsError, mv.mv_multi, self.old, self.new)
         self.assert_exists(12, 0, *self.old, self.new[0])
+
+    def test__mv_multi__files_old_not_exists_new_exists__raise_file_exists(self):
+        self.create_files(self.new[0])
+        self.assertRaises(FileNotFoundError, mv.mv_multi, self.old, self.new)
+        self.assert_exists(1, 0, self.new[0])
 
     def test__mv_multi__files_new_relative_path_old__success(self):
         os.chdir(self.dir)
@@ -327,7 +340,7 @@ class TestMvMulti(TestCase):
         mv.mv_multi(self.old, self.new)
         self.assert_exists(11, 0, *self.old)
 
-    def test__mv_multi__files_old_dir_not_exist__raise_not_a_directory(self):
+    def test__mv_multi__files_old_dir_not_exists__raise_not_a_directory(self):
         dir_1 = self.dir + 'dir_1/'
         dir_2 = self.dir + 'dir_2/'
         self.create_dirs(dir_2)
@@ -336,7 +349,7 @@ class TestMvMulti(TestCase):
         self.assertRaises(NotADirectoryError, mv.mv_multi, self.old, self.new)
         self.assert_exists(0, 1, dir_2)
 
-    def test__mv_multi__files_new_dir_not_exist__raise_not_a_directory(self):
+    def test__mv_multi__files_new_dir_not_exists__raise_not_a_directory(self):
         dir_1 = self.dir + 'dir_1/'
         dir_2 = self.dir + 'dir_2/'
         self.create_dirs(dir_1)
