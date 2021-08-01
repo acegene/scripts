@@ -32,7 +32,7 @@ __parse_args(){
             ;;
             *) # maximum one arg accepted to search files to rename, usage: "*.java" will find all .java files
                 [[ "${num_other_args}" == 0 ]] && pattern="${1}" && num_other_args=1 || ! echo "invalid: expects max one glob arg" || return 4
-            ;;        
+            ;;
         esac
         shift
     done

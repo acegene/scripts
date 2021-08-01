@@ -35,7 +35,7 @@ function Merge-Dir-Ffmpeg {
 
     $regex = "^.*-pt([0-9][0-9]?)\.($regex_vid_exts)$"
     $files = (Get-ChildItem $dir_merge | Where-Object { $_.Name -match $regex }).Name
-    
+
     $lambda_extract_pt_num = {[regex]::match($_, $regex).captures.groups[1].value -as [int]}
     $files = $files | Sort-Object $lambda_extract_pt_num
     $num_files = $($files).Length
@@ -45,7 +45,7 @@ function Merge-Dir-Ffmpeg {
     $file_extensionless = [System.IO.Path]::GetFileNameWithoutExtension("$($files[0])") -replace “....$”
     $regex_files = "^.*-pt","\$extension$"
     $regex_files = "$file_extensionless-pt","$extension"
-    
+
     $num_files = $($files).Length
     for ($i=1; $i -le $num_files; $i++) {
         $files[$i-1] = "$($dir_merge)$($files[$i-1])"
@@ -60,7 +60,7 @@ function Merge-Dir-Ffmpeg {
     }else{
         $file_out = "$($dir_merge)$($file_extensionless)$($extension)"
     }
-    
+
     Merge-Ffmpeg $file_out $files
 }
 

@@ -18,7 +18,7 @@ function Merge-Ffmpeg {
 
     try {
         foreach ($f in $files){
-            ## ffmpeg likes unix style forward slashes 
+            ## ffmpeg likes unix style forward slashes
             $f = $f -replace "\\","/"
             $f = $f -replace "'", "'\''"
             Write-Output "file '$f'" >> $tmp_txt

@@ -9,7 +9,7 @@ __parse_args(){
                 [[ "${2}" =~ ${regex} && "${2}" -ge 0 ]] && depth="${2}" && shift || ! echo "invalid --maxdepth arg" || return 3
             ;;
             -r|--remove) remove='true' ;; # will not remove any files unless this option is set
-            *) echo "ERROR: invalid input: ${1}" && return 3 ;;        
+            *) echo "ERROR: invalid input: ${1}" && return 3 ;;
         esac
         shift
     done

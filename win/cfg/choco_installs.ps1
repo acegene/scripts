@@ -18,13 +18,13 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 }
 
 try {choco -v} catch {
-	Write-Output "INFO: seems chocolatey aka choco not installed, installing..."
-    	Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+    Write-Output "INFO: seems chocolatey aka choco not installed, installing..."
+        Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 }
 
 $pkgs_always = '7zip','autohotkey','discord','ffmpeg','firefox','git','gitkraken','googlechrome',
-			   'malwarebytes','microsoft-windows-terminal','nordvpn','notepadplusplus','python3',
-			   'spotify','steam','teamviewer','vlc','vscode'
+               'malwarebytes','microsoft-windows-terminal','nordvpn','notepadplusplus','python3',
+               'spotify','steam','teamviewer','vlc','vscode'
 $pkgs_maybe = 'bitnami-xampp','itunes','javaruntime','razer-synapse-2', 'qbittorrent'
 $pkgs_broken = 'battle.net', 'utorrent'
 

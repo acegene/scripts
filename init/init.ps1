@@ -15,7 +15,7 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210228
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "ps1" "-w" "${GWSS}/init/init.ps1" "-x" "Group-Unspecified-Args"
+# python "${GWSPY}/write_btw.py" "-t" "ps1" "-w" "${GWSS}/init/init.ps1" "-x" "Group-Unspecified-Args"
 
 function Group-Unspecified-Args {
     [CmdletBinding()]

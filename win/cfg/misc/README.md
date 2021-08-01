@@ -8,7 +8,7 @@
 
 * ninite-*.zip
 
-    * installs apps as described by the * in the file name 
+    * installs apps as described by the * in the file name
 
 * restore-checklist.txt
 

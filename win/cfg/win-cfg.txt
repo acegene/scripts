@@ -1,61 +1,63 @@
 enable windowsDeveloperMode
 install powershell7
-	via admin powershell
-		Set-ExecutionPolicy RemoteSigned -Force
-		iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI"
+    via admin powershell
+        Set-ExecutionPolicy RemoteSigned -Force
+        iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI"
 automated applications install
-	option 1: ninite # this is the simpler option but has less programs
-		ninite-7z-chrome-discord-firefox-itunes-notepad-python3-spotify-steam-teamviewer-vlc-code.exe
-		nordvpn/xampp/utorr/plex/ahk/razer install manually # TODO: add malawarebytes
-	option 2: chocolatey # https://chocolatey.org/install
-		via admin powershell
-			Set-ExecutionPolicy RemoteSigned -Force
-			Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-			# TODO: insert some type of curl cmd for choco_installs.ps1 # see script for known non working installs
+    option 1: ninite # this is the simpler option but has less programs
+        ninite-7z-chrome-discord-firefox-itunes-notepad-python3-spotify-steam-teamviewer-vlc-code.exe
+        nordvpn/xampp/utorr/plex/ahk/razer install manually # TODO: add malawarebytes
+    option 2: chocolatey # https://chocolatey.org/install
+        via admin powershell
+            Set-ExecutionPolicy RemoteSigned -Force
+            Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+            # TODO: insert some type of curl cmd for choco_installs.ps1 # see script for known non working installs
 install wsl aka windowsSubsystemLinux
-	via admin powershell
-		install: https://docs.microsoft.com/en-us/windows/wsl/install-win10
-			```
-			Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-			dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-			dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-			# restart machine
-			# install 'WSL2 Linux kernel update package for x64 machines' if using a x64 based machine
-			# NOTE: as of 210314 wsl 2 is slow for interactions such as 'git status' on a windows filesystem repo
-			wsl --set-default-version 2 # can be non admin powershell
-			# install linux distro from microsoft store # Ubuntu 20.04 LTS recommended for year 2021
-			```
-	via ubuntu-20.04 shell
-		```
-		sudo apt update && sudo apt upgrade -y
-		```
+    via admin powershell
+        install: https://docs.microsoft.com/en-us/windows/wsl/install-win10
+            ```
+            Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+            dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+            dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+            # restart machine
+            # install 'WSL2 Linux kernel update package for x64 machines' if using a x64 based machine
+            # NOTE: as of 210314 wsl 2 is slow for interactions such as 'git status' on a windows filesystem repo
+            wsl --set-default-version 2 # can be non admin powershell
+            # install linux distro from microsoft store # Ubuntu 20.04 LTS recommended for year 2021
+            ```
+    via ubuntu-20.04 shell
+        ```
+        sudo apt update && sudo apt upgrade -y
+        ```
 config windowsTerminal
 via gitBash
-	ssh-keygen -t rsa
-	cat ~/.ssh/id_rsa.pub # copy output to github.com signin -> settings -> sshKeys
+    ssh-keygen -t rsa
+    cat ~/.ssh/id_rsa.pub # copy output to github.com signin -> settings -> sshKeys
 cd C:/Users/acege/gene-ws/
 git submodule update --init --recursive
 config nordvpn # https://nordvpn.com/download/
-	general -> 'launchAtWindowsStartup set to on'
-	auto-connect
-		alwaysWhenTheAppLaunches set to on
-		auto-connectOnWi-Fi set to allNetworks
-	killSwitch -> 'internetKillSwitch set to on'
-	advanced -> 'helpUsImprove set to off'
+    general -> 'launchAtWindowsStartup set to on'
+    auto-connect
+        alwaysWhenTheAppLaunches set to on
+        auto-connectOnWi-Fi set to allNetworks
+    killSwitch -> 'internetKillSwitch set to on'
+    advanced -> 'helpUsImprove set to off'
 install mmo-mouse
-	mouse-mmo-installer-utechsmart-venus\AUTORUN.exe
-	load profile
-		mouse-mmo-installer-utechsmart-venus\mmo-mouse-chrome-profile.pfd
+    mouse-mmo-installer-utechsmart-venus\AUTORUN.exe
+    load profile
+        mouse-mmo-installer-utechsmart-venus\mmo-mouse-chrome-profile.pfd
 config plex
-		Launch the Plex Web App
-		Choose Settings from the top right of the Home screen
-		Select your Plex Media Server from the settings sidebar
-		Choose Agents
-		Choose the Library Type and Agent you want to change
-		Ensure Local Media Assets is checked
-		Ensure Local Media Assets is topmost in the list
-	needed?
-		library-name -> manage-library -> edit -> advanced -> agent=personal-media
-	settings -> library -> emptry-trash-auto=uncheck
+        Launch the Plex Web App
+        Choose Settings from the top right of the Home screen
+        Select your Plex Media Server from the settings sidebar
+        Choose Agents
+        Choose the Library Type and Agent you want to change
+        Ensure Local Media Assets is checked
+        Ensure Local Media Assets is topmost in the list
+    needed?
+        library-name -> manage-library -> edit -> advanced -> agent=personal-media
+    settings -> library -> emptry-trash-auto=uncheck
 pathnames limit remove
-	registry HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled set to 1 # create if needed via  New->DWORD (32-bit) Value
+    registry HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled set to 1 # create if needed via  New->DWORD (32-bit) Value
+
+C:\Program Files\Git\etc\gitconfig symlinks -> true

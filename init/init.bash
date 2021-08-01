@@ -12,7 +12,7 @@ BASE_THIS="$(basename -- "${PATH_THIS}")"
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210228
 # generation cmd on the following line:
-# python "${GWSPY}/write-btw.py" "-t" "bash" "-w" "${GWSS}/init/init.bash" "-x" "__echo" "__check_if_objs_exist" "__append_line_to_file_if_not_found"
+# python "${GWSPY}/write_btw.py" "-t" "bash" "-w" "${GWSS}/init/init.bash" "-x" "__echo" "__check_if_objs_exist" "__append_line_to_file_if_not_found"
 
 __echo(){
     #### echo that can watch the silent and verbose variables from the scope it was called from
