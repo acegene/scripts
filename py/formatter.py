@@ -52,6 +52,7 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--dir", "-d", action=DirSetAction, default=dir_, help="directory for git repo")
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
+        parser.add_argument("--eol", "-e", default="lf", help="Formatter execution mode")
         return parser
 
     #### cmd line args parser
@@ -82,7 +83,7 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
     return formatter_lst
 
 
-def formatter_basenames_to_lower(dir: PathLike, mode="dryrun"):
+def formatter_basenames_to_lower(dir: PathLike, mode):
     if mode == "dryrun":
         print("INFO: dryrun mode: test run below, try mode in ['force', 'prompt'] to make changes.")
     elif mode == "prompt":
@@ -110,8 +111,10 @@ def formatter_basenames_to_lower(dir: PathLike, mode="dryrun"):
     logger.error_exit(ValueError(f"Unexpected mode '{mode}'."), sys_exit=True)
 
 
-def formatter_whitespace(dir: PathLike, mode="dryrun"):
-    objs = obj_filters.main(["--dir", str(dir), "--or", "git_tracked", "--or", "git_staged", "--and", "git_text"])
+def formatter_whitespace(dir: PathLike, mode: str, eol: str):
+    objs = obj_filters.main(
+        ["--dir", str(dir), "--or", "git_tracked", "--or", "git_staged", "--and", f"git_text --eol {eol}"]
+    )
     for obj in objs:
         with open(obj, "rb") as open_file:
             content = open_file.read()

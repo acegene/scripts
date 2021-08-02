@@ -36,7 +36,7 @@ class DirSetAction(argparse.Action):
         checked_dir = DirSetAction._dir_check(values)
         if checked_dir == None:
             parser.print_usage()
-            raise SystemExit("ValueError: Path '{check_dir}' is not a valid directory.")
+            raise SystemExit(f"ValueError: Path '{values}' is not a valid directory.")
         setattr(namespace, self.dest, path_utils.path_clean(checked_dir))
 
     def _dir_check(path: PathLike) -> PathLike:

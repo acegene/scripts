@@ -82,6 +82,7 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
     def generate_parser_git_text(dir_: PathLike) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--dir", "-d", action=DirSetAction, default=dir_, help="directory for git repo")
+        parser.add_argument("--eol", "-e", choices=["cr", "crlf", "lf"], default="lf", help="end of line format")
         return parser
 
     def generate_parser_git_tracked(dir_: PathLike) -> argparse.ArgumentParser:
@@ -202,7 +203,7 @@ def filter_git_staged(files_in: Set[PathLike], operation: str, dir: PathLike) ->
     return _operation_apply(operation, files_in, files_out)
 
 
-def filter_git_text(files_in: Set[PathLike], operation: str, dir: PathLike):
+def filter_git_text(files_in: Set[PathLike], operation: str, dir: PathLike, eol: str):
     if operation == "or":
         logger.error_exit(ValueError("For filter 'text' <operation> == 'or' is not allowed."), sys_exit=True)
     #### initialize git var
@@ -215,7 +216,12 @@ def filter_git_text(files_in: Set[PathLike], operation: str, dir: PathLike):
         except git.exc.GitCommandError:
             continue
         if git_output != "" and len(git_output) > 2 and git_output[2] == "set":
-            files_out.append(path_utils.path_clean(f))
+            try:
+                git_output = g.check_attr("-z", "eol", str(f)).strip("\x00").split("\x00")
+            except git.exc.GitCommandError:
+                continue
+            if git_output != "" and len(git_output) > 2 and git_output[2] == eol:
+                files_out.append(path_utils.path_clean(f))
     files_out = [f for f in files_out if os.path.exists(f)]
     return files_out
 
