@@ -1,0 +1,3 @@
+[submodule "win/ahk/third-party/WindHumanMouse"]
+	path = win/ahk/third-party/WindHumanMouse
+	url = git@github.com:HowDoIStayInDreams/WindHumanMouse.git
