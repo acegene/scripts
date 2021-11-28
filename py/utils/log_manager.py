@@ -9,8 +9,9 @@
 
 import logging
 import sys
+from traceback import format_exception
 
-from typing import Any, Callable, Optional, Sequence, Type
+from typing import Any, Callable, Optional, Sequence
 
 _LVL_D = logging.getLevelName("DEBUG")
 _LVL_I = logging.getLevelName("INFO")
@@ -25,7 +26,7 @@ class LogManager:
 
     def __init__(self, name: str = None, log_lvl: int = _LVL_W, filename: str = None, stderr: bool = True):
         #### specify logger to be root or not depending on source of instantion
-        self._logger = logging.getLogger() if name == "__main__" else logging.getLogger(name)
+        self._logger = logging.getLogger(name)
         #### specify logger generic formatter
         self._formatter = logging.Formatter(
             "%(levelname)s: %(asctime)s %(filename)s:%(lineno)s: %(message)s",
@@ -46,65 +47,85 @@ class LogManager:
         #### set initial logging level
         self._logger.setLevel(log_lvl)
 
-    def __getattr__(self, attr):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if type != None:
+            if type == SystemExit:
+                self.error(f"SystemExit: {value}")
+            else:
+                self.error(f"Exception occurred:\n{''.join(format_exception(type, value, traceback))}")
+
+    def __getattr__(self, attr: Any) -> Any:
         """Pass unknown attributes to self._logger"""
         return getattr(self._logger, attr)
 
-    def _sys_exit(err: Optional[Exception] = None):
+    def _err_to_str(err: BaseException) -> str:
+        return f"{err.__class__.__name__}: {err}"
+
+    def _sys_exit(err: Optional[Exception] = None) -> None:
         """Exit by raising SystemError with <err>.errorno if it exists"""
         try:
             sys.exit(err.errno)
         except AttributeError:
             sys.exit(1)
 
-    def _err_to_str(err: BaseException):
-        return f"{err.__class__.__name__}: {err}"
-
-    def debug(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def debug(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.debug(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
 
-    def info(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def info(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.info(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
 
-    def warning(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def warning(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.warning(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
 
-    def error(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def error(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.error(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
 
-    def fatal(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def fatal(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.fatal(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
 
-    def critical(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def critical(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.critical(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
 
-    def log(self, level, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any):
+    def log(self, level: bool, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
         self._logger.log(level, msg, *msg_strs, stacklevel=stacklevel + 3, **kwargs)
 
-    def debug_exit(self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any):
+    def debug_exit(
+        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
+    ) -> None:
         """Log then throw <err>"""
         self.log_exit(_LVL_D, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
 
-    def info_exit(self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any):
+    def info_exit(
+        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
+    ) -> None:
         """Log then throw <err>"""
         self.log_exit(_LVL_I, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
 
-    def warning_exit(self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any):
+    def warning_exit(
+        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
+    ) -> None:
         """Log then throw <err>"""
         self.log_exit(_LVL_W, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
 
-    def error_exit(self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any):
+    def error_exit(
+        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
+    ) -> None:
         """Log then throw <err>"""
         self.log_exit(_LVL_E, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
 
-    def fatal_exit(self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any):
+    def fatal_exit(
+        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
+    ) -> None:
         """Log then throw <err>"""
         self.log_exit(_LVL_F, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
 
@@ -115,7 +136,7 @@ class LogManager:
         self.log_exit(_LVL_C, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
 
     def log_exit(
-        self, level, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
+        self, level: bool, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
     ):
         """Log then throw <err>"""
         self._logger.log(level, LogManager._err_to_str(err), stacklevel=stacklevel + 3, **kwargs)
@@ -192,7 +213,7 @@ class LogManager:
 
     def log_false(
         self,
-        level,
+        level: bool,
         expr: bool,
         msg: Any = None,
         *args: Any,
@@ -282,7 +303,7 @@ class LogManager:
 
     def log_assert(
         self,
-        level,
+        level: bool,
         expr: bool,
         err: BaseException = None,
         *args: Any,
@@ -292,9 +313,9 @@ class LogManager:
     ) -> None:
         """Log and throw <err> if <expr> == False"""
         if err == None and len(args) != 0:
-            err = ValueError("Cannot have <err>==None and len(<args>)!=0.")
-            self._logger.log(level, LogManager._err_to_str(err), stacklevel=0, **kwargs)
-            raise err
+            err_tmp = ValueError("Cannot have <err>==None and len(<args>)!=0.")
+            self._logger.log(level, LogManager._err_to_str(err_tmp), stacklevel=0, **kwargs)
+            raise err_tmp
         if not expr:
             if err != None:
                 self._logger.log(level, LogManager._err_to_str(err), *args, stacklevel=stacklevel + 3, **kwargs)
@@ -479,7 +500,7 @@ class LogManager:
         if excs != None:
             excs_lst += [e for e in excs]
 
-        def _callable_with_log_and_exc_handling(*args, **kwargs: Any):
+        def _callable_with_log_and_exc_handling(*args, **kwargs: Any) -> None:
             try:
                 return callable(*args, **kwargs)
             except tuple(excs_lst) as err:
@@ -508,5 +529,5 @@ class LogManager:
 
         return _callable_with_log_and_exc_handling
 
-    def exception(self, err, stacklevel: int = 0, **kwargs: Any):
+    def exception(self, err, stacklevel: int = 0, **kwargs: Any) -> None:
         self._logger.exception(err, stacklevel=stacklevel + 3, **kwargs)

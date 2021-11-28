@@ -321,6 +321,12 @@ def path_basename_to_lower(path: PathLike, ignore_locks=False) -> PathLike:
     return path_clean(path_lower)
 
 
+def is_path_basename_lower(path: PathLike) -> PathLike:
+    path_cleaned = path_clean(path)
+    basename = str(os.path.basename(path_cleaned))
+    return basename == basename.lower()
+
+
 def path_clean(path: PathLike) -> PathLike:
     """Clean <path> representation to give deterministic comparable representation
 

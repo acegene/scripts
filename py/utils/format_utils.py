@@ -1,4 +1,3 @@
-import fnmatch
 import math
 import os
 import re
@@ -9,112 +8,84 @@ from utils import path_utils
 
 PathLike = Union[str, bytes, os.PathLike]
 
-CR_LINE_ENDING = b"\r"
-CRLF_LINE_ENDING = b"\r\n"
-LF_LINE_ENDING = b"\n"
-LINE_ENDINGS = [CR_LINE_ENDING, CRLF_LINE_ENDING, LF_LINE_ENDING]
+LE_CR = b"\r"
+LE_CRLF = b"\r\n"
+LE_LF = b"\n"
+LINE_ENDINGS = [LE_CR, LE_CRLF, LE_LF]
 
 
-def convert_newlines(string: str, line_ending: str = LF_LINE_ENDING) -> str:
+def _eol_str_to_bin_str(str_in: str) -> str:
+    if str_in in LINE_ENDINGS:
+        return str_in
+    if str_in == "cr":
+        return LE_CR
+    if str_in == "crlf":
+        return LE_CRLF
+    if str_in == "lf":
+        return LE_LF
+    raise ValueError(f"<eol> must be specified as one of {['lf', 'crlf', 'cr']}.")
+
+
+def convert_newlines(string: str, eol: str = LE_LF) -> str:
     #### https://stackoverflow.com/questions/47178459/replace-crlf-with-lf-in-python-3-6
     #### https://gist.github.com/jonlabelle/dd8c3caa7808cbe4cfe0a47ee4881059
-    #### check params
-    if line_ending not in LINE_ENDINGS:
-        raise ValueError("<line_ending> must be specified as one of %s" % (LINE_ENDINGS))
+    #### check eol
+    eol_nrm = _eol_str_to_bin_str(eol)
     #### modify line endings of file's content
-    if line_ending == CR_LINE_ENDING:
-        string_modified = string.replace(CRLF_LINE_ENDING, LF_LINE_ENDING).replace(LF_LINE_ENDING, CR_LINE_ENDING)
-    elif line_ending == CRLF_LINE_ENDING:
-        string_modified = (
-            string.replace(CRLF_LINE_ENDING, LF_LINE_ENDING)
-            .replace(CR_LINE_ENDING, LF_LINE_ENDING)
-            .replace(LF_LINE_ENDING, CRLF_LINE_ENDING)
-        )
-    elif line_ending == LF_LINE_ENDING:
-        string_modified = string.replace(CRLF_LINE_ENDING, LF_LINE_ENDING).replace(CR_LINE_ENDING, LF_LINE_ENDING)
+    if eol_nrm == LE_CR:
+        string_modified = string.replace(LE_CRLF, LE_LF).replace(LE_LF, LE_CR)
+    elif eol_nrm == LE_CRLF:
+        string_modified = string.replace(LE_CRLF, LE_LF).replace(LE_CR, LE_LF).replace(LE_LF, LE_CRLF)
+    elif eol_nrm == LE_LF:
+        string_modified = string.replace(LE_CRLF, LE_LF).replace(LE_CR, LE_LF)
     else:
-        raise ValueError("Unhandled input")
-    #### return whether string was modified and the modified string itself
+        raise ValueError(f"Unhandled input '{eol_nrm}'.")
+    #### return modified string
     return string_modified
 
 
 def convert_tabs_to_spaces(string: str, num_spaces: int = 4) -> str:
     #### replace tabs with spaces
     string_modified = string.replace(b"\t", b" " * num_spaces)
-    #### return whether string was modified and the modified string itself
+    #### return modified string
     return string_modified
 
 
-def add_trailing_newline(string: str, line_ending: str = LF_LINE_ENDING) -> str:
-    #### check params
-    if line_ending not in LINE_ENDINGS:
-        raise ValueError("<line_ending> must be specified as one of %s" % (LINE_ENDINGS))
-    #### TODO: calls to this should check lineending type
-    if line_ending == CR_LINE_ENDING or line_ending == LF_LINE_ENDING:
+def one_trailing_newline(string: str, eol: str = LE_LF) -> str:
+    #### check eol
+    eol_nrm = _eol_str_to_bin_str(eol)
+    #### different behavior depending on eol
+    if eol_nrm == LE_CR or eol_nrm == LE_LF:
         length = len(string)
         if length == 0:
             return b""
         for i in range(length):
-            if string[length - i - 1 : length - i] != line_ending:
-                return string[: length - i] + line_ending
+            if string[length - i - 1 : length - i] != eol_nrm:
+                return string[: length - i] + eol_nrm
         return b""
-    elif line_ending == CRLF_LINE_ENDING:
+    if eol_nrm == LE_CRLF:
         length = len(string)
         if length == 0:
             return b""
         elif length == 1:
-            return string + line_ending
+            return string + eol_nrm
         else:
             for i in range(math.ceil(length / 2)):
-                if string[length - (2 * i) - 2 : length - (2 * i)] != line_ending:
-                    return string[: length - (2 * i)] + line_ending
-        return b"" if (length % 2) == 0 else string + line_ending
-    else:
-        raise ValueError
-
-
-def remove_trailing_line_spaces(string: str, line_ending: str = LF_LINE_ENDING) -> str:
-    #### check params
-    if line_ending not in LINE_ENDINGS:
-        raise ValueError("<line_ending> must be specified as one of %s" % (LINE_ENDINGS))
-    #### line endings
-    if line_ending == CR_LINE_ENDING:
-        line_ending = b"\r"
-    elif line_ending == CRLF_LINE_ENDING:
-        line_ending = b"\r\n"
-    elif line_ending == LF_LINE_ENDING:
-        line_ending = b"\n"
-    else:
-        raise ValueError
-    ####
-    regex = re.compile(b"  *" + line_ending)
-    string_modified = re.sub(regex, line_ending, string)
-    #### return whether string was modified and the modified string itself
-    return string_modified
-
-
-def format_file(file_path):
-    with open(file_path, "rb") as open_file:
-        content = open_file.read()
-        # newline_converted = convert_newlines(content)[0]
-        # tabless = convert_tabs_to_spaces(newline_converted)[0]
-        # trailing_spaces_rm = remove_trailing_line_spaces(tabless)[0]
-        trailing_newline_add = add_trailing_newline(content, line_ending=CRLF_LINE_ENDING)
-        if content != trailing_newline_add:
-            print((file_path, "Trying to edit file buddy!"))
-
-    with open(file_path, "wb") as open_file:
-        open_file.write(trailing_newline_add)
-
-
-def format_dir():
-    file_paths = []
-    for root, dirnames, filenames in os.walk("."):
-        for filename in fnmatch.filter(filenames, "*.py"):
-            file_paths.append(os.path.join(root, filename))
-    for file_path in file_paths:
-        format_file(file_path)
+                if string[length - (2 * i) - 2 : length - (2 * i)] != eol_nrm:
+                    return string[: length - (2 * i)] + eol_nrm
+        return b"" if (length % 2) == 0 else string + eol_nrm
+    raise ValueError(f"Unhandled input '{eol_nrm}'.")
 
 
 def path_basename_to_lower(path: PathLike, ignore_locks=False) -> PathLike:
     return path_utils.path_basename_to_lower(path, ignore_locks)
+
+
+def remove_trailing_line_spaces(string: str, eol: str = LE_LF) -> str:
+    #### check eol
+    eol_nrm = _eol_str_to_bin_str(eol)
+    #### use regex to delete spaces before newlines
+    regex = re.compile(b"  *" + eol_nrm)
+    string_modified = re.sub(regex, eol_nrm, string)
+    #### return modified string
+    return string_modified

@@ -11,13 +11,13 @@ import unittest
 import unittest.mock
 
 try:
-    import slice_utils
+    from utils import slice_utils
 except ImportError:
     import os
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    import slice_utils
+    from utils import slice_utils
 ####################################################################################################
 ####################################################################################################
 

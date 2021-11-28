@@ -12,13 +12,13 @@ import unittest
 import unittest.mock
 
 try:
-    import wrapped_indexable_callable
+    from utils.wrapped_indexable_callable import wrapped_indexable_callable
 except ImportError:
     import os
     import sys
 
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    import wrapped_indexable_callable
+    from utils.wrapped_indexable_callable import wrapped_indexable_callable
 ####################################################################################################
 ####################################################################################################
 
@@ -77,12 +77,8 @@ class WrappedIndexableCallableTestCase(unittest.TestCase):
         slices = [slice(start, stop, step) for start in starts for stop in stops for step in steps]
         #### iterate over slices and test class
         for s1 in slices:
-            actual_func = wrapped_indexable_callable.WrappedIndexableCallable(
-                self.indexable_func, expected_base_length, s1
-            )
-            actual_list = wrapped_indexable_callable.WrappedIndexableCallable(
-                [0, 1, 2, 3, 4, 5], expected_base_length, s1
-            )
+            actual_func = WrappedIndexableCallable(self.indexable_func, expected_base_length, s1)
+            actual_list = WrappedIndexableCallable([0, 1, 2, 3, 4, 5], expected_base_length, s1)
             assert len(expected_base[s1]) == len(actual_func)
             assert len(expected_base[s1]) == len(actual_list)
             self.assert_containers_equal(expected_base[s1], actual_func, s1)

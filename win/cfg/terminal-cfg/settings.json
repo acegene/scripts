@@ -4,7 +4,7 @@
 {
     // global application settings, see: https://aka.ms/terminal-global-settings
     "$schema": "https://aka.ms/terminal-profiles-schema",
-    "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+    "defaultProfile": "{a3a2e83a-884a-5379-baa8-16f193a13b21}",
     "copyOnSelect": false,
     "copyFormatting": false,
     // profiles, visit https://aka.ms/terminal-profile-settings
@@ -22,9 +22,9 @@
         },
         "list": [
             {
-                "name": "PowerShell7",
-                "background": "#000033",
-                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "name": "PowerShell7-Preview",
+                "background": "#2e0e2a",
+                "guid": "{a3a2e83a-884a-5379-baa8-16f193a13b21}",
                 "source": "Windows.Terminal.PowershellCore"
             },
             {
@@ -45,7 +45,13 @@
                 "source": "Windows.Terminal.Wsl"
             },
             {
-                "name": "PowerShell",
+                "name": "PowerShell7",
+                "background": "#000033",
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "name": "PowerShell5",
                 "background": "#000044",
                 "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
                 "commandline": "powershell.exe"
@@ -78,7 +84,7 @@
             "command": "find",
             "keys": "ctrl+shift+f"
         },
-        // panes, see: https://aka.ms/terminal-panes // "split": "auto" // "splitMode": "duplicate"
+        // split panes, see: https://aka.ms/terminal-panes // "split": "auto" // "splitMode": "duplicate"
         {
             "command": {
                 "action": "splitPane",
@@ -94,6 +100,35 @@
                 "splitMode": "duplicate"
             },
             "keys": "ctrl+shift+e"
+        },
+        // resize panes
+        {
+            "command": {
+                "action": "resizePane",
+                "direction": "down"
+            },
+            "keys": "ctrl+shift+down"
+        },
+        {
+            "command": {
+                "action": "resizePane",
+                "direction": "left"
+            },
+            "keys": "ctrl+shift+left"
+        },
+        {
+            "command": {
+                "action": "resizePane",
+                "direction": "right"
+            },
+            "keys": "ctrl+shift+right"
+        },
+        {
+            "command": {
+                "action": "resizePane",
+                "direction": "up"
+            },
+            "keys": "ctrl+shift+up"
         }
     ]
 }
