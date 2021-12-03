@@ -72,6 +72,7 @@ PlayFromHandPhase(CardPos1, CardPos2, CardPos3, NumInHand:=6){
     PlayFromHand(CardPos3, NumInHand)
     PlayFromHand(CardPos2Adjusted, NumInHand-1)
     PlayFromHand(CardPos1Adjusted, NumInHand-2)
+    SleepRandom(200)
     PressReady()
     SleepRandom(6000)
 }
