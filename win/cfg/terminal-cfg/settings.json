@@ -4,7 +4,7 @@
 {
     // global application settings, see: https://aka.ms/terminal-global-settings
     "$schema": "https://aka.ms/terminal-profiles-schema",
-    "defaultProfile": "{a3a2e83a-884a-5379-baa8-16f193a13b21}",
+    "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
     "copyOnSelect": false,
     "copyFormatting": false,
     // profiles, visit https://aka.ms/terminal-profile-settings
@@ -22,9 +22,9 @@
         },
         "list": [
             {
-                "name": "PowerShell7-Preview",
-                "background": "#2e0e2a",
-                "guid": "{a3a2e83a-884a-5379-baa8-16f193a13b21}",
+                "name": "PowerShell7",
+                "background": "#000033",
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
                 "source": "Windows.Terminal.PowershellCore"
             },
             {
@@ -35,19 +35,19 @@
                 "icon": "%PROGRAMFILES%\\git\\mingw64\\share\\git\\git-for-windows.ico"
             },
             {
-                "name": "CommandPrompt",
-                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
-                "commandline": "cmd.exe"
-            },
-            {
                 "name": "Ubuntu-20.04",
                 "guid": "{07b52e3e-de2c-5db4-bd2d-ba144ed6c273}",
                 "source": "Windows.Terminal.Wsl"
             },
             {
-                "name": "PowerShell7",
-                "background": "#000033",
-                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "name": "CommandPrompt",
+                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                "commandline": "cmd.exe"
+            },
+            {
+                "name": "PowerShell7-Preview",
+                "background": "#2e0e2a",
+                "guid": "{a3a2e83a-884a-5379-baa8-16f193a13b21}",
                 "source": "Windows.Terminal.PowershellCore"
             },
             {
