@@ -1,0 +1,7 @@
+https://stackoverflow.com/a/52887246/10630957
+https://stackoverflow.com/a/56857146/10630957
+
+https://stackoverflow.com/a/2705678/10630957
+__sed_escape_for_replace() {
+    sed 's/[&/\]/\\&/g' <<<"${1}"
+}
