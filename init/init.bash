@@ -1,153 +1,59 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# owner: acegene
 #
 # descr: adds sourcing of this repo's src.bash in ~/.bash_aliases
 
+# shellcheck disable=SC1091
+
 set -u
 
-PATH_THIS="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)/"$(basename -- "${BASH_SOURCE[0]}")""
-DIR_THIS="$(dirname -- "${PATH_THIS}")"
-BASE_THIS="$(basename -- "${PATH_THIS}")"
-[ -f "${PATH_THIS}" ] && [ -d "${DIR_THIS}" ] && [ -f "${DIR_THIS}/${BASE_THIS}" ] || ! >&2 echo "ERROR: ${BASE_THIS}: could not generate paths" || exit 1
+dir_this="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && printf %s "${PWD}")" || ! printf '%s\n' "ERROR: UNKNOWN_CONTEXT: could not generate dir_this" >&2 || exit 1
+base_this="$(basename -- "${BASH_SOURCE[0]}")" || ! printf '%s\n' "ERROR: UNKNOWN_CONTEXT: could not generate base_this" >&2 || exit 1
+path_this="${dir_this}/${base_this}"
+[ -f "${path_this}" ] && [ -d "${dir_this}" ] || ! printf '%s\n' "ERROR: UNKNOWN_CONTEXT: could not generate paths" >&2 || exit 1
 
-################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
-# yymmdd: 210228
-# generation cmd on the following line:
-# python "${GWSPY}/write_btw.py" "-t" "bash" "-w" "${GWSS}/init/init.bash" "-x" "__echo" "__check_if_objs_exist" "__append_line_to_file_if_not_found"
+# shellcheck disable=SC2034
+log_context="${base_this}" # implicitly used by __log func
 
-__echo(){
-    #### echo that can watch the silent and verbose variables from the scope it was called from
-    local out=''
-    local send_out='false'; local stderr='false'; local obj_set='false'; local end_char='\n'
-    while (( "${#}" )); do
-        case "${1}" in
-            --err|-e) stderr='true';;
-            --verbose|-v) [ "${verbose}" == 'false' ] || send_out='true';;
-            --silent|-s) [ "${silent}" == 'true' ] || send_out='true';;
-            --no-newline|-n) end_char='';;
-            -*) # convert flags grouped as in -vrb to -v -r -b
-                case "${1:1}" in
-                    "") echo "ERROR: arg ${1} is unexpected" && return 2;;
-                    '-') break;;
-                    [a-zA-Z]) echo "ERROR: arg ${1} is unexpected" && return 2;;
-                    *[!a-zA-Z]*) echo "ERROR: arg ${1} is unexpected" && return 2;;
-                    *);;
-                esac
-                set -- 'dummy' $(for ((i=1;i<${#1};i++)); do echo "-${1:$i:1}"; done) "${@:2}" # implicit shift
-                ;;
-            *)
-                [ "${obj_set}" == 'false' ] && obj_set='true' || ! echo "ERROR: too many objs for __echo" || return 2
-                out="${1}"
-                ;;
-        esac
-        shift
-    done
-    [ "${send_out}" == 'false' ] || { [ "${stderr}" == 'true' ] && >&2 printf "${out}${end_char}" || printf "${out}${end_char}"; }
+dir_repo="$(git -C "${dir_this}" rev-parse --show-toplevel | sed 's/^\([a-zA-Z]\):/\/\1/')" || ! printf '%s\n' "ERROR: ${log_context}: could not locate git repo dir for ${base_this}" || exit 1
+
+dir_sh_utils="${dir_repo}/shell/sh-utils"
+. "${dir_sh_utils}/misc-utils.sh" || ! printf '%s\n' "ERROR: ${log_context}: could not source ${dir_sh_utils}/misc-utils.sh" || exit 1
+. "${dir_sh_utils}/path-utils.sh" || ! printf '%s\n' "ERROR: ${log_context}: could not source ${dir_sh_utils}/path-utils.sh" || exit 1
+. "${dir_sh_utils}/print-utils.sh" || ! printf '%s\n' "ERROR: ${log_context}: could not source ${dir_sh_utils}/print-utils.sh" || exit 1
+. "${dir_sh_utils}/validation-utils.sh" || ! printf '%s\n' "ERROR: ${log_context}: could not source ${dir_sh_utils}/validation-utils.sh" || exit 1
+
+__generate_src() {
+    local dir_repo="${1}"
+    local path_src="${2}"
+    local path_src_template="${dir_repo}/src/src.bash.template"
+    #### create src file from template
+    __execute_w_err_q cp "${path_src_template}" "${path_src}" || return 1
+    #### overwrite placeholde template parameters
+    __execute_w_err_q sed -i "s|TEMPLATE_DIR_REPO|${dir_repo}|g" "${path_src}" || return 1
 }
 
-__check_if_objs_exist() {
-    local objs=(); local type=''; local out=''
-    local create='false'; local verbose='false'; local silent='false'; local send_out='false'; local obj_set='false'
-    while (( "${#}" )); do
-        case "${1}" in
-            --type|-t)
-                case "${2}" in
-                    file|f|dir|d) type="${2}"; shift;;
-                    *) __echo -se "ERROR: bad cmd arg combination '${1} ${2}'"; return 1;;
-                esac
-                ;;
-            --create|-c) create='true';;
-            --out|-o) send_out='true';;
-            --verbose|-v) verbose='true';;
-            --silent|-s) silent='true';;
-            -*) # convert flags grouped as in -vrb to -v -r -b
-                case "${1:1}" in
-                    "") __echo -se "ERROR: arg ${1} is unexpected" && return 2;;
-                    '-') break;;
-                    [a-zA-Z]) __echo -se "ERROR: arg ${1} is unexpected" && return 2;;
-                    *[!a-zA-Z]*) __echo -se "ERROR: arg ${1} is unexpected" && return 2;;
-                    *);;
-                esac
-                set -- 'dummy' $(for ((i=1;i<${#1};i++)); do echo "-${1:$i:1}"; done) "${@:2}" # implicit shift
-                ;;
-            *) objs+=("${1}");;
-        esac
-        shift
-    done
-
-    local cmd=''; local flag=''
-    case "${type}" in
-        file|f) cmd='touch'; flag='f';;
-        dir|d) cmd='mkdir'; flag='d';;
-        *) __echo -se "ERROR: arg type '${1}' unexpected" && return 5;;
-    esac
-    for ((i=0; i<${#objs[@]}; i++)); do
-        if [ "${create}" == 'true' ] && [ ! -"${flag}" "${objs[$i]}" ]; then
-            "${cmd}" "${objs[$i]}" && __echo -ve "INFO: created ${type}: ${objs[$i]}" || ! __echo -se "ERROR: could not create ${type}: ${objs[$i]}" || return 4
-            [ "${send_out}" == 'true' ] && out='created'
-        fi
-        [ ! -"${flag}" "${objs[$i]}" ] && __echo -ve "ERROR: ${objs[$i]} does not exist" && return 1
-    done
-    printf "${out}"
-}
-
-__append_line_to_file_if_not_found() {
-    local file=''; local lines=()
-    local verbose='false'; local silent='false'
-    while (( "${#}" )); do
-        case "${1}" in
-            --file|-f) file="${2}"; shift;;
-            --line|-l) line="${2}"; shift;;
-            --verbose|-v) verbose='true';;
-            --silent|-s) silent='true';;
-            -*) # convert flags grouped as in -vrb to -v -r -b
-                case "${1:1}" in
-                    '-') break;;
-                    "") echo "ERROR: arg ${1} is unexpected" && return 2;;
-                    [a-zA-Z]) echo "ERROR: arg ${1} is unexpected" && return 2;;
-                    *[!a-zA-Z]*) echo "ERROR: arg ${1} is unexpected" && return 2;;
-                    *);;
-                esac
-                set -- 'dummy' $(for ((i=1;i<${#1};i++)); do echo "-${1:$i:1}"; done) "${@:2}" # implicit shift
-                ;;
-            *) lines+=("${1}");;
-        esac
-        shift
-    done
-    for line in "${@}"; do lines+=("${line}"); done
-    [ ! -f "${file}" ] && __echo -se "ERROR: file not found: ${file}"
-    for line in "${lines[@]}"; do
-        if ! grep -qF -- "${line}" "${file}"; then
-            [ "$(tail -c 1 "${file}")" != '' ] && printf '\n' >> "${file}" # ensure trailing new line
-            printf "${line}\n" >> "${file}" && __echo -ve "INFO: '${line}' added to '${file}'" || ! __echo -se "ERROR: could not add ${line} to ${file}" || return 1
-        fi
-    done
-}
-################&&!%@@%!&&################ AUTO GENERATED CODE ABOVE THIS LINE ################&&!%@@%!&&################
-
-_init() {
+__main() {
     #### hardcoded vars
-    ## dirs
-    local dir_repo="$(cd -- "${DIR_THIS}" && cd -- "$(git rev-parse --show-toplevel)" && echo "${PWD}")" && [ "${dir_repo}" != '' ] || ! __echo -se "ERROR: dir_repo=''" || return 1
-    local dir_git_hooks="${dir_repo}/.git-hooks"
-    local path_postcheckout_hook_gitignore="${dir_git_hooks}/gitignore/gitignore-gen.bash"
-    local path_postcheckout_hook_gitattributes="${dir_git_hooks}/gitattributes/gitattributes-gen.bash"
     ## files
     local bash_aliases="${HOME}/.bash_aliases"
     local bashrc="${HOME}/.bashrc"
-    local src="${dir_repo}/src/src.bash"
-    #### setup git hooks
-    local dir_git_hooks_config="$(git -C "${dir_repo}" config --local core.hooksPath)"
-    [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && [ "${dir_git_hooks_config}" != '' ] && echo "WARNING: ${PATH_THIS}: overwriting old 'git config --local core.hooksPath' value of '${dir_git_hooks_config}'"
-    [ "${dir_git_hooks_config}" != ${dir_git_hooks} ] && echo "EXEC: git -C ${dir_repo} config --local core.hooksPath ${dir_git_hooks}" && (git -C "${dir_repo}" config --local core.hooksPath "${dir_git_hooks}")
-    [ -f "${path_postcheckout_hook_gitignore}" ] && { "${path_postcheckout_hook_gitignore}" && echo "EXEC: ${path_postcheckout_hook_gitignore}" || echo "ERROR: gitignore-gen.bash failed"; }
-    [ -f "${path_postcheckout_hook_gitattributes}" ] && { "${path_postcheckout_hook_gitattributes}" && echo "EXEC: ${path_postcheckout_hook_gitattributes}" || echo "ERROR: gitattributes-gen.bash failed"; }
+    local path_src="${dir_repo}/src/src.bash"
+    #### generate src file based on parameters
+    local path_src="${dir_repo}/src/src.bash"
+    __generate_src "${dir_repo}" "${dir_repo}/src/src.bash" || ! __log -e "could not generate src" || return 1
+    #### create $bash_aliases and $bashrc if they do not exist
+    __is_file "${bash_aliases}" || touch "${bash_aliases}" || ! __log -e "could not create '${bash_aliases}'" || return 1
+    __is_file "${bashrc}" || __print_out_nl ". '${bash_aliases}'" >>"${bashrc}" || ! __log -e "could not write to '${bashrc}'" || return 1
     #### lines to add to files
-    local lines_bash_aliases=("[ -f '${src}' ] && . '${src}'")
-    #### create files/dirs if not found
-    __check_if_objs_exist -ct 'file' "${bash_aliases}" || return "${?}"
-    local status=''; status="$(__check_if_objs_exist -cot 'file' "${bashrc}")" || return "${?}"; [ "${status}" == 'created' ] && echo ". '${bash_aliases}'" >> "${bashrc}"
-    #### add lines to files if not found
-    __append_line_to_file_if_not_found -vf "${bash_aliases}" "${lines_bash_aliases[@]}"
+    local lines_bash_aliases=("[ -f '${path_src}' ] && . '${path_src}'")
+    #### add ${lines_bash_aliases[@]} to $bash_aliases if not already within $bash_aliases
+    __file_append_trailing_nl_if_none "${bash_aliases}" || return 1
+    local line_bash_aliases=''
+    for line_bash_aliases in "${lines_bash_aliases[@]}"; do
+        __file_append_line_if_not_found "${bash_aliases}" "${line_bash_aliases}" || return 1
+    done
 }
 
-_init "${@}" || exit "${?}"
+__main "${@}"
