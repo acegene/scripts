@@ -1,8 +1,6 @@
 #!/usr/bin/env sh
 #
 # owner: acegene
-#
-# deps: * print-utils.sh # __log
 
 #### descr: check if the given args can be located, useful to see if prereq funcs exist
 #### usage: __are_refs <MAYBE_REF1> <MAYBE_REF2>
@@ -11,15 +9,14 @@
 #### exit: 127 if any necessary refs are missing
 #### global: log_context optional var describing where this func was called from
 #### stderr: if ref can not be found print error and name ref
-#### prereq: funcs are defined: __log
 #### warning: the dependencies of this func must NOT also call this func
 __are_refs() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     command -v __log >/dev/null 2>&1 || {
         printf >&2 '%s\n' "FATAL: ${log_context-UNKNOWN_CONTEXT}: __are_refs: reference to '__log' does NOT exist"
         exit 127
     }
-    #### verify args for execution
+    #### verify args
     [ "${#}" != '0' ] || {
         __log -f "__are_refs: expects at least one arg"
         exit 1
@@ -39,13 +36,12 @@ __are_refs() {
 #### return: 1 if <VAR> is NOT empty
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 127 if any necessary refs are missing
-#### note: https://stackoverflow.com/a/16753536
-#### prereq: funcs are defined: __are_refs __is_eq __log
+#### see: https://stackoverflow.com/a/16753536
 #### warning: passing a var with the form "${VAR-}" will NOT distinguish between non-assigned or empty
 __is_empty() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_empty: expects exactly one arg: given '${#}': args='${*}'"
         exit 1
@@ -59,11 +55,10 @@ __is_empty() {
 #### return: 1 if <LHS> is NOT the same as <RHS>
 #### exit: 1 if there is NOT exactly two args
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __log
 __is_eq() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     [ "${#}" = '2' ] || {
         __log -f "__is_eq: expects exactly two args: given '${#}': args='${*}'"
         exit 1
@@ -78,11 +73,10 @@ __is_eq() {
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 2 if <ARG> is NOT one of 'true' or 'false'
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __log
 __is_false() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_false: expects exactly one arg: given '${#}': args='${*}'"
         exit 1
@@ -103,11 +97,10 @@ __is_false() {
 #### return: 127 if <MAYBE_FUNC> is NOT a recognized func
 #### exit: 1 if there is NOT at least one arg
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __log
 __is_func() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_func: expects exactly one arg: given '${#}': args='${*}'"
         exit 1
@@ -121,12 +114,11 @@ __is_func() {
 #### return: 1 if <ARG> is empty
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __log
 #### warning: passing a var with the form "${VAR-}" will NOT distinguish between non-assigned or empty
 __is_not_empty() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_not_empty: expects exactly one arg: given '${#}': args='${*}'"
         exit 1
@@ -140,11 +132,10 @@ __is_not_empty() {
 #### return: 1 if <LHS> is the same as <RHS>
 #### exit: 1 if there is NOT exactly two args
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __log
 __is_not_eq() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '2' || {
         __log -f "__is_not_eq: expects exactly two args: given '${#}': args='${*}'"
         exit 1
@@ -159,15 +150,14 @@ __is_not_eq() {
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 127 if any necessary refs are missing
 #### global: log_context optional var describing where this func was called from
-#### prereq: funcs are defined: __are_refs __log
 #### warning: the dependencies of this func must NOT also call this func
 __is_ref() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     command -v __log >/dev/null 2>&1 || {
         printf >&2 '%s\n' "FATAL: ${log_context-UNKNOWN_CONTEXT}: __is_ref: reference to '__log' does NOT exist"
         exit 127
     }
-    #### verify args for execution
+    #### verify args
     [ "${#}" = '1' ] || {
         __log -f "__is_not_empty: expects exactly one arg: given '${#}': args='${*}'"
         exit 1
@@ -182,11 +172,10 @@ __is_ref() {
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 2 if <ARG> is NOT one of 'true' or 'false'
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __log
 __is_true() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_not_empty: expects exactly one arg: given '${#}': args='${*}'"
         exit 1

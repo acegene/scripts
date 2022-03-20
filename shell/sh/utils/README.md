@@ -1,12 +1,14 @@
-# sh-utils
+# sh/utils
 ## descr: collection of sh compliant utils
 ## usage:
 * files in this dir should be sourced, NOT executed as a script
-* each file may depend on others, please see the `# deps` section in the file heading
 ## notes:
-* funcs added here should be as portable/POSIX compliant as feasible
 * the emphasis should be reliable, predictable, and debuggable behavior, NOT speed
-* Files use shebang `#!/usr/bin/env sh` -> see https://unix.stackexchange.com/q/29608
+* files use shebang `#!/usr/bin/env sh` -> see https://unix.stackexchange.com/q/29608
+* files in sh/utils can and do depend on other files in sh/utils; consider sourcing via the following
+  * `for file in 'DIR/sh/utils/'*.sh; do . "${file}"; done`
+## Known POSIX/portability exceptions
+* `local` for function specific variable scoping is used
 ## code quality tips:
 * https://www.shellcheck.net
 * https://google.github.io/styleguide/shellguide.html

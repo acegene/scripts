@@ -1,9 +1,6 @@
 #!/usr/bin/env sh
 #
 # owner: acegene
-#
-# deps: * print-utils.sh # __log __print_out
-#       * validation-utils.sh # __are_refs __is_eq
 
 #### descr: check if <INT> is between <LOWER_BOUND> and <UPPER_BOUND>; bounds are excluded
 #### usage: __is_between_int <INT> <LOWER_BOUND> <UPPER_BOUND>
@@ -11,11 +8,10 @@
 #### exit: 1 if there is NOT exactly two args
 #### exit: 2 if any arg is NOT an int
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __is_int __log
 __is_between_exclusive_int() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __is_int __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '3' || {
         __log -f "__is_between_exclusive_int: expects exactly two args: given '${#}': args='${*}'"
         exit 1
@@ -42,11 +38,10 @@ __is_between_exclusive_int() {
 #### exit: 1 if there is NOT exactly two args
 #### exit: 2 if any arg is NOT an int
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __is_int __log
 __is_between_inclusive_int() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __is_int __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '3' || {
         __log -f "__is_between_inclusive_int: expects exactly two args: given '${#}': args='${*}'"
         exit 1
@@ -73,11 +68,10 @@ __is_between_inclusive_int() {
 #### exit: 1 if there is NOT exactly two args
 #### exit: 2 if any arg is NOT an int
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __is_int __log
 __is_greater_int() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __is_int __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '2' || {
         __log -f "__is_greater_int: expects exactly two args: given '${#}': args='${*}'"
         exit 1
@@ -99,11 +93,10 @@ __is_greater_int() {
 #### return: 1 if <MAYBE_INT> is NOT in a form like [0, 1, 01, -01, -21]
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __log
 __is_int() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_int: expects exactly one arg: given '${#}': args='${*}'"
         exit 1
@@ -122,11 +115,10 @@ __is_int() {
 #### exit: 1 if there is NOT exactly two args
 #### exit: 2 if any arg is NOT an int
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __is_int __log
 __is_less_int() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __is_int __log || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '2' || {
         __log -f "__is_less_int: expects exactly two args: given '${#}': args='${*}'"
         exit 1
@@ -148,11 +140,10 @@ __is_less_int() {
 #### return: 0 only when <ARG> is a positive float
 #### exit: 1 if there is NOT exactly one arg
 #### exit: 127 if any necessary refs are missing
-#### prereq: funcs are defined: __are_refs __is_eq __log __print_out
 __is_pos_float() {
-    #### verify prereqs for execution
+    #### verify util prereqs
     __are_refs __is_eq __log __print_out || exit "${?}"
-    #### verify args for execution
+    #### verify args
     __is_eq "${#}" '1' || {
         __log -f "__is_pos_float: expects exactly one arg: given '${#}': args='${*}'"
         exit 1

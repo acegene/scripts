@@ -5,3 +5,6 @@ https://stackoverflow.com/a/2705678/10630957
 __sed_escape_for_replace() {
     sed 's/[&/\]/\\&/g' <<<"${1}"
 }
+
+#### remove windows drive path
+git -C "${dir_this}" rev-parse --show-toplevel | sed 's/^\([a-zA-Z]\):/\/\1/'
