@@ -1,0 +1,15 @@
+{
+    "plugins": ["plugins.filter", "plugins.print"],
+    "routines": [{
+        "name": "routine_1",
+        "jobs": [{
+            "type": "filter",
+            "args": ["--dir", "..", "--or", "git_tracked"]
+        }, {
+            "type": "print",
+            "args": ["json specified print job"],
+            "kwargs": { "kw_name": "supplied kw_name is here" }
+        }]
+
+    }]
+}
