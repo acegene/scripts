@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# owner: acegene
+# author: acegene <acegene22@gmail.com>
 
 #### descr: check if the given args can be located, useful to see if prereq funcs exist
 #### usage: __are_refs <MAYBE_REF1> <MAYBE_REF2>

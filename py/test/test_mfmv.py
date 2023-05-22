@@ -1,18 +1,19 @@
 #!/usr/bin/python3
 #
-# title: mfmv_test.py
+# Tests mfmv.py
 #
-# descr: tests mfmv.py
+# usage
+#   * python mfmv_test.py
+#       * need to have mfmv.py in $PYTHONPATH or place mfmv.py in parent directory
 #
-# usage: python mfmv_test.py
-#            * need to have mfmv.py in $PYTHONPATH or place mfmv.py in parent directory
+# version 0.8
+# notes
+#   * tested on 'Windows 10 2004' # TODO: testing with OSX and linux
 #
-# notes: version 0.8
-#        tested on 'Windows 10 2004' # TODO: testing with OSX and linux
-#
-# todos: cases with more multifiles and files not part of multifiles
-#        refactor creation of params
-#        input prompts related to dir such as 'd ..'
+# todos
+#   * cases with more multifiles and files not part of multifiles
+#   * refactor creation of params
+#   * input prompts related to dir such as 'd ..'
 
 import copy
 import os

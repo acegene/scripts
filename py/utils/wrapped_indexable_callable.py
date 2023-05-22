@@ -1,9 +1,8 @@
-# wrapped_indexable_callable.py
+# Python module for the class 'WrappedIndexableCallable'
 #
-# brief:  python module for the class 'WrappedIndexableCallable'
-#
-# usage:  * from utils.wrapped_indexable_callable import WrappedIndexableCallable
-#         * func_name = WrappedIndexableCallable(func_that_accepts_a_single_int)
+# usage
+#   * from utils.wrapped_indexable_callable import WrappedIndexableCallable
+#   * func_name = WrappedIndexableCallable(func_that_accepts_a_single_int)
 #
 # author: acegene <acegene22@gmail.com>
 

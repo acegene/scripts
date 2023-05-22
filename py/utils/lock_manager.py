@@ -1,9 +1,8 @@
-# lock_manager.py
+# Python module for the class 'LockManager'
 #
-# brief:  python module for the class 'LockManager'
-#
-# usage:  * from utils.lock_manager import LockManager
-#         * lock_manager = LockManager(files_to_lock)
+# usage
+#   * from utils.lock_manager import LockManager
+#   * lock_manager = LockManager(files_to_lock)
 #
 # author: acegene <acegene22@gmail.com>
 

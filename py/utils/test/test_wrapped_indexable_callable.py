@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 #
-# title: test_wrapped_indexable_callable.py
+# Tests wrapped_indexable_callable.py
 #
-# descr: tests wrapped_indexable_callable.py
-#
-# usage: python test_wrapped_indexable_callable.py
-#            * need to have wrapped_indexable_callable.py in $PYTHONPATH or place wrapped_indexable_callable.py in parent directory
+# usage
+#   * python test_wrapped_indexable_callable.py
+#       * need to have wrapped_indexable_callable.py in $PYTHONPATH or place wrapped_indexable_callable.py in parent directory
 
 import itertools
 import unittest

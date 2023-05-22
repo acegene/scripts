@@ -1,9 +1,8 @@
-# exc_utils.py
+# Python module for tools related to exceptions
 #
-# brief:  python module for tools related to exceptions
-#
-# usage:  * from utils import exc_utils
-#               - adding this to a python file allows usage of functions as exc_utils.func()
+# usage
+#   * from utils import exc_utils
+#       * adding this to a python file allows usage of functions as exc_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
 

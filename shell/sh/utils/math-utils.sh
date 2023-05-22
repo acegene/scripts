@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# owner: acegene
+# author: acegene <acegene22@gmail.com>
 
 #### descr: check if <INT> is between <LOWER_BOUND> and <UPPER_BOUND>; bounds are excluded
 #### usage: __is_between_int <INT> <LOWER_BOUND> <UPPER_BOUND>

@@ -1,42 +1,34 @@
 #!/usr/bin/env python3
 #
-# title: mfmv.py
-#
-# descr: searches for multifiles/mfs and then provides interactive cli for renaming/moving/mv'ing located mfs
-#
-#      * mf is a group of incrementing files such as mf=[file1.mp4, file2.mp4, file3.mp4]
-#
-#      * params can be specified at launch via cmdargs and during runtime via interactive cli
-#            * cmdargs params can be understood with parse_inputs() below or using the --help cmdargs option
-#            * cli is only for the mf mv process and includes params=[dir_out, base, part, ext, range_mv, inplace]
-#
-#      * given mf=[f-ep-1-720p.mp4,f-ep-2-720p.mp4]; then base=f, prepart=-ep-, part=1, postpart=-720p, ext=.mp4, range=1-3
-#
-#      * mfs search by default locates mfs with their first file's part in ['a','0','1'] e.g. mf = [f_a,f_b,f_c]
-#            * '--range-search 3-4' via cmdargs can locate mf=[f3,f4,f5] or mf=[f4,f5]; note: does not limit length of mf
-#
-#      * mfs mv default format is base + postpart + part + ext unless inplace=True then format is base + part + postpart + ext
-#            * partial mv: '--range-mv 2-3' via cmdargs or 'range_mv 2-3' via cli to allow mf=[f1,f2,f3] to mv only [f2,f3]
-#
-#      * mf mv is not atomic, but each individual file mv is atomic; see: https://en.wikipedia.org/wiki/Atomicity_(database_systems)
-#
-# usage: python mfmv.py --help
-#            * provides help info on scripts cmd line args
-#        python mfmv.py
-#            * uses default params to locate mfs and launch cli
-#
-# warns: race condition when an external process moves files currently being batch mv'd
-#            * each file is safe, but in the worst case an abort occurs and only a portion of the mf's files will mv
-#
-# notes: version 1.0
-#        tested on 'Windows 10 2004' # TODO: testing with OSX and linux
-#
-# todos: handle files without extensions
-#        proper cmd args mutual exclusion
-#        performance with high quantities of files
-#        allow two mvs for same mf if done partially
-#        file input for cmdargs
-#        allow custom user input auto filename formatter
+# Searches for multifiles/mfs and then provides interactive cli for renaming/moving/mv'ing located mfs
+#   * mf is a group of incrementing files such as mf=[file1.mp4, file2.mp4, file3.mp4]
+#   * params can be specified at launch via cmdargs and during runtime via interactive cli
+#       * cmdargs params can be understood with parse_inputs() below or using the --help cmdargs option
+#       * cli is only for the mf mv process and includes params=[dir_out, base, part, ext, range_mv, inplace]
+#   * given mf=[f-ep-1-720p.mp4,f-ep-2-720p.mp4]; then base=f, prepart=-ep-, part=1, postpart=-720p, ext=.mp4, range=1-3
+#   * mfs search by default locates mfs with their first file's part in ['a','0','1'] e.g. mf = [f_a,f_b,f_c]
+#       * '--range-search 3-4' via cmdargs can locate mf=[f3,f4,f5] or mf=[f4,f5]; note: does not limit length of mf
+#   * mfs mv default format is base + postpart + part + ext unless inplace=True then format is base + part + postpart + ext
+#       * partial mv: '--range-mv 2-3' via cmdargs or 'range_mv 2-3' via cli to allow mf=[f1,f2,f3] to mv only [f2,f3]
+#   * mf mv is not atomic, but each individual file mv is atomic; see: https://en.wikipedia.org/wiki/Atomicity_(database_systems)
+# usage
+#   * python mfmv.py --help
+#       * provides help info on scripts cmd line args
+#   * python mfmv.py
+#       * uses default params to locate mfs and launch cli
+# warnings
+#   * race condition when an external process moves files currently being batch mv'd
+#       * each file is safe, but in the worst case an abort occurs and only a portion of the mf's files will mv
+# version 1.0
+# notes
+#   * tested on 'Windows 10 2004' # TODO: testing with OSX and linux
+# todos
+#   * handle files without extensions
+#   * proper cmd args mutual exclusion
+#   * performance with high quantities of files
+#   * allow two mvs for same mf if done partially
+#   * file input for cmdargs
+#       * allow custom user input auto filename formatter
 
 import argparse
 import itertools

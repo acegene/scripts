@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 #
-# title: write_btw.py
+# Read from file, filter and process content using user input, write output by inserting between section markers
 #
-# descr: read from file, filter and process content using user input, write output by inserting between section markers
+# usage
+#   * see example_cmds below
 #
-# usage: see example_cmds below
-#
-# todos: take input file from pipe
-#        python properly extract oy functions even if they have extra newlines
+# todos
+#   * take input file from pipe
+#   * python properly extract oy functions even if they have extra newlines
 
 import argparse  # cmd line arg parsing
 import os  # filesystem interactions

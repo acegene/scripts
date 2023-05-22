@@ -1,11 +1,11 @@
-# choco_installs.ps1
+# Iterate over hardcoded lists of apps and install them via the choco application manager
 #
-# descr: iterate over hardcoded lists of apps and install them via the choco application manager
+# usage
+#   * choco_installs.ps1
 #
-# usage: choco_installs.ps1
-#
-# todos: allow user response and choice of apps
-#        output meaningful error report
+# todos
+#   * allow user response and choice of apps
+#   * output meaningful error report
 
 Set-ExecutionPolicy RemoteSigned -Force
 
@@ -22,11 +22,13 @@ try {choco -v} catch {
     Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 }
 
-$pkgs_always = '7zip', 'autohotkey', 'discord', 'ffmpeg', 'firefox', 'git', 'gitkraken', 'googlechrome',
-'malwarebytes', 'microsoft-windows-terminal', 'nordvpn', 'notepadplusplus', 'python3',
-'shellcheck', 'spotify', 'steam', 'teamviewer', 'vlc', 'vscode'
-$pkgs_maybe = 'bitnami-xampp', 'itunes', 'javaruntime', 'razer-synapse-2', 'qbittorrent'
-$pkgs_broken = 'battle.net', 'utorrent'
+# $ninite = '7zip', 'chrome', 'discord', 'firefox', 'malwarebytes', 'notepad++', 'python3', 'qbittorrent', 'spotify', 'steam', 'vlc', 'vscode'
+# $ninite_maybe = 'teamviewer', 'itunes'
+
+$pkgs_always = 'autohotkey', 'ffmpeg', 'git', 'gitkraken', 'nordvpn', 'shellcheck',
+$pkgs_maybe = 'bitnami-xampp', 'microsoft-windows-terminal', 'razer-synapse-2'
+$pkgs_broken = 'battle.net'
+# $packages_untested = bazelisk buildifier
 
 ForEach ($PackageName in $pkgs_always) {
     choco install $PackageName -y --acceptlicense

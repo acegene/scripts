@@ -1,9 +1,8 @@
-# cli_utils.py
+# Python module for tools related to command line interfaces
 #
-# brief:  python module for tools related to command line interfaces
-#
-# usage:  * from utils import cli_utils
-#               - adding this to a python file allows usage of functions as cli_utils.func()
+# usage
+#   * from utils import cli_utils
+#       * adding this to a python file allows usage of functions as cli_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
 

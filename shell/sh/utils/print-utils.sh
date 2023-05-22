@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# owner: acegene
+# author: acegene <acegene22@gmail.com>
 
 #### descr: print cmd in a manner which can be copied and executed
 #### usage: __display_cmd <CMD> <*CMD_ARGS>

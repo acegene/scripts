@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# owner: acegene
+# author: acegene <acegene22@gmail.com>
 
 #### descr: Read from stdin and pass output to stdout ie read user input
 #### usage: __get_user_input

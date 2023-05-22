@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 #
-# title: test_slice_utils.py
+# Tests slice_utils.py
 #
-# descr: tests slice_utils.py
-#
-# usage: python test_slice_utils.py
-#            * need to have slice_utils.py in $PYTHONPATH or place slice_utils.py in parent directory
+# usage
+#   * python test_slice_utils.py
+#       * need to have slice_utils.py in $PYTHONPATH or place slice_utils.py in parent directory
 
 import unittest
 import unittest.mock

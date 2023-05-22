@@ -1,9 +1,8 @@
-# log_manager.py
+# Python module for the class 'LogManager'
 #
-# brief:  python module for the class 'LogManager'
-#
-# usage:  * from utils.log_manager import LogManager
-#         * logger = LogManager(__name__)
+# usage
+#   * from utils.log_manager import LogManager
+#   * logger = LogManager(__name__)
 #
 # author: acegene <acegene22@gmail.com>
 

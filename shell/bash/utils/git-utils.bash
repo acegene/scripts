@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# owner: acegene
-#
-# deps: * shell/sh/utils/*.sh
-#
-# todos: * consider how to use: git lfs migrate import --skip-fetch --yes HEAD
+# author: acegene <acegene22@gmail.com>
+# deps
+#   * shell/sh/utils/*.sh
+# todos
+#   * consider how to use: git lfs migrate import --skip-fetch --yes HEAD
 
 #### descr: Print to stdout the ancestor relationship of <LHS_GIT_REF> and <RHS_GIT_REF>
 #### usage: __git_ancestor_relationship <LHS_GIT_REF> <RHS_GIT_REF> <REPO_DIR=$PWD>

@@ -1,47 +1,47 @@
 #!/usr/bin/env python3
 #
-# owner: acegene
+# Manipulate/handle str between str_beg and str_end for a given str/file/pipe; matches work across lines
 #
-# descr: manipulate/handle str between str_beg and str_end for a given str/file/pipe; matches work across lines
-#
-# usage: * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyENDxx"
-#              stdout: "zzOUTxx"
-#        * write_btw.py -b BEG -e END -o '' --str "zzBEGyyENDxx"
-#              stdout: "zzxx"
-#        * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyENDxxBEGwwENDvv"
-#              stdout: "zzOUTxxOUTvv"
-#        * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyBEGxxENDww"
-#              stdout: "zzOUTww"
-#        * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyENDxxBEGwwENDvv" --pattern-btw-type greedy
-#              stdout: "zzOUTvv"
-#        * write_btw.py -b BEG -e END -o OUT --file FILE_PATH
-#              stdout: "zzOUTxx" # if FILE_PATH content is "zzBEGyyENDxx"
-#        * write_btw.py -b BEG -e END -o OUT --file FILE_PATH --file-mode write
-#              if FILE_PATH content is "zzBEGyyENDxx" it will be overwritten by "zzOUTxx"
-#        * printf "zzBEGyyENDxx" | write_btw.py -b BEG -e END -o OUT --pipe
-#              stdout: "zzOUTxx"
-#
-# notes: * use HERE docs with --pipe: https://stackoverflow.com/a/10677233
-#        * use HERE docs to assign to vars for input cmd args: https://stackoverflow.com/a/1655389
-#        * preserves file newline type ('\n' vs '\r\n'); platform executing script should be irrelevant
-#        * this scripts intent is to be robust rather than fast
-#        * text encodings for python: https://stackoverflow.com/a/25584253
-#
-# warns: * this script has no file locking mechanism
-#        * problems could arise with large files (2-3 GB for 32 bit python and 64GB for 64 bit python)
-#
-# todos: * option for handling overlapping matches
-#        * user specified capture groups and related potential behavior
-#        * option to match str_beg and end-of-str_in if matching str_end no found; similar for str_end
-#        * handle sourcing and calling from another script with regards to logging
-#        * pattern matching for str_beg and str_end
-#        * add more thorough encoding checks and exception handling
-#        * add option to write to stdout as binary (and maybe read from stdin as binary?)
-#              https://stackoverflow.com/a/27185688
-#              https://stackoverflow.com/a/58664856
-#        * consider auto encoding detection confidence from chardet (or replacing chardet alltogether?)
-#        * carefully consider each usage of newline=""
-#        * consider checking if content matches file before writing
+# author: acegene <acegene22@gmail.com>
+# usage
+#   * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyENDxx"
+#       * stdout: "zzOUTxx"
+#   * write_btw.py -b BEG -e END -o '' --str "zzBEGyyENDxx"
+#       * stdout: "zzxx"
+#   * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyENDxxBEGwwENDvv"
+#       * stdout: "zzOUTxxOUTvv"
+#   * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyBEGxxENDww"
+#       * stdout: "zzOUTww"
+#   * write_btw.py -b BEG -e END -o OUT --str "zzBEGyyENDxxBEGwwENDvv" --pattern-btw-type greedy
+#       * stdout: "zzOUTvv"
+#   * write_btw.py -b BEG -e END -o OUT --file FILE_PATH
+#       * stdout: "zzOUTxx" # if FILE_PATH content is "zzBEGyyENDxx"
+#   * write_btw.py -b BEG -e END -o OUT --file FILE_PATH --file-mode write
+#       * if FILE_PATH content is "zzBEGyyENDxx" it will be overwritten by "zzOUTxx"
+#   * printf "zzBEGyyENDxx" | write_btw.py -b BEG -e END -o OUT --pipe
+#       * stdout: "zzOUTxx"
+# notes
+#   * use HERE docs with --pipe: https://stackoverflow.com/a/10677233
+#   * use HERE docs to assign to vars for input cmd args: https://stackoverflow.com/a/1655389
+#   * preserves file newline type ('\n' vs '\r\n'); platform executing script should be irrelevant
+#   * this scripts intent is to be robust rather than fast
+#   * text encodings for python: https://stackoverflow.com/a/25584253
+# warnings
+#   * this script has no file locking mechanism
+#   * problems could arise with large files (2-3 GB for 32 bit python and 64GB for 64 bit python)
+# todos
+#   * option for handling overlapping matches
+#   * user specified capture groups and related potential behavior
+#   * option to match str_beg and end-of-str_in if matching str_end no found; similar for str_end
+#   * handle sourcing and calling from another script with regards to logging
+#   * pattern matching for str_beg and str_end
+#   * add more thorough encoding checks and exception handling
+#   * add option to write to stdout as binary (and maybe read from stdin as binary?)
+#       * https://stackoverflow.com/a/27185688
+#       * https://stackoverflow.com/a/58664856
+#   * consider auto encoding detection confidence from chardet (or replacing chardet alltogether?)
+#   * carefully consider each usage of newline=""
+#   * consider checking if content matches file before writing
 
 import argparse
 import enum

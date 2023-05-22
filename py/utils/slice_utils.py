@@ -1,9 +1,8 @@
-# slice_utils.py
+# Python module for tools related to slice objects
 #
-# brief:  python module for tools related to slice objects
-#
-# usage:  * from utils import slice_utils
-#               - adding this to a python file allows usage of functions as slice_utils.func()
+# usage:
+#   * from utils import slice_utils
+#       * adding this to a python file allows usage of functions as slice_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
 

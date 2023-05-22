@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# owner: acegene
+# author: acegene <acegene22@gmail.com>
 
 #### descr: checks if <FILE> has a trailing newline, and if not, appends one
 #### usage: __file_append_trailing_nl_if_none <FILE>

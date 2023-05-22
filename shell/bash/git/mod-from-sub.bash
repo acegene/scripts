@@ -1,33 +1,29 @@
 #!/usr/bin/env bash
 #
-# owner: acegene
+# Find the most recent module's ancestor commit for a given submodule's hash/branch
 #
-# descr: find the most recent module's ancestor commit for a given submodule's hash/branch
-#
-# usage: * mod-from-sub --module MODULE_DIR --submodule SUB_RELATIVE_DIR
-#            find the most recent MODULE_DIR ancestor commit for HEAD in MODULE_DIR/SUB_RELATIVE_DIR
-#        * mod-from-sub --submodule SUB_RELATIVE_DIR
-#            find the most recent cwd ancestor commit for HEAD in cwd/SUB_RELATIVE_DIR
-#        * mod-from-sub --submodule SUB_RELATIVE_DIR --submodule-ref HEAD~1
-#            find the most recent cwd ancestor commit for HEAD~1 in cwd/SUB_RELATIVE_DIR
-#
-# prereqs: * newer commits of the module point to the same or newer commit of the submodule
-#
-# options:
-#          Primary options
-#          * -m, --module=<DIR_MODULE=$PWD>             # default=cwd; path to module dir
-#          * -s, --submodule=<SUBMODULE>                # relative path to submodule dir from module dir
-#          * --mr, --module-ref=<COMMIT_OR_REF=origin/INFERRED_DEFAULT_BRANCH> # most recent ref to be used as a starting point on module
-#          * --sr, --submodule-ref=<COMMIT_OR_REF=HEAD> # submodule commit that a module ancestor commit will be found for
-#          * --module-remote=<REMOTE>                   # default=origin; remote to fetch from for module
-#
-#          Misc
-#          * -h, --help                                 # display this help text and exit
-#
-#
-#
-# todos: * handle 'fatal: remote error: upload-pack: not our ref 546554554320034d3721ab2b6be7997d5019fb56'
-#        * remote detection
+# author: acegene <acegene22@gmail.com>
+# usage
+#   * mod-from-sub --module MODULE_DIR --submodule SUB_RELATIVE_DIR
+#       * find the most recent MODULE_DIR ancestor commit for HEAD in MODULE_DIR/SUB_RELATIVE_DIR
+#   * mod-from-sub --submodule SUB_RELATIVE_DIR
+#       * find the most recent cwd ancestor commit for HEAD in cwd/SUB_RELATIVE_DIR
+#   * mod-from-sub --submodule SUB_RELATIVE_DIR --submodule-ref HEAD~1
+#       * find the most recent cwd ancestor commit for HEAD~1 in cwd/SUB_RELATIVE_DIR
+# prereqs
+#   * newer commits of the module point to the same or newer commit of the submodule
+# options
+#   Primary options
+#   * -m, --module=<DIR_MODULE=$PWD>             # default=cwd; path to module dir
+#   * -s, --submodule=<SUBMODULE>                # relative path to submodule dir from module dir
+#   * --mr, --module-ref=<COMMIT_OR_REF=origin/INFERRED_DEFAULT_BRANCH> # most recent ref to be used as a starting point on module
+#   * --sr, --submodule-ref=<COMMIT_OR_REF=HEAD> # submodule commit that a module ancestor commit will be found for
+#   * --module-remote=<REMOTE>                   # default=origin; remote to fetch from for module
+#   Misc
+#   * -h, --help                                 # display this help text and exit
+# todos
+#   * handle 'fatal: remote error: upload-pack: not our ref 546554554320034d3721ab2b6be7997d5019fb56'
+#   * remote detection
 
 set -u
 

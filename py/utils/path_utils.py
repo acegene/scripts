@@ -1,9 +1,8 @@
-# path_utils.py
+# Python module for tools related to path objects
 #
-# brief:  python module for tools related to path objects
-#
-# usage:  * from utils import path_utils
-#               - adding this to a python file allows usage of functions as path_utils.func()
+# usage
+#   * from utils import path_utils
+#       * adding this to a python file allows usage of functions as path_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
 

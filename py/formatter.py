@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 #
-# formatter.py
+# Python module for path formatting based on supplied criteria; can be executed as a script
 #
-# brief:  python module for path formatting based on supplied criteria; can be executed as a script
-#
-# usage:  * import formatter
-#               - this is needed to be used as a module
-#         * formatter.py --dir <DIR> --mode 'dryrun' --formatter 'basenames_to_lower'
-#               - to execute this as a script; this particular example lists all uppercase containing filenames in <DIR>
+# usage
+#   * import formatter
+#       * this is needed to be used as a module
+#   * formatter.py --dir <DIR> --mode 'dryrun' --formatter 'basenames_to_lower'
+#       * to execute this as a script; this particular example lists all uppercase containing filenames in <DIR>
 #
 # author: acegene <acegene22@gmail.com>
+#
+# todos
+#   * rename file to prevent 'is overriding the stdlib module "formatter"'
 
 import argparse
 import difflib

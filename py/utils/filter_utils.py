@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 #
-# filter_utils.py
+# Python module for object filtering based on supplied criteria; can be executed as a script
 #
-# brief:  python module for object filtering based on supplied criteria; can be executed as a script
-#
-# usage:  * from utils import filter_utils
-#               - this is needed to be used as a module
-#         * filter_utils.py --dir <DIR> --or 'files' --and 'case --has-upper --file-mode'
-#               - to execute this as a script; this particular example lists all uppercase containing filenames in <DIR>
+# usage
+#   * from utils import filter_utils
+#       * this is needed to be used as a module
+#   * filter_utils.py --dir <DIR> --or 'files' --and 'case --has-upper --file-mode'
+#       * to execute this as a script; this particular example lists all uppercase containing filenames in <DIR>
 #
 # author: acegene <acegene22@gmail.com>
 
