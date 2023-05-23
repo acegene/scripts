@@ -1,3 +1,6 @@
 [submodule "win/ahk"]
 	path = win/ahk
 	url = git@github.com:acegene/ahk.git
+[submodule "shell"]
+	path = shell
+	url = git@github.com:acegene/shell.git
