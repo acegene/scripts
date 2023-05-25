@@ -18,7 +18,7 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 }
 
 try {choco -v} catch {
-    Write-Output 'INFO: seems chocolatey aka choco not installed, installing...'
+    Write-Host 'INFO: seems chocolatey aka choco not installed, installing...'
     Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 }
 
