@@ -18,9 +18,9 @@ from utils.lock_manager import LockManager
 
 # https://www.programcreek.com/python/?code=lanbing510%2FGTDWeb%2FGTDWeb-master%2Fdjango%2Fcore%2Ffiles%2Fmove.py
 
-# PATH_THIS = os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename)
-# DIR_THIS = os.path.dirname(PATH_THIS)
-# BASE_THIS = os.path.basename(PATH_THIS)
+# path_this = os.path.abspath(inspect.getframeinfo(inspect.currentframe()).filename)
+# dir_this = os.path.dirname(path_this)
+# base_this = os.path.basename(path_this)
 
 PathLike = Union[str, bytes, os.PathLike]
 

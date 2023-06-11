@@ -9,13 +9,13 @@
 from typing import Any, Callable, Optional, Sequence, Union
 
 
-def raise_if_false(expression: bool, exception: Exception, err_msg: Optional[str] = None) -> None:
+def raise_if_false(expression: bool, exception: Exception, print_object: Optional[Any] = None) -> None:
     """Throw <exception> if <expression> == False
 
     Args:
         expression (bool): Expression that determines whether to raise <exception>
         exception (Exception): Exception to be raised if <expression> == False
-        err_msg (str): String to print if <expression> == False
+        print_object (str): Object to print if <expression> == False
 
     Returns:
         None
@@ -24,8 +24,8 @@ def raise_if_false(expression: bool, exception: Exception, err_msg: Optional[str
         Type(<exception>): This is raised if <expression> == False
     """
     if not expression:
-        if err_msg != None:
-            print(err_msg)
+        if print_object is not None:
+            print(print_object)
         raise exception
 
 

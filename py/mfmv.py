@@ -11,6 +11,7 @@
 #   * mfs mv default format is base + postpart + part + ext unless inplace=True then format is base + part + postpart + ext
 #       * partial mv: '--range-mv 2-3' via cmdargs or 'range_mv 2-3' via cli to allow mf=[f1,f2,f3] to mv only [f2,f3]
 #   * mf mv is not atomic, but each individual file mv is atomic; see: https://en.wikipedia.org/wiki/Atomicity_(database_systems)
+#
 # usage
 #   * python mfmv.py --help
 #       * provides help info on scripts cmd line args

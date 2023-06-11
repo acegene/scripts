@@ -61,3 +61,5 @@ pathnames limit remove
     registry HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled set to 1 # create if needed via  New->DWORD (32-bit) Value
 
 C:\Program Files\Git\etc\gitconfig symlinks -> true
+
+https://superuser.com/a/1186786 # How do I stop Windows 10 going to sleep after locking with Win+L key
