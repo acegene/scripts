@@ -1,0 +1,464 @@
+{
+    "references": {
+        "relatives": {
+            "gws": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWS"
+                }]
+            },
+            "gwsa": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSA"
+                }]
+            },
+            "gwsl": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSL"
+                }]
+            },
+            "gwslew": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSLEW"
+                }]
+            },
+            "gwsm": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSM"
+                }]
+            },
+            "gwss": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSS"
+                }]
+            },
+            "gwssh": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSSH"
+                }]
+            },
+            "gwsahk": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "GWSAHK"
+                }]
+            },
+            "repos": {
+                "relative_type": "ABSOLUTE",
+                "path": [{
+                    "path_type": "ENV_VAR",
+                    "value": "REPOS"
+                }]
+            }
+        }
+    },
+    "actions": [{
+            "action_type": "cp",
+            "kwargs": {
+                "dsts": [{
+                        "relative_type": "gwsa",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsl",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwslew",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsm",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwss",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwssh",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsahk",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitattributes"
+                            }
+                        ]
+                    }
+                ],
+                "options": {
+                    "overwite_status": "YES_W_DIFF_W_PROMPT",
+                    "preview": false
+                },
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".gitattributes"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "cp",
+            "kwargs": {
+                "dsts": [{
+                        "relative_type": "gwsa",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsl",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwslew",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsm",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwss",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwssh",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsahk",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": ".gitignore"
+                            }
+                        ]
+                    }
+                ],
+                "options": {
+                    "overwite_status": "YES_W_DIFF_W_PROMPT",
+                    "preview": false
+                },
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".gitignore"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "cp",
+            "kwargs": {
+                "dsts": [{
+                        "relative_type": "gwsa",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsl",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwslew",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsm",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwss",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwssh",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "gwsahk",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "FILE",
+                                "value": "LICENSE.md"
+                            }
+                        ]
+                    }
+                ],
+                "options": {
+                    "overwite_status": "YES_W_DIFF_W_PROMPT",
+                    "preview": false
+                },
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": "LICENSE.md"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                        "relative_type": "repos",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "DIRECTORY",
+                                "value": ".vscode"
+                            }
+                        ]
+                    },
+                    {
+                        "relative_type": "HOME",
+                        "path": [{
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "DIRECTORY",
+                                "value": "Documents"
+                            },
+                            {
+                                "path_type": "DIRECTORY_SEPARATOR"
+                            },
+                            {
+                                "path_type": "DIRECTORY",
+                                "value": ".vscode"
+                            }
+                        ]
+                    }
+                ],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "DIRECTORY",
+                            "value": ".vscode"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".clang-format"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".clang-format"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".editorconfig"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".editorconfig"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}
