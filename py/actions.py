@@ -16,48 +16,7 @@ import sys
 from typing import Callable, Dict, List, Optional, Union
 
 from utils import cli_utils
-
-PathLike = Union[str, bytes, os.PathLike]
-
-
-def create_path_from_json_path(json_path):
-    path = ""
-    for path_piece in json_path:
-        if path_piece["path_type"] == "DIRECTORY":
-            path += path_piece["value"]
-        elif path_piece["path_type"] == "DIRECTORY_SEPARATOR":
-            path += os.sep
-        elif path_piece["path_type"] == "ENV_VAR":
-            path += os.path.expandvars(f"${path_piece['value']}")  # alternative: os.environ.get("VAR")
-        elif path_piece["path_type"] == "FILE":
-            path += path_piece["value"]
-        else:
-            print(f"FATAL: unexpected path_piece['path_type']={path_piece['path_type']}")
-            sys.exit(1)
-    return path
-
-
-def create_path_from_relative_type(relative_type, relatives=None):
-    relatives = {} if relatives is None else relatives
-
-    relative = relatives.get(relative_type, None)
-    if relative is not None:
-        return create_path_from_json_relative_path(relative, relatives)
-    elif relative_type == "ABSOLUTE":
-        return ""
-    elif relative_type == "CWD":
-        return os.getcwd()
-    elif relative_type == "HOME":
-        return os.path.expanduser("~")
-    else:
-        print(f"FATAL: unexpected relative_type={relative_type}; relatives={relatives}")
-        sys.exit(1)
-
-
-def create_path_from_json_relative_path(json_relative_path, relatives=None):
-    path_base = create_path_from_relative_type(json_relative_path["relative_type"], relatives)
-    path_suffix = create_path_from_json_path(json_relative_path["path"])
-    return f"{path_base}{path_suffix}"
+from utils import json_utils
 
 
 def print_diff(lhs, rhs, lhs_encoding="utf-8", rhs_encoding="utf-8"):
@@ -75,7 +34,7 @@ def print_diff(lhs, rhs, lhs_encoding="utf-8", rhs_encoding="utf-8"):
     print("".join([line for line in diff]))
 
 
-def preview_cp(src_path: PathLike, dst_path: PathLike) -> PathLike:
+def preview_cp(src_path: str, dst_path: str) -> str:
     print(f"INFO: PREVIEW MODE: cp '{src_path}' '{dst_path}'")
     return dst_path
 
@@ -83,10 +42,10 @@ def preview_cp(src_path: PathLike, dst_path: PathLike) -> PathLike:
 def action_make_symlinks(src, links, options=None, references=None) -> Dict:
     relatives = None if references is None else references.get("relatives", None)
 
-    src_path = create_path_from_json_relative_path(src, relatives)
+    src_path = json_utils.create_path_from_json_relative_path(src, relatives)
     link_paths = []
     for link in links:
-        link_path = create_path_from_json_relative_path(link, relatives)
+        link_path = json_utils.create_path_from_json_relative_path(link, relatives)
         if os.path.exists(link_path):
             if os.path.islink(link_path):
                 print(f"INFO: skipping: make_symlink '{src_path}' '{link_path}'; symlink already exists")
@@ -118,10 +77,10 @@ def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> Dict:
     overwrite_status = options.get("overwite_status", "NO_W_ERROR")
     preview = options.get("preview", True)
 
-    cp_func: Callable = preview_cp if preview else shutil.copy2
+    cp_func: Callable[[str, str], str] = preview_cp if preview else shutil.copy2  # type: ignore
 
-    src_path = create_path_from_json_relative_path(src, relatives)
-    dst_path = create_path_from_json_relative_path(dst, relatives)
+    src_path = json_utils.create_path_from_json_relative_path(src, relatives)
+    dst_path = json_utils.create_path_from_json_relative_path(dst, relatives)
 
     if os.path.exists(dst_path):
         if filecmp.cmp(src_path, dst_path):
@@ -193,10 +152,11 @@ def action_cp_to_dsts(src, dsts, options=None, references=None) -> Dict:
             print("ERROR: mismatched path_type; src_path_type != dst_path_type; {src_path_type} != {dst_path_type}")
             return {"error_code": 1, "dst_paths": []}
 
+    action_cp_to_dst: Callable[..., Dict]
     if src_path_type == "DIRECTORY":
-        action_cp_to_dst: Callable[..., Dict] = action_cp_to_dst_directory
+        action_cp_to_dst = action_cp_to_dst_directory
     elif src_path_type == "FILE":
-        action_cp_to_dst: Callable[..., Dict] = action_cp_to_dst_file
+        action_cp_to_dst = action_cp_to_dst_file
     else:
         print(f"ERROR: unrecognized src_path_type={src_path_type}")
         return {"error_code": 1, "dst_paths": []}

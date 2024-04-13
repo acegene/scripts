@@ -15,6 +15,8 @@
 #   * refactor creation of params
 #   * input prompts related to dir such as 'd ..'
 
+# type: ignore # TODO
+
 import copy
 import os
 import sys

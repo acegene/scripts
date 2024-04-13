@@ -13,8 +13,11 @@
             "keys": "ctrl+v"
         },
         {
-            "command": "find",
-            "keys": "ctrl+shift+f"
+            "command": {
+                "action": "resizePane",
+                "direction": "up"
+            },
+            "keys": "ctrl+shift+up"
         },
         {
             "command": {
@@ -22,6 +25,18 @@
                 "direction": "left"
             },
             "keys": "ctrl+shift+left"
+        },
+        {
+            "command": "find",
+            "keys": "ctrl+shift+f"
+        },
+        {
+            "command": {
+                "action": "splitPane",
+                "split": "down",
+                "splitMode": "duplicate"
+            },
+            "keys": "ctrl+shift+o"
         },
         {
             "command": {
@@ -39,21 +54,6 @@
         },
         {
             "command": {
-                "action": "resizePane",
-                "direction": "up"
-            },
-            "keys": "ctrl+shift+up"
-        },
-        {
-            "command": {
-                "action": "splitPane",
-                "split": "down",
-                "splitMode": "duplicate"
-            },
-            "keys": "ctrl+shift+o"
-        },
-        {
-            "command": {
                 "action": "splitPane",
                 "split": "right",
                 "splitMode": "duplicate"
@@ -64,6 +64,9 @@
     "copyFormatting": "none",
     "copyOnSelect": false,
     "defaultProfile": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+    "newTabMenu": [{
+        "type": "remainingProfiles"
+    }],
     "profiles": {
         "defaults": {
             "background": "#000000",
@@ -81,6 +84,7 @@
         "list": [{
                 "background": "#000033",
                 "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "hidden": false,
                 "name": "PowerShell7",
                 "source": "Windows.Terminal.PowershellCore"
             },
@@ -100,5 +104,28 @@
             }
         ]
     },
+    "schemes": [{
+        "background": "#0C0C0C",
+        "black": "#0C0C0C",
+        "blue": "#0037DA",
+        "brightBlack": "#767676",
+        "brightBlue": "#3B78FF",
+        "brightCyan": "#61D6D6",
+        "brightGreen": "#16C60C",
+        "brightPurple": "#B4009E",
+        "brightRed": "#E74856",
+        "brightWhite": "#F2F2F2",
+        "brightYellow": "#F9F1A5",
+        "cursorColor": "#FFFFFF",
+        "cyan": "#3A96DD",
+        "foreground": "#CCCCCC",
+        "green": "#13A10E",
+        "name": "Campbell",
+        "purple": "#881798",
+        "red": "#C50F1F",
+        "selectionBackground": "#FFFFFF",
+        "white": "#CCCCCC",
+        "yellow": "#C19C00"
+    }],
     "themes": []
 }

@@ -459,6 +459,141 @@
                     ]
                 }
             }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".jsbeautifyrc"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".jsbeautifyrc"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".mypy.ini"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".mypy.ini"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".pylintrc"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".pylintrc"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".shellcheckrc"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": ".shellcheckrc"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "action_type": "make_symlinks",
+            "kwargs": {
+                "links": [{
+                    "relative_type": "HOME",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": "pyproject.toml"
+                        }
+                    ]
+                }],
+                "src": {
+                    "relative_type": "gws",
+                    "path": [{
+                            "path_type": "DIRECTORY_SEPARATOR"
+                        },
+                        {
+                            "path_type": "FILE",
+                            "value": "pyproject.toml"
+                        }
+                    ]
+                }
+            }
         }
     ]
 }

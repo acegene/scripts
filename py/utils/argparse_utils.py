@@ -2,11 +2,7 @@ import argparse
 import os
 import re
 
-from typing import Union
-
 from utils import path_utils
-
-PathLike = Union[str, bytes, os.PathLike]
 
 
 class ArgumentParserWithDefaultChecking:
@@ -50,10 +46,6 @@ class RegexAction(argparse.Action):
             raise SystemExit(f"ValueError: Regex pattern '{values}' is not valid.")
 
 
-from argparse import ArgumentTypeError as err
-import os
-
-
 class PathType(object):
     """
 
@@ -81,39 +73,39 @@ class PathType(object):
         if string == "-":
             # the special argument "-" means sys.std{in,out}
             if self._type == "dir":
-                raise err("standard input/output (-) not allowed as directory path")
+                raise argparse.ArgumentTypeError("standard input/output (-) not allowed as directory path")
             elif self._type == "symlink":
-                raise err("standard input/output (-) not allowed as symlink path")
+                raise argparse.ArgumentTypeError("standard input/output (-) not allowed as symlink path")
             elif not self._dash_ok:
-                raise err("standard input/output (-) not allowed")
+                raise argparse.ArgumentTypeError("standard input/output (-) not allowed")
         else:
             e = os.path.exists(string)
             if self._exists == True:
                 if not e:
-                    raise err("path does not exist: '%s'" % string)
+                    raise argparse.ArgumentTypeError("path does not exist: '%s'" % string)
 
                 if self._type is None:
                     pass
                 elif self._type == "file":
                     if not os.path.isfile(string):
-                        raise err("path is not a file: '%s'" % string)
+                        raise argparse.ArgumentTypeError("path is not a file: '%s'" % string)
                 elif self._type == "symlink":
-                    if not os.path.symlink(string):
-                        raise err("path is not a symlink: '%s'" % string)
+                    if not os.path.islink(string):
+                        raise argparse.ArgumentTypeError("path is not a symlink: '%s'" % string)
                 elif self._type == "dir":
                     if not os.path.isdir(string):
-                        raise err("path is not a directory: '%s'" % string)
+                        raise argparse.ArgumentTypeError("path is not a directory: '%s'" % string)
                 elif not self._type(string):
-                    raise err("path not valid: '%s'" % string)
+                    raise argparse.ArgumentTypeError("path not valid: '%s'" % string)
             else:
                 if self._exists == False and e:
-                    raise err("path exists: '%s'" % string)
+                    raise argparse.ArgumentTypeError("path exists: '%s'" % string)
 
                 p = os.path.dirname(os.path.normpath(string)) or "."
                 if not os.path.isdir(p):
-                    raise err("parent path is not a directory: '%s'" % p)
+                    raise argparse.ArgumentTypeError("parent path is not a directory: '%s'" % p)
                 elif not os.path.exists(p):
-                    raise err("parent directory does not exist: '%s'" % p)
+                    raise argparse.ArgumentTypeError("parent directory does not exist: '%s'" % p)
 
         return string
 
@@ -138,17 +130,17 @@ class DirType(object):
     def __call__(self, string):
         if self._exists == True:
             if not os.path.isdir(string):
-                raise err(f"Path '{string}' does not exist.")
+                raise argparse.ArgumentTypeError(f"Path '{string}' does not exist.")
             return path_utils.path_clean(string)
         else:
             if self._exists == False:
                 if os.path.isdir(string):
-                    raise err("Path '{string}' exists.")
+                    raise argparse.ArgumentTypeError("Path '{string}' exists.")
             cleaned = path_utils.path_clean(string)
             parent = os.path.dirname(cleaned)
             if not os.path.isdir(parent):
                 if os.path.exists(parent):
-                    raise err(f"Parent path '{parent}' is not a directory.")
+                    raise argparse.ArgumentTypeError(f"Parent path '{parent}' is not a directory.")
                 else:
-                    raise err(f"Parent path '{parent}' does not exist.")
+                    raise argparse.ArgumentTypeError(f"Parent path '{parent}' does not exist.")
             return cleaned

@@ -1,12 +1,9 @@
+# type: ignore # TODO: need to revisit the binary needs of this file
+
 import math
-import os
 import re
 
-from typing import Union
-
 from utils import path_utils
-
-PathLike = Union[str, bytes, os.PathLike]
 
 LE_CR = b"\r"
 LE_CRLF = b"\r\n"
@@ -77,7 +74,7 @@ def one_trailing_newline(string: str, eol: str = LE_LF) -> str:
     raise ValueError(f"Unhandled input '{eol_nrm}'.")
 
 
-def path_basename_to_lower(path: PathLike, ignore_locks=False) -> PathLike:
+def path_basename_to_lower(path: str, ignore_locks=False) -> str:
     return path_utils.path_basename_to_lower(path, ignore_locks)
 
 

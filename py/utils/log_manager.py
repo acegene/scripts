@@ -6,11 +6,13 @@
 #
 # author: acegene <acegene22@gmail.com>
 
+# type: ignore
+
 import logging
 import sys
 from traceback import format_exception
 
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence
 
 _LVL_D = logging.getLevelName("DEBUG")
 _LVL_I = logging.getLevelName("INFO")
@@ -35,10 +37,10 @@ class LogManager:
         if self._logger.hasHandlers():
             self._logger.handlers.clear()
         #### setup handlers
-        handlers = []
+        handlers: List[Any] = []
         if stderr:
             handlers.append(logging.StreamHandler(sys.stderr))
-        if filename != None:
+        if filename is not None:
             handlers.append(logging.FileHandler(filename))
         for handler in handlers:
             handler.setFormatter(self._formatter)

@@ -3,21 +3,23 @@
 # Python module for path formatting based on supplied criteria; can be executed as a script
 #
 # usage
-#   * import formatter
+#   * import format_actions
 #       * this is needed to be used as a module
-#   * formatter.py --dir <DIR> --mode 'dryrun' --formatter 'basenames_to_lower'
+#   * format_actions.py --dir <DIR> --mode 'dryrun' --format_actions 'basenames_to_lower'
 #       * to execute this as a script; this particular example lists all uppercase containing filenames in <DIR>
 #
 # author: acegene <acegene22@gmail.com>
 #
 # todos
-#   * rename file to prevent 'is overriding the stdlib module "formatter"'
+#   * rename file to prevent 'is overriding the stdlib module "format_actions"'
+
+# type: ignore # TODO
 
 import argparse
 import difflib
 import os
 
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any, Dict, List, Sequence
 
 from utils import cli_utils
 from utils import format_utils
@@ -25,8 +27,6 @@ from utils import filter_utils
 from utils import path_utils
 from utils.argparse_utils import ArgumentParserWithDefaultChecking, DirAction
 from utils.log_manager import LogManager
-
-PathLike = Union[str, bytes, os.PathLike]
 
 
 def _parse_input(args: Sequence[str] = None) -> List[Dict]:
@@ -45,12 +45,12 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
         group_case.add_argument("--mode", "-m", choices=["dryrun", "force", "prompt"], help="Formatter execution mode")
         return parser
 
-    def generate_parser_basenames_to_lower(dir_: PathLike, mode: str) -> argparse.ArgumentParser:
+    def generate_parser_basenames_to_lower(dir_: str, mode: str) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
         return parser
 
-    def generate_parser_whitespace(dir_: PathLike, mode: str) -> argparse.ArgumentParser:
+    def generate_parser_whitespace(dir_: str, mode: str) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
         parser.add_argument("--eol", "-e", default="lf", help="End of line character(s)")
@@ -84,7 +84,7 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
     return formatter_lst, args.filters
 
 
-def formatter_basenames_to_lower(objs: PathLike, mode):
+def formatter_basenames_to_lower(objs: str, mode):
     objs_modified = []
     objs_unmodified = []
     if mode == "dryrun":
@@ -112,7 +112,7 @@ def formatter_basenames_to_lower(objs: PathLike, mode):
     return objs_modified, objs_unmodified
 
 
-def formatter_whitespace(objs: PathLike, mode: str, eol: str):
+def formatter_whitespace(objs: str, mode: str, eol: str):
     objs_modified = []
     objs_unmodified = []
     for obj in objs:
@@ -165,7 +165,7 @@ def formatter_whitespace(objs: PathLike, mode: str, eol: str):
     return objs_modified, objs_unmodified
 
 
-def formatter_run(formatter: str, objs: PathLike, args: Dict) -> Sequence[Any]:
+def formatter_run(formatter: str, objs: str, args: Dict) -> Sequence[Any]:
     if formatter == "basenames_to_lower":
         return formatter_basenames_to_lower(objs, **args)
     if formatter == "whitespace":

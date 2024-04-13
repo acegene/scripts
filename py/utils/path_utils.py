@@ -12,7 +12,7 @@ import shutil
 import tempfile
 import uuid
 
-from typing import Sequence, Union
+from typing import Sequence
 
 from utils.lock_manager import LockManager
 
@@ -22,21 +22,16 @@ from utils.lock_manager import LockManager
 # dir_this = os.path.dirname(path_this)
 # base_this = os.path.basename(path_this)
 
-PathLike = Union[str, bytes, os.PathLike]
 
-
-def generate_tmp_from_path(path: PathLike):
+def generate_tmp_from_path(path: str):
     """Generate and return temporary unique pathname from <path>
-
-    Prereq cmds:
-        PathLike = Union[str, bytes, os.PathLike]
 
     Imports:
         os
         uuid
 
     Args:
-        path (PathLike): Path to generate output tmp path from
+        path (str): Path to generate output tmp path from
 
     Returns:
         Pathlike: Path that has been added unique content
@@ -47,37 +42,35 @@ def generate_tmp_from_path(path: PathLike):
     return f"{path}.{copy_id}.tmp"
 
 
-def is_filesystem_case_sensitive(dir_: PathLike = ".") -> bool:
+def is_filesystem_case_sensitive(dir_: str = ".") -> bool:
     """Check whether <dir_> is part of a case sensitive filesystem
 
     Requires write access to <dir_>
 
     https://stackoverflow.com/a/36580834/10630957
 
-    Prereq cmds:
-        PathLike = Union[str, bytes, os.PathLike]
-
     Imports:
         os
         tempfile
 
     Args:
-        dir_ (PathLike): Directory that is being tested for case sensitivity
+        dir_ (str): Directory that is being tested for case sensitivity
 
     Returns:
         bool: True if filesystem for <dir_> is case sensitive
     """
     try:
-        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]
+        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return]
     except AttributeError:
         setattr(is_filesystem_case_sensitive, "case_sensitive_dir_dict", {})
     finally:
         with tempfile.NamedTemporaryFile(prefix="TmP", dir=dir_) as tmp_file:
-            is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_] = not os.path.exists(tmp_file.name.lower())
-            return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]
+            is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_] = not os.path.exists(tmp_file.name.lower())  # type: ignore [attr-defined]
+            return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return]
+    assert False
 
 
-def mv(src: PathLike, dst: PathLike, ignore_locks=False) -> None:
+def mv(src: str, dst: str, ignore_locks=False) -> None:
     """Atomically move object <src> to <dst> even across filesystems
 
     Avoids race conditions with programs that utilize advisory locking system (see LockManager)
@@ -88,7 +81,7 @@ def mv(src: PathLike, dst: PathLike, ignore_locks=False) -> None:
         directory contents are not locked, only the directory itself
 
     Prereq cmds:
-        PathLike = Union[str, bytes, os.PathLike]
+        str = Union[str, bytes, os.str]
 
     Imports:
         import errno
@@ -101,8 +94,8 @@ def mv(src: PathLike, dst: PathLike, ignore_locks=False) -> None:
         from utils.lock_manager import LockManager
 
     Args:
-        src (PathLike): Object to move
-        dst (PathLike): Destination object to move <src> to
+        src (str): Object to move
+        dst (str): Destination object to move <src> to
 
     Returns:
         None
@@ -154,7 +147,7 @@ def mv(src: PathLike, dst: PathLike, ignore_locks=False) -> None:
         lock_manager.release_locks()
         raise
     #### continue only if locks were obtained
-    if locks_err != None:
+    if locks_err is not None:
         lock_manager.release_locks()
         raise locks_err
     #### execute mv
@@ -182,11 +175,11 @@ def mv(src: PathLike, dst: PathLike, ignore_locks=False) -> None:
         raise
 
 
-def mv_multi(srcs: Sequence[PathLike], dsts: Sequence[PathLike]) -> None:
+def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
     """Move objects <srcs> to <dsts> even across filesystems
 
     Prereq cmds:
-        PathLike = Union[str, bytes, os.PathLike]
+        str = Union[str, bytes, os.str]
 
     Imports:
         errno
@@ -198,8 +191,8 @@ def mv_multi(srcs: Sequence[PathLike], dsts: Sequence[PathLike]) -> None:
         from utils.lock_manager import LockManager
 
     Args:
-        srcs (Sequence[PathLike]): Objects to move
-        dsts (Sequence[PathLike]): Destination objects to move <srcs> to
+        srcs (Sequence[str]): Objects to move
+        dsts (Sequence[str]): Destination objects to move <srcs> to
 
     Returns:
         None
@@ -269,7 +262,7 @@ def mv_multi(srcs: Sequence[PathLike], dsts: Sequence[PathLike]) -> None:
         lock_manager.release_locks()
         raise
     #### continue only if locks were obtained
-    if locks_err != None:
+    if locks_err is not None:
         raise locks_err
     #### execute mv_multi
     try:
@@ -290,23 +283,23 @@ def mv_multi(srcs: Sequence[PathLike], dsts: Sequence[PathLike]) -> None:
         raise
 
 
-def path_basename_to_lower(path: PathLike, ignore_locks=False) -> PathLike:
+def path_basename_to_lower(path: str, ignore_locks=False) -> str:
     """Rename <path> to a lowercase
 
     TODO:
         Add persisting lock for the target filename
 
     Prereq cmds:
-        PathLike = Union[str, bytes, os.PathLike]
+        str = Union[str, bytes, os.str]
 
     Imports:
         os
 
     Args:
-        path (PathLike): Path to rename to lowercase
+        path (str): Path to rename to lowercase
 
     Returns:
-        PathLike: Newly renamed
+        str: Newly renamed
     """
     path_cleaned = path_clean(path)
     basename_lower = str(os.path.basename(path_cleaned)).lower()
@@ -320,25 +313,25 @@ def path_basename_to_lower(path: PathLike, ignore_locks=False) -> PathLike:
     return path_clean(path_lower)
 
 
-def is_path_basename_lower(path: PathLike) -> PathLike:
+def is_path_basename_lower(path: str) -> bool:
     path_cleaned = path_clean(path)
     basename = str(os.path.basename(path_cleaned))
     return basename == basename.lower()
 
 
-def path_clean(path: PathLike) -> PathLike:
+def path_clean(path: str) -> str:
     """Clean <path> representation to give deterministic comparable representation
 
     Prereq cmds:
-        PathLike = Union[str, bytes, os.PathLike]
+        str = Union[str, bytes, os.str]
 
     Imports:
         os
 
     Args:
-        path (PathLike): Path to clean and return
+        path (str): Path to clean and return
 
     Returns:
-        PathLike: A clean path
+        str: A clean path
     """
     return os.path.abspath(os.path.normpath(path))

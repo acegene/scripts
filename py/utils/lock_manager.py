@@ -6,19 +6,13 @@
 #
 # author: acegene <acegene22@gmail.com>
 
-import os
-
-from typing import Union
-
-import filelock  # pip install filelock
-
-PathLike = Union[str, bytes, os.PathLike]
+import filelock  # type: ignore [import-untyped] # pip install filelock
 
 
 class LockManager:
     "Path object advisory locking with rigid behavior to faciliate synchronization of components using this manager"
 
-    def __init__(self, *objects: PathLike):
+    def __init__(self, *objects: str):
         self.locks = [filelock.SoftFileLock(f"{obj}.lock") for obj in objects]
 
     def create_locks(self) -> None:

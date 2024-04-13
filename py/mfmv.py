@@ -31,6 +31,8 @@
 #   * file input for cmdargs
 #       * allow custom user input auto filename formatter
 
+# type: ignore # TODO
+
 import argparse
 import itertools
 import json
@@ -40,7 +42,7 @@ import sys
 
 import math
 
-from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Type, Union
+from typing import Any, Callable, List, Optional, Sequence, Type, Union
 
 from utils.wrapped_indexable_callable import WrappedIndexableCallable
 

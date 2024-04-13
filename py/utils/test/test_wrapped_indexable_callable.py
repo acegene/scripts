@@ -6,6 +6,8 @@
 #   * python test_wrapped_indexable_callable.py
 #       * need to have wrapped_indexable_callable.py in $PYTHONPATH or place wrapped_indexable_callable.py in parent directory
 
+# type: ignore # TODO
+
 import itertools
 import unittest
 import unittest.mock

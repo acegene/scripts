@@ -51,15 +51,13 @@ import os
 import re
 import sys
 
-from typing import Any, Dict, Optional, NoReturn, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, NoReturn, Sequence, Tuple
 
 import chardet
 
 from utils import re_utils
 
-PathLike = Union[str, bytes, os.PathLike]
-
-NAME_THIS = "write_btw.py"
+NAME_THIS = __file__
 
 
 def assert_unreachable(value: NoReturn) -> NoReturn:
@@ -213,7 +211,7 @@ def usage() -> str:
     return usage_str
 
 
-def check_file(value: Any) -> PathLike:
+def check_file(value: Any) -> str:
     if not os.path.exists(value):
         raise argparse.ArgumentTypeError(f"{value} is an invalid file path")
     return value  # type: ignore[no-any-return]
@@ -250,7 +248,7 @@ def str_btw_internal(
 
 
 def file_btw(
-    file_: PathLike,
+    file_: str,
     file_mode: str,
     str_beg: str,
     str_end: str,

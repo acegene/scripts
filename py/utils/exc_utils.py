@@ -6,48 +6,52 @@
 #
 # author: acegene <acegene22@gmail.com>
 
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Tuple, Type, Union
 
 
-def raise_if_false(expression: bool, exception: Exception, print_object: Optional[Any] = None) -> None:
-    """Throw <exception> if <expression> == False
+def raise_if_false(do_not_raise: bool, exception: Exception, print_object: Optional[Any] = None) -> None:
+    """Throw <exception> if <do_not_raise> == False
 
     Args:
-        expression (bool): Expression that determines whether to raise <exception>
-        exception (Exception): Exception to be raised if <expression> == False
-        print_object (str): Object to print if <expression> == False
+        do_not_raise (bool): Determines whether to raise <exception>
+        exception (Exception): Exception to be raised if <do_not_raise> == False
+        print_object (str): Object to print if <do_not_raise> == False
 
     Returns:
         None
 
     Raises:
-        Type(<exception>): This is raised if <expression> == False
+        Type(<exception>): This is raised if <do_not_raise> == False
     """
-    if not expression:
+    if not do_not_raise:
         if print_object is not None:
             print(print_object)
         raise exception
 
 
 def try_with_default(
-    exceptions: Union[Exception, Sequence[Exception]], default: Any, callable: Callable, *args: Any, **kargs: Any
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException]]],
+    default: Any,
+    callable_: Callable,
+    *args: Any,
+    **kargs: Any
 ) -> Any:
-    """Returns result from calling <callable>(<*args>, <**kargs>); if an exception in <exceptions> occurs return <default>
+    """Returns result from calling <callable_>(<*args>, <**kargs>); if an exception in <exceptions> occurs return <default>
 
     Imports:
         from typing import Any, Callable, Union
 
     Args:
-        exceptions (Union[Exception, Sequence[Exception]]): Exceptions that cause <default> to be selected.
+        exceptions (Union[Type[BaseException], Tuple[Type[BaseException]]]): Exceptions that cause <default> to be selected.
         default (Any): Value to return if an exception in <exceptions> occurs
-        callable (Callable): Function like object to call as <callable>(*<args>, **<kwargs>)
-        args (Any): Positional args to pass to <callable>
-        kwargs (Any): Keyword args to pass to <callable>
+        callable_ (Callable): Function like object to call as <callable_>(*<args>, **<kwargs>)
+        args (Any): Positional args to pass to <callable_>
+        kwargs (Any): Keyword args to pass to <callable_>
 
     Returns:
-        bool: <callable>(*<args>, **<kwargs>) if no exception; <default> if exception in <exceptions> is raised
+        bool: <callable_>(*<args>, **<kwargs>) if no exception; <default> if exception in <exceptions> is raised
     """
     try:
-        return callable(*args, **kargs)
-    except (exceptions):
+        return callable_(*args, **kargs)
+    except exceptions:
         return default

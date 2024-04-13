@@ -1,3 +1,5 @@
+# type: ignore # TODO
+
 import errno
 import os
 import sys
