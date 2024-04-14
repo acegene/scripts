@@ -10,10 +10,10 @@ https://rclone.org/install/
 ```
 ## need to manually create synced/crypt synced/uncrypt dirs on remote
 rclone mkdir remote:synced/uncrypt/bk
-rclone touch remote:synced/uncrypt/content/text/RCLONE_TEST
+rclone touch remote:synced/uncrypt/content/RCLONE_TEST
 rclone mkdir remote:synced/crypt
 rclone mkdir secret:bk
-rclone touch secret:content/text/RCLONE_TEST
+rclone touch secret:content/RCLONE_TEST # creates content dir
 ```
 
 ## Local setup:
@@ -35,7 +35,7 @@ rclone touch secret:content/text/RCLONE_TEST
 
 ### One time setup of local bisync directories:
 ```
-rclone copy secret:content/text/cfg/cfg-gws.json .
-rclone_bisync --json-cfg cfg-gws.json --init
+rclone copy secret:content/cfg/cfg-gws.json .
+rclone_bisync.py --json-cfg cfg-gws.json --init
 rm cfg-gws.json
 ```
