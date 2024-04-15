@@ -1,8 +1,11 @@
-# pip install pypdf
+#!/usr/bin/env python3
+#
+# python3 -m pip install pypdf
+
+import glob
+import re
 
 from pypdf import PdfReader
-import re
-import glob
 
 month_to_int = {
     "Jan": 1,
@@ -20,8 +23,8 @@ month_to_int = {
 }
 
 
-def force_to_float(str):
-    str_reduced = str.replace("$", "").replace(",", "")
+def force_to_float(s):
+    str_reduced = s.replace("$", "").replace(",", "")
     return float(str_reduced)
 
 
@@ -59,7 +62,7 @@ def get_trans_list_from_pdf(pdf):
 
 
 def get_trans_list_from_pdf2(pdf):
-    pattern = r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (.*?)(-?[\d,]+\.\d\d)$"
+    pattern = r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (.*?)(-?[\d,]+\.\d\d)$"  # pylint: disable=[line-too-long]
     reader = PdfReader(pdf)
     transactions = []
     for page in reader.pages:
@@ -117,35 +120,39 @@ def split_trasactions_text_to_list(transactions_text):
     return transactions
 
 
-transaction_pdfs = glob.glob("Discover*.pdf")
-transactions_dict = {}
-for pdf in transaction_pdfs:
-    print(f"################## {pdf}")
-    transactions = get_trans_list_from_pdf2(pdf)
-    if len(transactions) == 0:
-        transactions = get_trans_list_from_pdf(pdf)
+def main():
+    transaction_pdfs = glob.glob("Discover*.pdf")
+    transactions_dict = {}
+    for pdf in transaction_pdfs:
+        print(f"################## {pdf}")
+        transactions = get_trans_list_from_pdf2(pdf)
         if len(transactions) == 0:
-            print(f"ERROR: NO TRANSACTIONS")
-            continue
+            transactions = get_trans_list_from_pdf(pdf)
+            if len(transactions) == 0:
+                print("ERROR: NO TRANSACTIONS")
+                continue
+            for transaction in transactions:
+                print(transaction)
         else:
             for transaction in transactions:
                 print(transaction)
-    else:
+        date = get_pdf_date(pdf)
+        assert date not in transactions_dict
+        transactions_dict[date] = transactions
+
+    terms = ["blizzard", "activision", "hearth"]
+
+    total = 0.0
+    for date, transactions in transactions_dict.items():
+        print(f"################## {date} MATCHES")
         for transaction in transactions:
-            print(transaction)
-    date = get_pdf_date(pdf)
-    assert date not in transactions_dict
-    transactions_dict[date] = transactions
+            for term in terms:
+                if re.search(term, transaction[2], re.IGNORECASE):
+                    print(transaction)
+                    total += transaction[3]
+                    break
+    print(f"total: {total}")
 
-terms = ["blizzard", "activision", "hearth"]
 
-total = 0.0
-for date, transactions in transactions_dict.items():
-    print(f"################## {date} MATCHES")
-    for transaction in transactions:
-        for term in terms:
-            if re.search(term, transaction[2], re.IGNORECASE):
-                print(transaction)
-                total += transaction[3]
-                break
-print(f"total: {total}")
+if __name__ == "__main__":
+    main()

@@ -6,7 +6,7 @@
 #
 # author: acegene <acegene22@gmail.com>
 
-import filelock  # type: ignore [import-untyped] # pip install filelock
+import filelock # python3 -m pip install filelock
 
 
 class LockManager:
@@ -21,7 +21,8 @@ class LockManager:
             try:
                 lock.acquire(timeout=0.1)
             except:
-                [lock.release() for lock in self.locks]
+                for lock in self.locks:
+                    lock.release()
                 raise PermissionError(f"Could not obtain lock '{lock.lock_file}'")
 
     def release_locks(self) -> None:

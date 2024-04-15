@@ -23,7 +23,7 @@ import sys
 import unittest
 import unittest.mock
 
-import parameterized  # pip install parameterized
+import parameterized  # python3 -m pip install parameterized
 
 from typing import List  # declaration of parameter and return types
 

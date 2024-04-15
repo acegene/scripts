@@ -10,6 +10,7 @@ import argparse
 import os
 import re
 
+
 ## Use regex to remove the first instance of "uri=" and everything before it
 def remove_uri_prefix(url):
     return re.sub(r".*?uri=", "", url, 1)
@@ -35,7 +36,7 @@ def merge_and_sort_text_files(dir_session_files, path_file_out):
     # Read lines from each text file and append them to the list
     for file_name in text_files:
         file_path = os.path.join(dir_session_files, file_name)
-        with open(file_path, "r") as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             lines = file.readlines()
             lines_cleaned = [remove_www(remove_uri_prefix(line)) for line in lines if line.strip()]
             unique_lines.update(lines_cleaned)

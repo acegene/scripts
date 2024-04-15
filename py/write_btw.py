@@ -53,7 +53,7 @@ import sys
 
 from typing import Any, Dict, Optional, NoReturn, Sequence, Tuple
 
-import chardet
+import chardet  # type: ignore [import-untyped]
 
 from utils import re_utils
 

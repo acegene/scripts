@@ -16,7 +16,7 @@ import re
 
 from typing import Any, Dict, Iterable, List, Pattern
 
-import git  # type: ignore [import-untyped] # pip install GitPython
+import git  # type: ignore [import-untyped] # python3 -m pip install GitPython
 
 from utils import cli_utils
 from utils import re_utils

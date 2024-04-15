@@ -6,7 +6,7 @@ import sys
 import unittest
 import unittest.mock
 
-from pyfakefs.fake_filesystem_unittest import TestCase  # pip install pyfakefs
+from pyfakefs.fake_filesystem_unittest import TestCase  # python3 -m pip install pyfakefs
 
 try:
     from utils import path_utils
