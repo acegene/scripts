@@ -45,7 +45,7 @@ def merge_and_sort_text_files(dir_session_files, path_file_out):
     soreted_lines = sorted(list(unique_lines))
 
     # Write the sorted lines to the output file
-    with open(path_file_out, "w", encoding="utf-8") as output_file:
+    with open(path_file_out, "w", encoding="utf-8", newline="\n") as output_file:
         output_file.writelines(soreted_lines)
 
     print(f"INFO: wrote merged output to '{path_file_out}'")

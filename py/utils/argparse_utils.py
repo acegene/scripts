@@ -5,6 +5,10 @@ import re
 from utils import path_utils
 
 
+def parsed_args_to_str(args, k_v_delim=": ", arg_delim="\n", prefix="  "):
+    return arg_delim.join(f"{prefix}{arg}{k_v_delim}{getattr(args, arg)}" for arg in vars(args))
+
+
 class ArgumentParserWithDefaultChecking:
     """TODO: ramifications not well understood"""
 
@@ -22,10 +26,12 @@ class ArgumentParserWithDefaultChecking:
         args_ = self.parser.parse_args(*args)
         for arg in self.actions:
             if getattr(args_, arg.dest) == arg.default:
-                if type(arg) == argparse._StoreTrueAction or type(arg) == argparse._StoreFalseAction:
+                if isinstance(
+                    arg, (argparse._StoreTrueAction, argparse._StoreFalseAction)  # pylint: disable=protected-access
+                ):
                     continue
                 arg(self.parser, args_, arg.default, "TODO:")
-                if arg.type != None:
+                if arg.type is not None:
                     arg.type(arg.default)
         return args_
 
@@ -42,75 +48,74 @@ class RegexAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         try:
             setattr(namespace, self.dest, re.compile(values))
-        except re.error:
-            raise SystemExit(f"ValueError: Regex pattern '{values}' is not valid.")
+        except re.error as e:
+            raise SystemExit(f"ValueError: Regex pattern '{values}' is not valid.") from e
 
 
-class PathType(object):
+class PathType:  # pylint: disable=too-few-public-methods
     """
 
     https://stackoverflow.com/a/33181083/10630957
 
     """
 
-    def __init__(self, exists=True, type="file", dash_ok=True):
-        """exists:
+    def __init__(self, exists=True, type_="file", dash_ok=True):
+        """
+        exists:
              True: a path that does exist
              False: a path that does not exist, in a valid parent directory
              None: don't care
-        type: file, dir, symlink, None, or a function returning True for valid paths
+        type_: file, dir, symlink, None, or a function returning True for valid paths
              None: don't care
         dash_ok: whether to allow "-" as stdin/stdout"""
 
         assert exists in (True, False, None)
-        assert type in ("file", "dir", "symlink", None) or hasattr(type, "__call__")
+        assert type_ in ("file", "dir", "symlink", None) or hasattr(type_, "__call__")
 
         self._exists = exists
-        self._type = type
+        self._type = type_
         self._dash_ok = dash_ok
+        self._path_hdlr_dict = {
+            "dir": os.path.isdir,
+            "file": os.path.isfile,
+            "symlink": os.path.islink,
+            None: lambda _: True,
+        }
 
-    def __call__(self, string):
-        if string == "-":
+    def __call__(self, path_str):
+        if path_str == "-":
             # the special argument "-" means sys.std{in,out}
             if self._type == "dir":
                 raise argparse.ArgumentTypeError("standard input/output (-) not allowed as directory path")
-            elif self._type == "symlink":
+            if self._type == "symlink":
                 raise argparse.ArgumentTypeError("standard input/output (-) not allowed as symlink path")
-            elif not self._dash_ok:
+            if not self._dash_ok:
                 raise argparse.ArgumentTypeError("standard input/output (-) not allowed")
-        else:
-            e = os.path.exists(string)
-            if self._exists == True:
-                if not e:
-                    raise argparse.ArgumentTypeError("path does not exist: '%s'" % string)
+            return path_str
 
-                if self._type is None:
-                    pass
-                elif self._type == "file":
-                    if not os.path.isfile(string):
-                        raise argparse.ArgumentTypeError("path is not a file: '%s'" % string)
-                elif self._type == "symlink":
-                    if not os.path.islink(string):
-                        raise argparse.ArgumentTypeError("path is not a symlink: '%s'" % string)
-                elif self._type == "dir":
-                    if not os.path.isdir(string):
-                        raise argparse.ArgumentTypeError("path is not a directory: '%s'" % string)
-                elif not self._type(string):
-                    raise argparse.ArgumentTypeError("path not valid: '%s'" % string)
-            else:
-                if self._exists == False and e:
-                    raise argparse.ArgumentTypeError("path exists: '%s'" % string)
+        path_exists = os.path.exists(path_str)
+        if self._exists is True:
+            if not path_exists:
+                raise argparse.ArgumentTypeError(f"path does not exist: '{path_str}'")
+            if self._type in self._path_hdlr_dict:
+                if not self._path_hdlr_dict[self._type](path_str):
+                    raise argparse.ArgumentTypeError(f"path is not a {self._type}: '{path_str}'")
+            elif not self._type(path_str):
+                raise argparse.ArgumentTypeError(f"path not valid: '{path_str}'")
+            return path_str
+        if self._exists is False and path_exists:
+            raise argparse.ArgumentTypeError(f"path exists: '{path_str}'")
 
-                p = os.path.dirname(os.path.normpath(string)) or "."
-                if not os.path.isdir(p):
-                    raise argparse.ArgumentTypeError("parent path is not a directory: '%s'" % p)
-                elif not os.path.exists(p):
-                    raise argparse.ArgumentTypeError("parent directory does not exist: '%s'" % p)
+        parent = os.path.dirname(os.path.normpath(path_str)) or "."
+        if not os.path.isdir(parent):
+            raise argparse.ArgumentTypeError(f"parent path is not a directory: '{parent}'")
+        if not os.path.exists(parent):
+            raise argparse.ArgumentTypeError(f"parent directory does not exist: '{parent}'")
 
-        return string
+        return path_str
 
 
-class DirType(object):
+class DirType:  # pylint: disable=too-few-public-methods
     """
 
     https://stackoverflow.com/a/33181083/10630957
@@ -128,19 +133,17 @@ class DirType(object):
         self._exists = exists
 
     def __call__(self, string):
-        if self._exists == True:
+        if self._exists is True:
             if not os.path.isdir(string):
                 raise argparse.ArgumentTypeError(f"Path '{string}' does not exist.")
             return path_utils.path_clean(string)
-        else:
-            if self._exists == False:
-                if os.path.isdir(string):
-                    raise argparse.ArgumentTypeError("Path '{string}' exists.")
-            cleaned = path_utils.path_clean(string)
-            parent = os.path.dirname(cleaned)
-            if not os.path.isdir(parent):
-                if os.path.exists(parent):
-                    raise argparse.ArgumentTypeError(f"Parent path '{parent}' is not a directory.")
-                else:
-                    raise argparse.ArgumentTypeError(f"Parent path '{parent}' does not exist.")
-            return cleaned
+        if self._exists is False:
+            if os.path.isdir(string):
+                raise argparse.ArgumentTypeError(f"Path '{string}' exists.")
+        cleaned = path_utils.path_clean(string)
+        parent = os.path.dirname(cleaned)
+        if not os.path.isdir(parent):
+            if os.path.exists(parent):
+                raise argparse.ArgumentTypeError(f"Parent path '{parent}' is not a directory.")
+            raise argparse.ArgumentTypeError(f"Parent path '{parent}' does not exist.")
+        return cleaned

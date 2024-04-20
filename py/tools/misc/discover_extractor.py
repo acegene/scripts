@@ -5,6 +5,8 @@
 import glob
 import re
 
+from typing import Any, List, Tuple
+
 from pypdf import PdfReader
 
 month_to_int = {
@@ -23,26 +25,26 @@ month_to_int = {
 }
 
 
-def force_to_float(s):
+def force_to_float(s: str) -> float:
     str_reduced = s.replace("$", "").replace(",", "")
     return float(str_reduced)
 
 
-def get_pdf_year(pdf):
+def get_pdf_year(pdf: str) -> str:
     pattern_year = r"[^\d]*\d\d(\d\d).*"
     match = re.match(pattern_year, pdf)
     assert match
     return match[1]
 
 
-def get_pdf_date(pdf):
+def get_pdf_date(pdf: str) -> str:
     pattern_year = r"[^\d]*\d\d(\d\d\d\d\d\d).*"
     match = re.match(pattern_year, pdf)
     assert match
     return match[1]
 
 
-def get_trans_list_from_pdf(pdf):
+def get_trans_list_from_pdf(pdf: str) -> List[Tuple[str, str, Any, float]]:
     # TODO: negative
     pattern_trans = r"(\d{2}/\d{2})([^/].*?)(-?\$[\d.,]+\.\d\d)"
     reader = PdfReader(pdf)
@@ -61,7 +63,7 @@ def get_trans_list_from_pdf(pdf):
     return transactions
 
 
-def get_trans_list_from_pdf2(pdf):
+def get_trans_list_from_pdf2(pdf: str) -> List[Tuple[str, str, Any, float]]:
     pattern = r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (.*?)(-?[\d,]+\.\d\d)$"  # pylint: disable=[line-too-long]
     reader = PdfReader(pdf)
     transactions = []
@@ -80,7 +82,8 @@ def get_trans_list_from_pdf2(pdf):
     return transactions
 
 
-def get_transactions_text_from_pdf(pdf):
+## TODO: unused
+def get_transactions_text_from_pdf(pdf: str) -> Any:
     pattern_beg = r"Cashback Bonus [+-]\$([\d.,]+\.\d\d)(.*)"
     pattern_end = r"(.*?)PREVIOUS BALANCE \$([\d,]+\.\d\d)"
 
@@ -106,7 +109,7 @@ def get_transactions_text_from_pdf(pdf):
     return transactions_texts[0]
 
 
-def split_trasactions_text_to_list(transactions_text):
+def split_trasactions_text_to_list(transactions_text: str) -> List[str]:
     pattern_transaction = r"^\d{2}/\d{2}"
 
     transactions = []
@@ -120,7 +123,7 @@ def split_trasactions_text_to_list(transactions_text):
     return transactions
 
 
-def main():
+def main() -> None:
     transaction_pdfs = glob.glob("Discover*.pdf")
     transactions_dict = {}
     for pdf in transaction_pdfs:

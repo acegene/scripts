@@ -32,9 +32,13 @@ from utils.log_manager import LogManager
 def _parse_input(args: Sequence[str] = None) -> List[Dict]:
     """Parse cmd line inputs; set, check, and fix script's default variables"""
 
+    # pylint: disable=too-many-locals
+
     def validate_args(args: argparse.Namespace) -> None:
         """Ensure inputs to parser were valid"""
-        logger.error_false(hasattr(args, "formatter"), ValueError("Must specify '--formatter'."), sys_exit=True)
+        logger.error_assert(
+            hasattr(args, "formatter"), ValueError("Must specify '--formatter'."), raise_exc=SystemExit(1)
+        )
 
     def generate_parser():
         parser = argparse.ArgumentParser()
@@ -45,12 +49,12 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
         group_case.add_argument("--mode", "-m", choices=["dryrun", "force", "prompt"], help="Formatter execution mode")
         return parser
 
-    def generate_parser_basenames_to_lower(dir_: str, mode: str) -> argparse.ArgumentParser:
+    def generate_parser_basenames_to_lower(_: str, mode: str) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
         return parser
 
-    def generate_parser_whitespace(dir_: str, mode: str) -> argparse.ArgumentParser:
+    def generate_parser_whitespace(_: str, mode: str) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
         parser.add_argument("--eol", "-e", default="lf", help="End of line character(s)")
@@ -74,11 +78,11 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
         try:
             formatter_parser = formatter_parsers[f_type]
         except KeyError:
-            logger.error_exit(
-                ValueError(f"Formatter type '{f_type}' must be one of {list(formatter_parsers.keys())}."), sys_exit=True
+            logger.error_raise(
+                ValueError(f"Formatter type '{f_type}' must be one of {list(formatter_parsers.keys())}."), SystemExit(1)
             )
         args_internal = formatter_parser.parse_args(formatter_cmd_split[1:])
-        args_formatter = {attr: val for attr, val in args_internal.__dict__.items()}
+        args_formatter = dict(args_internal.__dict__.items())
         formatter_lst.append({"formatter": f_type, "args": args_formatter})
     #### return args
     return formatter_lst, args.filters
@@ -108,7 +112,7 @@ def formatter_basenames_to_lower(objs: str, mode):
             else:
                 objs_unmodified.append(obj)
     else:
-        logger.error_exit(ValueError(f"Unexpected mode '{mode}'."), sys_exit=True)
+        logger.error_raise(ValueError(f"Unexpected mode '{mode}'."), raise_exc=SystemExit(1))
     return objs_modified, objs_unmodified
 
 
@@ -158,10 +162,10 @@ def formatter_whitespace(objs: str, mode: str, eol: str):
             else:
                 objs_unmodified.append(obj)
         elif mode == "force":
-            logger.error_exit(ValueError(f"Mode '{mode}' is not supported."), sys_exit=True)
-            objs_unmodified.append(obj)
+            logger.error_raise(ValueError(f"Mode '{mode}' is not supported."), raise_exc=SystemExit(1))
+            # objs_unmodified.append(obj) # TODO: why is this here and unreachable?
         else:
-            logger.error_exit(ValueError(f"Unexpected mode '{mode}'."), sys_exit=True)
+            logger.error_raise(ValueError(f"Unexpected mode '{mode}'."), raise_exc=SystemExit(1))
     return objs_modified, objs_unmodified
 
 
@@ -170,7 +174,7 @@ def formatter_run(formatter: str, objs: str, args: Dict) -> Sequence[Any]:
         return formatter_basenames_to_lower(objs, **args)
     if formatter == "whitespace":
         return formatter_whitespace(objs, **args)
-    logger.error_exit(ValueError(f"Unexpected formatter '{formatter}'."), sys_exit=True)
+    logger.error_raise(ValueError(f"Unexpected formatter '{formatter}'."), raise_exc=SystemExit(1))
 
 
 def main(args: Sequence[str] = None) -> None:
@@ -187,8 +191,7 @@ def main(args: Sequence[str] = None) -> None:
             print(f"    {obj}")
 
 
+logger = LogManager(__name__)
+
 if __name__ == "__main__":
-    with LogManager(__name__, filename="debug.log") as logger:
-        main()
-else:
-    logger = LogManager(__name__, filename="debug.log")
+    main()

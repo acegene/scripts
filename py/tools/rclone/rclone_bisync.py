@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional, Sequence
 
 from utils import json_utils
 
@@ -25,6 +25,7 @@ def find_cfg_file(dir_: str) -> Optional[str]:
             if file == "cfg-gws.json":
                 return os.path.abspath(os.path.join(root, file))
     return None
+
 
 def _init_rclone_bisync(rclone, rclone_bk_details: Dict, json_cfg: str) -> int:
     found_cfg = _JSON_CFG_DEFAULT if os.path.exists(_JSON_CFG_DEFAULT) else None
@@ -118,7 +119,7 @@ def _run_rclone_bisync(rclone, rclone_bk_details: Dict, force: bool) -> int:
     return 0
 
 
-def main(argparse_args: Optional[List[str]] = None) -> int:
+def main(argparse_args: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Run rclone bisync with details extracted from json.")
     parser.add_argument("--init", action="store_true", help="TODO")
     parser.add_argument("--force", action="store_true", help="Run in situations like too many deletes.")

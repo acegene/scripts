@@ -14,15 +14,15 @@ import argparse
 import os
 import re
 
-from typing import Any, Dict, Iterable, List, Pattern
+from typing import Any, Dict, List, Iterable, Optional, Pattern, Sequence
 
-import git  # type: ignore [import-untyped] # python3 -m pip install GitPython
+import git  # python3 -m pip install GitPython
 
 from utils import cli_utils
 from utils import re_utils
 from utils import path_utils
 from utils.argparse_utils import DirType, RegexAction
-from utils.log_manager import LogManager  # type: ignore [attr-defined]
+from utils.log_manager import LogManager
 
 
 class _AccumulateAndsOrsAction(argparse.Action):
@@ -37,16 +37,19 @@ class _AccumulateAndsOrsAction(argparse.Action):
         )
 
 
-def _parse_input(argparse_args: Iterable[str] = None) -> List[Dict]:
+def _parse_input(argparse_args: Optional[Sequence[str]] = None) -> List[Dict]:
     """Parse cmd line inputs; set, check, and fix script's default variables"""
 
+    # pylint: disable=[too-many-locals,too-many-statements]
     def validate_args(args: argparse.Namespace) -> None:
         """Ensure inputs to parser were valid"""
         logger.error_assert(
-            hasattr(args, "ands_ors"), ValueError("One of '--and' or '--or' must be specified."), sys_exit=True
+            hasattr(args, "ands_ors"),
+            ValueError("One of '--and' or '--or' must be specified."),
+            raise_exc=SystemExit(1),
         )
 
-    def generate_parser():
+    def generate_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser()
         parser.add_argument("--and", "-a", action=_AccumulateAndsOrsAction, help="TODO")
         parser.add_argument("--or", "-o", action=_AccumulateAndsOrsAction, help="TODO")
@@ -161,22 +164,23 @@ def _parse_input(argparse_args: Iterable[str] = None) -> List[Dict]:
         try:
             filter_parser = filter_parsers[f_type]
         except KeyError:
-            logger.error_exit(
-                ValueError(f"Filter type '{f_type}' must be one of {list(filter_parsers.keys())}."), sys_exit=True
+            logger.error_raise(
+                ValueError(f"Filter type '{f_type}' must be one of {list(filter_parsers.keys())}."),
+                raise_exc=SystemExit(1),
             )
         args_internal = filter_parser.parse_args(arg["args"][1:])
-        args_filter = {attr: val for attr, val in args_internal.__dict__.items()}
+        args_filter = dict(args_internal.__dict__.items())
         filter_lst.append({"filter": f_type, "operation": arg["operation"], "args": args_filter})
     #### return args
     return filter_lst
 
 
-def _operation_apply(operation: str, lhs: Iterable[Any], rhs: Iterable[Any]):
+def _operation_apply(operation: str, lhs: Iterable[Any], rhs: Iterable[Any]) -> Iterable[Any]:
     if operation == "and":
         return set(lhs).intersection(rhs)
     if operation == "or":
         return set(lhs).union(rhs)
-    logger.error_exit(ValueError("<operation> not in ['and', 'or']."), sys_exit=True)
+    logger.error_raise(ValueError("<operation> not in ['and', 'or']."), raise_exc=SystemExit(1))
 
 
 def filter_apple_junk(dir_: str, excludes: Iterable[str]) -> Iterable[str]:
@@ -220,7 +224,7 @@ def filter_files(dir_: str, excludes: Iterable[str]) -> Iterable[str]:
 
 def _filter_files_wrapped(files_in: Iterable[str], operation: str, dir_: str, excludes: Iterable[str]) -> Iterable[str]:
     files_out = filter_files(dir_, excludes)
-    return _operation_apply(operation, files_in, files_out)  # type: ignore [no-any-return]
+    return _operation_apply(operation, files_in, files_out)
 
 
 def filter_git_ignore(files_in: Iterable[str], dir_: str) -> Iterable[str]:
@@ -244,7 +248,7 @@ def _filter_git_ignored_wrapped(files_in: Iterable[str], operation: str, dir_: s
     #### get git ignore files
     files_out = filter_git_ignore(files_in, dir_)
     #### apply <operation>
-    return set(files_out) if operation == "and" else _operation_apply("or", files_in, files_out)  # type: ignore [no-any-return] # TODO: should this be needed?
+    return set(files_out) if operation == "and" else _operation_apply("or", files_in, files_out)
 
 
 def filter_git_staged(dir_: str):
@@ -265,7 +269,7 @@ def filter_git_staged(dir_: str):
 
 def _filter_git_staged_wrapped(files_in: Iterable[str], operation: str, dir_: str) -> Iterable[str]:
     files_out = filter_git_staged(dir_)
-    return _operation_apply(operation, files_in, files_out)  # type: ignore [no-any-return] # TODO: should this be needed?
+    return _operation_apply(operation, files_in, files_out)
 
 
 def filter_git_text(files_in: Iterable[str], dir_: str, eol: str):
@@ -297,7 +301,7 @@ def filter_git_text(files_in: Iterable[str], dir_: str, eol: str):
 
 def _filter_git_text_wrapped(files_in: Iterable[str], operation: str, dir_: str, eol: str) -> Iterable[str]:
     if operation == "or":
-        logger.error_exit(ValueError("For filter 'text' <operation> == 'or' is not allowed."), sys_exit=True)
+        logger.error_raise(ValueError("For filter 'text' <operation> == 'or' is not allowed."), raise_exc=SystemExit(1))
     #### process files and check which ones are ignored
     files_out = filter_git_text(files_in, dir_, eol)
     return files_out  # type: ignore [no-any-return] # TODO: should this be needed?
@@ -317,7 +321,7 @@ def filter_git_tracked(dir_: str) -> Iterable[str]:
 
 def _filter_git_tracked_wrapped(files_in: Iterable[str], operation: str, dir_: str) -> Iterable[str]:
     files_out = filter_git_tracked(dir_)
-    return _operation_apply(operation, files_in, files_out)  # type: ignore [no-any-return] # TODO: should this be needed?
+    return _operation_apply(operation, files_in, files_out)
 
 
 def filter_git_untracked(dir_: str, show_ignored: bool) -> Iterable[str]:
@@ -339,25 +343,29 @@ def _filter_git_untracked_wrapped(
     files_in: Iterable[str], operation: str, dir_: str, show_ignored: bool
 ) -> Iterable[str]:
     files_out = filter_git_untracked(dir_, show_ignored)
-    return _operation_apply(operation, files_in, files_out)  # type: ignore [no-any-return] # TODO: should this be needed?
+    return _operation_apply(operation, files_in, files_out)
 
 
 def filter_regex(objs_in: Iterable[str], regex: Pattern, file_mode: bool = False) -> Iterable[str]:
     if file_mode:
         objs_to_process = [os.path.basename(f) for f in objs_in]
         return [o_in for o_in, o in zip(objs_in, objs_to_process) if re.search(regex, o)]
-    else:
-        return [o for o in objs_in if re.search(regex, o)]
+    return [o for o in objs_in if re.search(regex, o)]
 
 
 def _filter_regex_wrapped(objs_in: Iterable[str], operation: str, regex: Pattern, file_mode: bool) -> Iterable[str]:
     if operation == "or":
-        logger.error_exit(ValueError("For filter 'regex' <operation> == 'or' is not allowed."), sys_exit=True)
+        logger.error_raise(
+            ValueError("For filter 'regex' <operation> == 'or' is not allowed."), raise_exc=SystemExit(1)
+        )
     return filter_regex(objs_in, regex, file_mode)
 
 
-def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: Dict) -> Iterable[Any]:  # type: ignore [return]
-    logger.error_assert(operation in ["and", "or"], ValueError("<operation> not in ['and', 'or']."), sys_exit=True)
+def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: Dict) -> Iterable[Any]:
+    # pylint: disable=too-many-return-statements
+    logger.error_assert(
+        operation in ["and", "or"], ValueError("<operation> not in ['and', 'or']."), raise_exc=SystemExit(1)
+    )
     if filter_ == "apple_junk":
         return _filter_apple_junk_wrapped(objs, operation, **args)
     if filter_ == "files":
@@ -375,10 +383,11 @@ def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: Dict) ->
     if filter_ == "regex":
         return _filter_regex_wrapped(objs, operation, **args)
     # _operation_apply(operation, objs, objs_filtered)
-    logger.error_exit(ValueError(f"Unexpected filter '{filter_}'."), sys_exit=True)
+    logger.error_raise(ValueError(f"Unexpected filter '{filter_}'."), raise_exc=SystemExit(1))
 
 
-def main(args: Iterable[str] = None, initial_objs: Iterable = set()) -> Iterable[Any]:
+def main(args: Sequence[str] = None, initial_objs: Optional[Iterable] = None) -> Iterable[Any]:
+    initial_objs = set() if initial_objs is None else initial_objs
     filter_list = _parse_input(args)
     filter_final_result = initial_objs
     for filter_ in filter_list:
@@ -386,10 +395,9 @@ def main(args: Iterable[str] = None, initial_objs: Iterable = set()) -> Iterable
     return filter_final_result
 
 
+logger = LogManager(__name__)
+
 if __name__ == "__main__":
-    with LogManager(__name__, filename="debug.log") as logger:
-        objs = main()
-        for obj in objs:
-            print(obj)
-else:
-    logger = LogManager(__name__, filename="debug.log")
+    objs_main_return = main()
+    for obj in objs_main_return:
+        print(obj)

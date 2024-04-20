@@ -63,11 +63,11 @@ def is_filesystem_case_sensitive(dir_: str = ".") -> bool:
         return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return]
     except AttributeError:
         setattr(is_filesystem_case_sensitive, "case_sensitive_dir_dict", {})
-    finally:
-        with tempfile.NamedTemporaryFile(prefix="TmP", dir=dir_) as tmp_file:
-            is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_] = not os.path.exists(tmp_file.name.lower())  # type: ignore [attr-defined]
-            return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return]
-    assert False
+    except KeyError:
+        pass
+    with tempfile.NamedTemporaryFile(prefix="TmP", dir=dir_) as tmp_file:
+        is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_] = not os.path.exists(tmp_file.name.lower())  # type: ignore [attr-defined] # pylint: disable=[line-too-long,no-member]
+        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return] # pylint: disable=[line-too-long,no-member]
 
 
 def mv(src: str, dst: str, ignore_locks=False) -> None:
@@ -79,9 +79,6 @@ def mv(src: str, dst: str, ignore_locks=False) -> None:
 
     TODO:
         directory contents are not locked, only the directory itself
-
-    Prereq cmds:
-        str = Union[str, bytes, os.str]
 
     Imports:
         import errno
@@ -106,6 +103,8 @@ def mv(src: str, dst: str, ignore_locks=False) -> None:
         NotADirectoryError: if the directory of <src> or <dst> does not exist
         PermissionError: if a lock could not be secured for <src> or <dst>
     """
+
+    # pylint: disable=[too-many-branches,too-many-statements]
     #### normalize inputs
     src_nrm = path_clean(src)
     dst_nrm = path_clean(dst)
@@ -125,24 +124,19 @@ def mv(src: str, dst: str, ignore_locks=False) -> None:
         #### <src> must exist
         if not os.path.exists(src_nrm):
             if os.path.exists(os.path.dirname(src_nrm)):
-                raise FileNotFoundError("File or directory '%s' aka <src> does not exist!" % (src))
-            else:
-                raise NotADirectoryError("Directory for '%s' aka <src> does not exist!" % (src))
+                raise FileNotFoundError(f"File or directory '{src}' aka <src> does not exist!")
+            raise NotADirectoryError(f"Directory for '{src}' aka <src> does not exist!")
         #### <dst> must not exist
         if os.path.exists(dst_nrm):
             if os.path.samefile(src_nrm, dst_nrm):  # works for dirs too
                 if os.path.isfile(dst_nrm):
-                    raise FileExistsError("Files '%s' == '%s' aka <src> == <dst>" % (src, dst))
-                else:
-                    raise FileExistsError("Directories '%s' == '%s' aka <src> == <dst>" % (src, dst))
-            else:
-                if os.path.isfile(dst_nrm):
-                    raise FileExistsError("File '%s' aka <dst> should not exist!" % (dst))
-                else:
-                    raise FileExistsError("Directory '%s' aka <dst> should not exist!" % (dst))
-        else:
-            if not os.path.exists(os.path.dirname(dst_nrm)):
-                raise NotADirectoryError("Directory for '%s' aka <dst> does not exist!" % (dst))
+                    raise FileExistsError(f"Files '{src}' == '{dst}' aka <src> == <dst>")
+                raise FileExistsError(f"Directories '{src}' == '{dst}' aka <src> == <dst>")
+            if os.path.isfile(dst_nrm):
+                raise FileExistsError(f"File '{dst}' aka <dst> should not exist!")
+            raise FileExistsError(f"Directory '{dst}' aka <dst> should not exist!")
+        if not os.path.exists(os.path.dirname(dst_nrm)):
+            raise NotADirectoryError(f"Directory for '{dst}' aka <dst> does not exist!")
     except:
         lock_manager.release_locks()
         raise
@@ -178,9 +172,6 @@ def mv(src: str, dst: str, ignore_locks=False) -> None:
 def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
     """Move objects <srcs> to <dsts> even across filesystems
 
-    Prereq cmds:
-        str = Union[str, bytes, os.str]
-
     Imports:
         errno
         os
@@ -203,6 +194,7 @@ def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
         PermissionError: if the lock for any file in <srcs> or <dsts> cannot be acquired
         ValueError: if len(<srcs>) != len(<dsts>) or all elements of <srcs> or <dsts> are not unique
     """
+    # pylint: disable=[too-many-branches,too-many-statements]
     #### ensure <srcs> and <dsts> are the same length
     if len(srcs) != len(dsts):
         raise ValueError("Inputs <srcs> and <dsts> should have the same length!")
@@ -214,20 +206,20 @@ def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
     for src in srcs_nrm:
         dir_src = os.path.dirname(src)
         if not os.path.isdir(dir_src):
-            raise NotADirectoryError("Directory for '%s' from <srcs> does not exist!" % (src))
+            raise NotADirectoryError(f"Directory for '{src}' from <srcs> does not exist!")
         srcs_unique.add(src if is_filesystem_case_sensitive(dir_src) else src.lower())
     #### remove duplicates from <dsts>
     dsts_unique = set()
     for dst in dsts_nrm:
         dir_dst = os.path.dirname(dst)
         if not os.path.isdir(dir_dst):
-            raise NotADirectoryError("Directory for '%s' from <dsts> does not exist!" % (dst))
+            raise NotADirectoryError(f"Directory for '{dst}' from <dsts> does not exist!")
         dsts_unique.add(dst if is_filesystem_case_sensitive(dir_dst) else dst.lower())
     #### all of <srcs> and <dsts> must be unique
     if len(srcs_nrm) != len(srcs_unique):
-        raise ValueError("All <srcs> values should be unique! %s" % (srcs))
+        raise ValueError(f"All <srcs> values should be unique! {srcs}")
     if len(dsts_nrm) != len(dsts_unique):
-        raise ValueError("All <dsts> values should be unique! %s" % (dsts))
+        raise ValueError(f"All <dsts> values should be unique! {dsts}")
     #### lock <srcs> and <dsts> prior to interacting with them to avoid race condition
     locks_err = None
     try:
@@ -244,20 +236,19 @@ def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
         for src in srcs_nrm:
             if not os.path.exists(src):
                 if os.path.exists(os.path.dirname(src)):
-                    raise FileNotFoundError("File or directory '%s' from <srcs> does not exist!" % (src))
-                else:  # redundantly verifying if dir exists
-                    raise NotADirectoryError("Directory '%s' from <srcs> does not exist!" % (src))
+                    raise FileNotFoundError(f"File or directory '{src}' from <srcs> does not exist!")
+                # redundantly verifying if dir exists
+                raise NotADirectoryError(f"Directory '{src}' from <srcs> does not exist!")
         #### all of <dsts> must not exist unless also part of <srcs>
         for dst in dsts_nrm:
             if os.path.exists(dst):
                 if not any((os.path.samefile(src, dst) for src in srcs_nrm)):
                     if os.path.isfile(dst):
-                        raise FileExistsError("File '%s' from <dsts> should not exist!" % (dst))
-                    else:
-                        raise FileExistsError("Directory '%s' from <dsts> should not exist!" % (dst))
+                        raise FileExistsError(f"File '{dst}' from <dsts> should not exist!")
+                    raise FileExistsError(f"Directory '{dst}' from <dsts> should not exist!")
             else:  # redundantly verifying if dir exists
                 if not os.path.exists(os.path.dirname(dst)):
-                    raise NotADirectoryError("Directory '%s' from <dsts> does not exist!" % (dst))
+                    raise NotADirectoryError(f"Directory '{dst}' from <dsts> does not exist!")
     except:
         lock_manager.release_locks()
         raise
@@ -289,9 +280,6 @@ def path_basename_to_lower(path: str, ignore_locks=False) -> str:
     TODO:
         Add persisting lock for the target filename
 
-    Prereq cmds:
-        str = Union[str, bytes, os.str]
-
     Imports:
         os
 
@@ -321,9 +309,6 @@ def is_path_basename_lower(path: str) -> bool:
 
 def path_clean(path: str) -> str:
     """Clean <path> representation to give deterministic comparable representation
-
-    Prereq cmds:
-        str = Union[str, bytes, os.str]
 
     Imports:
         os

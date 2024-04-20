@@ -6,529 +6,824 @@
 #
 # author: acegene <acegene22@gmail.com>
 
-# type: ignore
-
+import datetime
+import inspect
+import json
 import logging
+import logging.config
+import logging.handlers
+import os
 import sys
-from traceback import format_exception
+import traceback
 
-from typing import Any, Callable, List, Optional, Sequence
+from contextlib import contextmanager
+from typing import Any, Callable, Iterable, NoReturn, Optional, Tuple, Type, Union
 
-_LVL_D = logging.getLevelName("DEBUG")
-_LVL_I = logging.getLevelName("INFO")
-_LVL_W = logging.getLevelName("WARNING")
-_LVL_E = logging.getLevelName("ERROR")
-_LVL_F = logging.getLevelName("FATAL")
-_LVL_C = logging.getLevelName("CRITICAL")
+LVL_D = logging.getLevelName("DEBUG")
+LVL_I = logging.getLevelName("INFO")
+LVL_W = logging.getLevelName("WARNING")
+LVL_E = logging.getLevelName("ERROR")
+LVL_F = logging.getLevelName("FATAL")
+LVL_C = logging.getLevelName("CRITICAL")
+
+_LOG_MANAGER_DEFAULT_LOGGING_CFG = os.path.join(os.path.dirname(__file__), "log-manager-logging-cfg.json")
+
+ExceptableException = Union[Tuple[Type[BaseException], ...], Tuple[()], Type[BaseException]]
+MaybeCatchableExceptions = Optional[Union[Iterable[Type[BaseException]], Type[BaseException]]]
+RaisableException = Union[BaseException, Type[BaseException]]
+MaybeRaisableException = Optional[RaisableException]
+
+
+def _get_exceptions_tuple(excs: MaybeCatchableExceptions) -> ExceptableException:
+    if excs is None:
+        return tuple()
+    if isinstance(excs, Iterable):
+        if not all(inspect.isclass(exc) and issubclass(exc, BaseException) for exc in excs):
+            raise ValueError
+        return tuple(excs)
+    if inspect.isclass(excs) and issubclass(excs, BaseException):
+        return excs
+    raise ValueError
+
+
+def cfg_replace_w_global_vars(cfg, globals_):
+    if isinstance(cfg, dict):
+        for key, value in cfg.items():
+            if isinstance(value, dict):
+                cfg_replace_w_global_vars(value, globals_)
+            elif isinstance(value, list):
+                for idx, item in enumerate(value):
+                    value[idx] = cfg_replace_w_global_vars(item, globals_)
+            elif isinstance(value, str) and value.startswith("global_var://"):
+                global_var_name = value[len("global_var://") :]
+                global_var_value = globals_.get(global_var_name)
+                if global_var_value is not None:
+                    cfg[key] = global_var_value
+    return cfg
+
+
+def get_cfg_file_as_cfg_dict(cfg_file, globals_=None):
+    with open(_LOG_MANAGER_DEFAULT_LOGGING_CFG if cfg_file is None else cfg_file, encoding="utf-8") as f:
+        if globals_ is None:
+            return json.load(f)
+        return cfg_replace_w_global_vars(json.load(f), globals_)
+
+
+def full_stack(stacklevel=0, include_exc=True):
+    """
+    Get full calling stack of calling function as a string
+
+    https://stackoverflow.com/a/16589622
+    """
+
+    exc = sys.exc_info()[0]
+    stack = traceback.extract_stack()[: -(1 + stacklevel)]  # last one would be full_stack()
+    if exc is not None:  # i.e. an exception is present
+        del stack[-1]  # remove call of full_stack, the printed exception
+    trc = "Traceback (most recent call last):\n"
+    stackstr = trc + "".join(traceback.format_list(stack))
+    if include_exc is True and exc is not None:
+        tb_str = traceback.format_exc()
+        stackstr += tb_str[len(trc) :] if tb_str.startswith(trc) else ""
+    return stackstr.rstrip("\n")
+
+
+@contextmanager
+def disable_raise_exception_traceback_print():
+    """
+    All traceback information is suppressed and only the exception type and value are printed
+
+    https://stackoverflow.com/a/63657211
+    """
+    default_value = getattr(sys, "tracebacklimit", 1000)
+    sys.tracebacklimit = 0
+    yield
+    sys.tracebacklimit = default_value  # revert changes
+
+
+@contextmanager
+def disable_raise_exception_print():
+    """
+    Suppresses printing of the exception details (type, value, traceback)
+    """
+    original_hook = sys.excepthook
+
+    def custom_excepthook(_type, _value, _traceback):
+        pass  # print(value) # to print only the exception msg
+
+    sys.excepthook = custom_excepthook
+    yield
+    sys.excepthook = original_hook  # revert changes
+
+
+class LFFileHandler(logging.handlers.RotatingFileHandler):
+    def _open(self):
+        return open(self.baseFilename, self.mode, encoding=self.encoding, newline="\n")
+
+
+class UTCFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.datetime.fromtimestamp(record.created, tz=datetime.timezone.utc)
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.isoformat()
 
 
 class LogManager:
     """Wrapper for python logging module that enables consolidated settings and helper logging/exception handling"""
 
-    def __init__(self, name: str = None, log_lvl: int = _LVL_W, filename: str = None, stderr: bool = True):
-        #### specify logger to be root or not depending on source of instantion
+    # pylint: disable=[too-many-arguments, too-many-public-methods]
+
+    def __init__(self, name: Optional[str] = None, cfg_dict=None):
+        ## specify logger to be root or not depending on source of instantion
         self._logger = logging.getLogger(name)
-        #### specify logger generic formatter
-        self._formatter = logging.Formatter(
-            "%(levelname)s: %(asctime)s %(filename)s:%(lineno)s: %(message)s",
-            datefmt="%Y%m%dT%H%M%S",
-        )
-        #### clear handlers to avoid double logs
-        if self._logger.hasHandlers():
-            self._logger.handlers.clear()
-        #### setup handlers
-        handlers: List[Any] = []
-        if stderr:
-            handlers.append(logging.StreamHandler(sys.stderr))
-        if filename is not None:
-            handlers.append(logging.FileHandler(filename))
-        for handler in handlers:
-            handler.setFormatter(self._formatter)
-            self._logger.addHandler(handler)
-        #### set initial logging level
-        self._logger.setLevel(log_lvl)
+        if cfg_dict is None:
+            formatter = logging.Formatter(
+                "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s",
+                datefmt="%y%m%dT%H%M%S%z",
+            )
+            #### clear handlers to avoid double logs
+            # if self._logger.hasHandlers():
+            #     self._logger.handlers.clear()
+            #### setup handlers
+            std_err_handler = logging.StreamHandler(sys.stderr)
+            std_err_handler.setFormatter(formatter)
+            self._logger.addHandler(std_err_handler)
+        else:
+            logging.config.dictConfig(cfg_dict)
 
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        if type != None:
-            if type == SystemExit:
-                self.error(f"SystemExit: {value}")
-            else:
-                self.error(f"Exception occurred:\n{''.join(format_exception(type, value, traceback))}")
+    def __exit__(self, type_, value, _tb):
+        if type_ is not None:
+            self.error("%s", f"\n{full_stack()}")
 
     def __getattr__(self, attr: Any) -> Any:
         """Pass unknown attributes to self._logger"""
         return getattr(self._logger, attr)
 
-    def _err_to_str(err: BaseException) -> str:
+    @staticmethod
+    def _err_to_str(err: RaisableException) -> str:
         return f"{err.__class__.__name__}: {err}"
 
-    def _sys_exit(err: Optional[Exception] = None) -> None:
-        """Exit by raising SystemError with <err>.errorno if it exists"""
-        try:
-            sys.exit(err.errno)
-        except AttributeError:
-            sys.exit(1)
-
-    def debug(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def debug(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.debug(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
+        self._logger.debug(msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
-    def info(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def info(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.info(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
+        self._logger.info(msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
-    def warning(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def warning(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.warning(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
+        self._logger.warning(msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
-    def error(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def error(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.error(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
+        self._logger.error(msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
-    def fatal(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def fatal(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.fatal(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
+        self._logger.fatal(msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
-    def critical(self, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def critical(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.critical(msg, *msg_strs, stacklevel=stacklevel + 2, **kwargs)
+        self._logger.critical(msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
-    def log(self, level: bool, msg: Any, *msg_strs, stacklevel: int = 0, **kwargs: Any) -> None:
+    def log(self, level: bool, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
-        self._logger.log(level, msg, *msg_strs, stacklevel=stacklevel + 3, **kwargs)
-
-    def debug_exit(
-        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ) -> None:
-        """Log then throw <err>"""
-        self.log_exit(_LVL_D, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
-
-    def info_exit(
-        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ) -> None:
-        """Log then throw <err>"""
-        self.log_exit(_LVL_I, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
-
-    def warning_exit(
-        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ) -> None:
-        """Log then throw <err>"""
-        self.log_exit(_LVL_W, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
-
-    def error_exit(
-        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ) -> None:
-        """Log then throw <err>"""
-        self.log_exit(_LVL_E, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
-
-    def fatal_exit(
-        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ) -> None:
-        """Log then throw <err>"""
-        self.log_exit(_LVL_F, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
-
-    def critical_exit(
-        self, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ):
-        """Log then throw <err>"""
-        self.log_exit(_LVL_C, err, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
-
-    def log_exit(
-        self, level: bool, err: Optional[Exception] = None, sys_exit: bool = False, stacklevel: int = 0, **kwargs: Any
-    ):
-        """Log then throw <err>"""
-        self._logger.log(level, LogManager._err_to_str(err), stacklevel=stacklevel + 3, **kwargs)
-        if sys_exit or Exception == None:
-            LogManager._sys_exit(err)
-        else:
-            raise err
-
-    def debug_false(
-        self,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log <msg> if <expr> == False"""
-        self.log_false(_LVL_D, expr, msg, *args, stacklevel=stacklevel, **kwargs)
-
-    def info_false(
-        self,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log <msg> if <expr> == False"""
-        self.log_false(_LVL_I, expr, msg, *args, stacklevel=stacklevel, **kwargs)
-
-    def warning_false(
-        self,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log <msg> if <expr> == False"""
-        self.log_false(_LVL_W, expr, msg, *args, stacklevel=stacklevel, **kwargs)
-
-    def error_false(
-        self,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log <msg> if <expr> == False"""
-        self.log_false(_LVL_E, expr, msg, *args, stacklevel=stacklevel, **kwargs)
-
-    def fatal_false(
-        self,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log <msg> if <expr> == False"""
-        self.log_false(_LVL_F, expr, msg, *args, stacklevel=stacklevel, **kwargs)
-
-    def critical_false(
-        self,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log <msg> if <expr> == False"""
-        self.log_false(_LVL_C, expr, msg, *args, stacklevel=stacklevel, **kwargs)
-
-    def log_false(
-        self,
-        level: bool,
-        expr: bool,
-        msg: Any = None,
-        *args: Any,
-        stacklevel: int = 0,
-        **kwargs: Any,
-    ) -> None:
-        """Log and throw <err> if <expr> == False"""
-        if msg == None and len(args) != 0:
-            err = ValueError("Cannot have <msg>==None and len(<args>)!=0.")
-            self._logger.log(level, err, stacklevel=0, **kwargs)
-            raise err
-        if not expr:
-            msg_to_use = msg if msg != None else "Expression was false."
-            self._logger.log(level, msg_to_use, *args, stacklevel=stacklevel + 3, **kwargs)
+        self._logger.log(level, msg, *msg_objs, stacklevel=stacklevel + 2, **kwargs)
 
     def debug_assert(
         self,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <err> if <expr> == False"""
-        self.log_assert(_LVL_D, expr, err, *args, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        self.log_assert(
+            LVL_D,
+            expr_result,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
 
     def info_assert(
         self,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <err> if <expr> == False"""
-        self.log_assert(_LVL_I, expr, err, *args, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        self.log_assert(
+            LVL_I,
+            expr_result,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
 
     def warning_assert(
         self,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <err> if <expr> == False"""
-        self.log_assert(_LVL_W, expr, err, *args, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        self.log_assert(
+            LVL_W,
+            expr_result,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
 
     def error_assert(
         self,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <err> if <expr> == False"""
-        self.log_assert(_LVL_E, expr, err, *args, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        self.log_assert(
+            LVL_E,
+            expr_result,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
 
     def fatal_assert(
         self,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <err> if <expr> == False"""
-        self.log_assert(_LVL_F, expr, err, *args, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        self.log_assert(
+            LVL_F,
+            expr_result,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
 
     def critical_assert(
         self,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <err> if <expr> == False"""
-        self.log_assert(_LVL_C, expr, err, *args, sys_exit=sys_exit, stacklevel=stacklevel, **kwargs)
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        self.log_assert(
+            LVL_C,
+            expr_result,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
 
     def log_assert(
         self,
         level: bool,
-        expr: bool,
-        err: BaseException = None,
-        *args: Any,
-        sys_exit: bool = False,
+        expr_result: bool,
+        exc_to_log: MaybeRaisableException = None,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log and throw <err> if <expr> == False"""
-        if err == None and len(args) != 0:
-            err_tmp = ValueError("Cannot have <err>==None and len(<args>)!=0.")
-            self._logger.log(level, LogManager._err_to_str(err_tmp), stacklevel=0, **kwargs)
-            raise err_tmp
-        if not expr:
-            if err != None:
-                self._logger.log(level, LogManager._err_to_str(err), *args, stacklevel=stacklevel + 3, **kwargs)
-                if sys_exit:
-                    LogManager._sys_exit(err)
-                else:
-                    raise err
-            else:
-                if sys_exit:
-                    self._logger.log(level, "SystemExit: <expr> == False.", *args, stacklevel=stacklevel + 3, **kwargs)
-                    LogManager._sys_exit(err)
-                else:
-                    self._logger.log(level, "Exception: <expr> == False.", *args, stacklevel=stacklevel + 3, **kwargs)
-                    raise err
+        """Log and throw <exc_to_log> if <expr_result> == False"""
+        if not expr_result:
+            tb_str = f"\n{full_stack(stacklevel+1)}" if log_exc else ""
+            msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc_to_log
+            if exc_to_log is None:
+                self._logger.log(
+                    level,
+                    msg,
+                    "AssertionError: <expr_result> == False",
+                    *msg_objs,
+                    tb_str,
+                    stacklevel=stacklevel + 2,
+                    **kwargs,
+                )
+                if print_exc is False or (print_exc is None and log_exc is True):
+                    with disable_raise_exception_print():
+                        raise AssertionError() if raise_exc is None else raise_exc
+                raise AssertionError() if raise_exc is None else raise_exc
+            self._logger.log(
+                level, msg, LogManager._err_to_str(exc_to_log), *msg_objs, tb_str, stacklevel=stacklevel + 2, **kwargs
+            )
+            if print_exc is False or (print_exc is None and log_exc is True):
+                with disable_raise_exception_print():
+                    raise exc_to_log if raise_exc is None else raise_exc
+            raise exc_to_log if raise_exc is None else raise_exc
 
-    def debug_exc_handle(
+    def debug_make_excs_hdlr(
         self,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        return self.log_exc_handle(
-            _LVL_D,
-            callable,
+        return self.log_make_excs_hdlr(
+            LVL_D,
+            callable_,
             msg,
-            *args_log,
-            exc=exc,
-            excs=excs,
-            skip_raise=skip_raise,
+            *msg_objs,
+            catch_excs=catch_excs,
+            log_exc=log_exc,
+            msg_unhdld=msg_unhdld,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            raise_unhdld_exc=raise_unhdld_exc,
+            skip_hndld_excs=skip_hndld_excs,
             stacklevel=stacklevel,
-            sys_exit=sys_exit,
             **kwargs_log,
         )
 
-    def info_exc_handle(
+    def info_make_excs_hdlr(
         self,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        return self.log_exc_handle(
-            _LVL_I,
-            callable,
+        return self.log_make_excs_hdlr(
+            LVL_I,
+            callable_,
             msg,
-            *args_log,
-            exc=exc,
-            excs=excs,
-            skip_raise=skip_raise,
+            *msg_objs,
+            catch_excs=catch_excs,
+            log_exc=log_exc,
+            msg_unhdld=msg_unhdld,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            raise_unhdld_exc=raise_unhdld_exc,
+            skip_hndld_excs=skip_hndld_excs,
             stacklevel=stacklevel,
-            sys_exit=sys_exit,
             **kwargs_log,
         )
 
-    def warning_exc_handle(
+    def warning_make_excs_hdlr(
         self,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        return self.log_exc_handle(
-            _LVL_W,
-            callable,
+        return self.log_make_excs_hdlr(
+            LVL_W,
+            callable_,
             msg,
-            *args_log,
-            exc=exc,
-            excs=excs,
-            skip_raise=skip_raise,
+            *msg_objs,
+            catch_excs=catch_excs,
+            log_exc=log_exc,
+            msg_unhdld=msg_unhdld,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            raise_unhdld_exc=raise_unhdld_exc,
+            skip_hndld_excs=skip_hndld_excs,
             stacklevel=stacklevel,
-            sys_exit=sys_exit,
             **kwargs_log,
         )
 
-    def error_exc_handle(
+    def error_make_excs_hdlr(
         self,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        return self.log_exc_handle(
-            _LVL_E,
-            callable,
+        return self.log_make_excs_hdlr(
+            LVL_E,
+            callable_,
             msg,
-            *args_log,
-            exc=exc,
-            excs=excs,
-            skip_raise=skip_raise,
+            *msg_objs,
+            catch_excs=catch_excs,
+            log_exc=log_exc,
+            msg_unhdld=msg_unhdld,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            raise_unhdld_exc=raise_unhdld_exc,
+            skip_hndld_excs=skip_hndld_excs,
             stacklevel=stacklevel,
-            sys_exit=sys_exit,
             **kwargs_log,
         )
 
-    def fatal_exc_handle(
+    def fatal_make_excs_hdlr(
         self,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        return self.log_exc_handle(
-            _LVL_F,
-            callable,
+        return self.log_make_excs_hdlr(
+            LVL_F,
+            callable_,
             msg,
-            *args_log,
-            exc=exc,
-            excs=excs,
-            skip_raise=skip_raise,
+            *msg_objs,
+            catch_excs=catch_excs,
+            log_exc=log_exc,
+            msg_unhdld=msg_unhdld,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            raise_unhdld_exc=raise_unhdld_exc,
+            skip_hndld_excs=skip_hndld_excs,
             stacklevel=stacklevel,
-            sys_exit=sys_exit,
             **kwargs_log,
         )
 
-    def critical_exc_handle(
+    def critical_make_excs_hdlr(
         self,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        return self.log_exc_handle(
-            _LVL_C,
-            callable,
+        return self.log_make_excs_hdlr(
+            LVL_C,
+            callable_,
             msg,
-            *args_log,
-            exc=exc,
-            excs=excs,
-            skip_raise=skip_raise,
+            *msg_objs,
+            catch_excs=catch_excs,
+            log_exc=log_exc,
+            msg_unhdld=msg_unhdld,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            raise_unhdld_exc=raise_unhdld_exc,
+            skip_hndld_excs=skip_hndld_excs,
             stacklevel=stacklevel,
-            sys_exit=sys_exit,
             **kwargs_log,
         )
 
-    def log_exc_handle(
+    def log_make_excs_hdlr(
         self,
         level: int,
-        callable: Callable,
+        callable_: Callable,
         msg: Any = None,
-        *args_log: Any,
-        exc: Exception = None,
-        excs: Sequence[Exception] = None,
-        skip_raise: bool = False,
-        sys_exit: bool = False,
+        /,
+        *msg_objs: Any,
+        catch_excs: MaybeCatchableExceptions = None,
+        log_exc: bool = True,
+        msg_unhdld: Any = None,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        raise_unhdld_exc: MaybeRaisableException = None,
+        skip_hndld_excs: bool = True,
         stacklevel: int = 0,
         **kwargs_log: Any,
     ):
-        excs_lst = []
-        if exc != None:
-            excs_lst.append(exc)
-        if excs != None:
-            excs_lst += [e for e in excs]
+        msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc
 
-        def _callable_with_log_and_exc_handling(*args, **kwargs: Any) -> None:
+        def _callable_with_log_and_exc_handling(*args: Any, **kwargs: Any) -> Any:
             try:
-                return callable(*args, **kwargs)
-            except tuple(excs_lst) as err:
-                if msg != None:
-                    self._logger.log(
-                        level, msg, *args_log, stacklevel=stacklevel + 2, extra=kwargs_log.get("extra", None)
-                    )
-                else:
-                    self._logger.log(level, err, stacklevel=stacklevel + 2, **kwargs_log)
-                if sys_exit:
-                    LogManager._sys_exit(err)
-                if not skip_raise:
-                    raise err
-            except Exception as err:
+                return callable_(*args, **kwargs)
+            except _get_exceptions_tuple(catch_excs) as e:  # pylint: disable=[catching-non-exception]
+                tb_str = f"\n{full_stack(stacklevel)}" if log_exc else ""
                 self._logger.log(
-                    _LVL_E,
-                    "Unexpected exception below, Traceback may print twice.",
-                    *args_log,
+                    level,
+                    msg,
+                    LogManager._err_to_str(e),
+                    *msg_objs,
+                    tb_str,
                     stacklevel=stacklevel + 2,
-                    extra=kwargs_log.get("extra", None),
+                    **kwargs_log,
+                    # extra=kwargs_log.get("extra", None), # TODO: is there a reason this instead of **kwargs_log
                 )
+                if raise_exc is not None:
+                    if print_exc is False or (print_exc is None and log_exc is True):
+                        with disable_raise_exception_print():
+                            raise raise_exc from e  # TODO: should this have a 'from e', does this matter in a with?
+                    raise raise_exc from e  # TODO: should this have a 'from e'
+                if skip_hndld_excs:
+                    return None
+                if print_exc is False or (print_exc is None and log_exc is True):
+                    with disable_raise_exception_print():
+                        raise e
+                raise e
+            except BaseException as e:  # pylint: disable=broad-exception-caught
+                tb_str = full_stack(stacklevel)
                 self._logger.log(
-                    _LVL_E, err, stacklevel=stacklevel + 2, extra=kwargs_log.get("extra", None), exc_info=err
+                    LVL_E,
+                    f"Unhandled Exception encountered: {msg}" if msg_unhdld is None else msg_unhdld,
+                    LogManager._err_to_str(e),
+                    *msg_objs,
+                    tb_str,
+                    stacklevel=stacklevel + 2,
+                    **kwargs_log,
+                    # extra=kwargs_log.get("extra", None), # TODO: is there a reason this instead of **kwargs_log
                 )
-                raise err
+                with disable_raise_exception_print():
+                    raise e if raise_unhdld_exc is None else raise_unhdld_exc
 
         return _callable_with_log_and_exc_handling
 
-    def exception(self, err, stacklevel: int = 0, **kwargs: Any) -> None:
-        self._logger.exception(err, stacklevel=stacklevel + 3, **kwargs)
+    def debug_raise(
+        self,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        self.log_raise(
+            LVL_D,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
+
+    def info_raise(
+        self,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        self.log_raise(
+            LVL_I,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
+
+    def warning_raise(
+        self,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        self.log_raise(
+            LVL_W,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
+
+    def error_raise(
+        self,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        self.log_raise(
+            LVL_E,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
+
+    def fatal_raise(
+        self,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        self.log_raise(
+            LVL_F,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
+
+    def critical_raise(
+        self,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        self.log_raise(
+            LVL_C,
+            exc_to_log,
+            msg,
+            *msg_objs,
+            log_exc=log_exc,
+            print_exc=print_exc,
+            raise_exc=raise_exc,
+            stacklevel=stacklevel + 1,
+            **kwargs,
+        )
+
+    def log_raise(
+        self,
+        level: bool,
+        exc_to_log: RaisableException,
+        msg: Any = None,
+        /,
+        *msg_objs: Any,
+        log_exc: bool = True,
+        print_exc: Optional[bool] = None,
+        raise_exc: MaybeRaisableException = None,
+        stacklevel: int = 0,
+        **kwargs: Any,
+    ) -> NoReturn:
+        """Log then throw <err>"""
+        msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc_to_log
+        tb_str = f"\n{full_stack(stacklevel + 1)}" if log_exc else ""
+        self._logger.log(
+            level, msg, LogManager._err_to_str(exc_to_log), *msg_objs, tb_str, stacklevel=stacklevel + 2, **kwargs
+        )
+        if print_exc is False or (print_exc is None and log_exc is True):
+            with disable_raise_exception_print():
+                raise exc_to_log if raise_exc is None else raise_exc
+        raise exc_to_log if raise_exc is None else raise_exc
+
+    def exception(self, msg: Any, *msg_objs: Any, stacklevel: int = 0, **kwargs: Any) -> None:
+        self._logger.exception(msg, *msg_objs, stacklevel=stacklevel + 3, **kwargs)
