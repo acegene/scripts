@@ -55,6 +55,7 @@ from typing import Any, Dict, Optional, NoReturn, Sequence, Tuple
 
 import chardet  # type: ignore [import-untyped]
 
+from utils import path_utils
 from utils import re_utils
 
 NAME_THIS = __file__
@@ -92,6 +93,7 @@ def setup_logger(logger_name: str) -> logging.Logger:
 
 def parse_inputs(cmd_args: Optional[Sequence[str]] = None) -> Dict[str, Any]:
     """Parse cmd line inputs; set, check, and fix script's default vars"""
+    # pylint: disable=too-many-statements
     #### cmd args parser
     parser = argparse.ArgumentParser(usage=usage())
     ## str args
@@ -186,7 +188,7 @@ def parse_inputs(cmd_args: Optional[Sequence[str]] = None) -> Dict[str, Any]:
         args_parsed["str_in"] = args.str
     elif args.pipe is True:
         args_parsed["mode"] = BtwMode.STR
-        stdin_encoded = io.TextIOWrapper(sys.stdin.buffer.raw, encoding=args.encoding_stdin)  # type: ignore[attr-defined] # pylint: disable=line-too-long
+        stdin_encoded = io.TextIOWrapper(sys.stdin.buffer.raw, encoding=args.encoding_stdin)  # type: ignore[attr-defined]
         args_parsed["str_in"] = stdin_encoded.read()
     else:
         logger.error("could not find any possible value for mode")
@@ -198,7 +200,7 @@ def parse_inputs(cmd_args: Optional[Sequence[str]] = None) -> Dict[str, Any]:
 def usage() -> str:
     usage_str = ""
     try:
-        with open(__file__, "r", encoding="utf-8") as f:
+        with path_utils.open_unix_safely(__file__) as f:
             for line in f.readlines():
                 if not line.startswith("#"):
                     return usage_str
@@ -258,15 +260,16 @@ def file_btw(
     encoding_file: str,
     encoding_stdout: str,
 ) -> int:
-    with open(file_, "r", newline="", encoding=encoding_file) as f:
+    # pylint: disable=too-many-arguments
+    with path_utils.open_unix_safely(file_, encoding=encoding_file) as f:
         str_in = f.read()
     str_final, num_matches = str_btw_internal(str_in, str_beg, str_end, str_out, pattern_btw, indices)
     if file_mode == "stdout":
-        io.TextIOWrapper(sys.stdout.buffer.raw, newline="", encoding=encoding_stdout).write(str_final)  # type: ignore[attr-defined] # pylint: disable=line-too-long
+        io.TextIOWrapper(sys.stdout.buffer.raw, newline="", encoding=encoding_stdout).write(str_final)  # type: ignore[attr-defined]
     elif file_mode == "write":
         #### prevent unnecessary overwriting of file if no matches were found
         if num_matches != 0:
-            with open(file_, "w", newline="", encoding=encoding_file) as f:
+            with path_utils.open_unix_safely(file_, "w", encoding=encoding_file) as f:
                 f.seek(0)
                 f.write(str_final)
                 f.truncate()
@@ -322,6 +325,7 @@ def write_btw(cmd_args: Optional[Sequence[str]] = None) -> None:
         sys.exit(1)
 
 
+logger = setup_logger(__name__)
+
 if __name__ == "__main__":
-    logger = setup_logger(NAME_THIS)
     write_btw()

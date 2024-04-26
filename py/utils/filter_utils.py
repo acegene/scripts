@@ -14,7 +14,7 @@ import argparse
 import os
 import re
 
-from typing import Any, Dict, List, Iterable, Optional, Pattern, Sequence
+from typing import Any, Callable, Dict, List, Iterable, Optional, Pattern, Sequence
 
 import git  # python3 -m pip install GitPython
 
@@ -209,7 +209,7 @@ def _filter_apple_junk_wrapped(
     objs_in: Iterable[str], operation: str, dir_: str, excludes: Iterable[str]
 ) -> Iterable[str]:
     objs_out = filter_apple_junk(dir_, excludes)
-    return _operation_apply(operation, objs_in, objs_out)  # type: ignore [no-any-return]
+    return _operation_apply(operation, objs_in, objs_out)
 
 
 def filter_files(dir_: str, excludes: Iterable[str]) -> Iterable[str]:
@@ -362,28 +362,23 @@ def _filter_regex_wrapped(objs_in: Iterable[str], operation: str, regex: Pattern
 
 
 def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: Dict) -> Iterable[Any]:
-    # pylint: disable=too-many-return-statements
     logger.error_assert(
         operation in ["and", "or"], ValueError("<operation> not in ['and', 'or']."), raise_exc=SystemExit(1)
     )
-    if filter_ == "apple_junk":
-        return _filter_apple_junk_wrapped(objs, operation, **args)
-    if filter_ == "files":
-        return _filter_files_wrapped(objs, operation, **args)
-    if filter_ == "git_ignored":
-        return _filter_git_ignored_wrapped(objs, operation, **args)
-    if filter_ == "git_staged":
-        return _filter_git_staged_wrapped(objs, operation, **args)
-    if filter_ == "git_text":
-        return _filter_git_text_wrapped(objs, operation, **args)
-    if filter_ == "git_tracked":
-        return _filter_git_tracked_wrapped(objs, operation, **args)
-    if filter_ == "git_untracked":
-        return _filter_git_untracked_wrapped(objs, operation, **args)
-    if filter_ == "regex":
-        return _filter_regex_wrapped(objs, operation, **args)
+    str_to_func: Dict[str, Callable[..., Iterable[Any]]] = {
+        "apple_junk": _filter_apple_junk_wrapped,
+        "files": _filter_files_wrapped,
+        "git_ignored": _filter_git_ignored_wrapped,
+        "git_staged": _filter_git_staged_wrapped,
+        "git_text": _filter_git_text_wrapped,
+        "git_tracked": _filter_git_tracked_wrapped,
+        "git_untracked": _filter_git_untracked_wrapped,
+        "regex": _filter_regex_wrapped,
+    }
+    if not filter_ in str_to_func:
+        logger.error_raise(ValueError(f"Unexpected filter '{filter_}'."), raise_exc=SystemExit(1))
     # _operation_apply(operation, objs, objs_filtered)
-    logger.error_raise(ValueError(f"Unexpected filter '{filter_}'."), raise_exc=SystemExit(1))
+    return str_to_func[filter_](objs, operation, **args)
 
 
 def main(args: Sequence[str] = None, initial_objs: Optional[Iterable] = None) -> Iterable[Any]:

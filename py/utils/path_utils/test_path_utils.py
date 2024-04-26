@@ -1,25 +1,129 @@
-# type: ignore # TODO
-
 import errno
 import os
-import sys
+import tempfile
 import unittest
 import unittest.mock
 
-from pyfakefs.fake_filesystem_unittest import TestCase  # python3 -m pip install pyfakefs
+from typing import Optional
+from parameterized import parameterized  # type: ignore [import-untyped]
 
-try:
-    from utils import path_utils
-except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from utils import path_utils
+import filelock
+import pyfakefs.fake_filesystem_unittest  # python3 -m pip install pyfakefs
 
-# TODO: allow to be ran from any dir
+from utils import path_utils
+
+
+class TestFileAsEolLf(unittest.TestCase):
+    @parameterized.expand(
+        [
+            # fmt: off
+            (b"", b""),
+            (b"Hello World", b"Hello World"),
+            (b"Hello World\r", b"Hello World\n"),
+            (b"Hello World\r\n", b"Hello World\n"),
+            (b"Hello World\n", b"Hello World\n"),
+            (b"Hello\r\nWorld\r\n", b"Hello\nWorld\n"),
+            (b"\n".join([b"Line" + bytes(str(i), 'utf-8') for i in range(10000)]), b"\n".join([b"Line" + bytes(str(i), 'utf-8') for i in range(10000)])),
+            (b"Unicode \xe2\x98\x83\r\n", b"Unicode \xe2\x98\x83\n"),
+            (b"\r\n\r\r\n\nHello\r\n\r\r\n\nWorld\r\n\r\r\n\n", b"\n\n\n\nHello\n\n\n\nWorld\n\n\n\n"),
+            ((b"a" * (4096 - 1) + b"\r") + (b"\n" + b"b" * (4096 - 1)), b"a" * (4096 - 1) + b"\n" + b"b" * (4096 - 1)),
+            ((b"Hello\r\n" * 2048) + b"World", (b"Hello\n" * 2048) + b"World"),
+            (b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\rMixedIn\n", b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\nMixedIn\n"),
+            # fmt: on
+        ]
+    )
+    def test_file_as_eol_lf(self, src_str_bin: bytes, expected_tgt_str_bin: bytes, chunk_max_size: int = 4096) -> None:
+        chunk_size = chunk_max_size
+        while chunk_size > 0:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                src_path = os.path.join(tmp_dir, "src.txt")
+                dst_path = os.path.join(tmp_dir, "dst.txt")
+
+                with open(src_path, "wb") as f:
+                    f.write(src_str_bin)
+
+                path_utils.file_as_eol_lf(src_path, dst_path, chunk_size)
+
+                with open(dst_path, "rb") as f:
+                    content = f.read()
+                    self.assertEqual(expected_tgt_str_bin, content)
+
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                src_path = os.path.join(tmp_dir, "src.txt")
+
+                with open(src_path, "wb") as f:
+                    f.write(src_str_bin)
+
+                path_utils.file_as_eol_lf(src_path, chunk_size=chunk_size)
+
+                with open(src_path, "rb") as f:
+                    content = f.read()
+                    self.assertEqual(expected_tgt_str_bin, content)
+            chunk_size -= 1
+
+
+class TestOpenUnixTxtSafely(unittest.TestCase):
+    @parameterized.expand(
+        [
+            # fmt: off
+            (b"", b""),
+            (b"Hello World", b"Hello World"),
+            (b"Hello World\r", b"Hello World\n", ValueError),
+            (b"Hello World\r\n", b"Hello World\n", ValueError),
+            (b"Hello World\n", b"Hello World\n"),
+            (b"Hello\r\nWorld\r\n", b"Hello\nWorld\n", ValueError),
+            (b"\n".join([b"Line" + bytes(str(i), 'utf-8') for i in range(10000)]), b"\n".join([b"Line" + bytes(str(i), 'utf-8') for i in range(10000)])),
+            (b"Unicode \xe2\x98\x83\r\n", b"Unicode \xe2\x98\x83\n", ValueError),
+            (b"\r\n\r\r\n\nHello\r\n\r\r\n\nWorld\r\n\r\r\n\n", b"\n\n\n\nHello\n\n\n\nWorld\n\n\n\n", ValueError),
+            ((b"a" * (4096 - 1) + b"\r") + (b"\n" + b"b" * (4096 - 1)), b"a" * (4096 - 1) + b"\n" + b"b" * (4096 - 1), ValueError),
+            ((b"Hello\r\n" * 2048) + b"World", (b"Hello\n" * 2048) + b"World", ValueError),
+            (b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\rMixedIn\n", b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\nMixedIn\n", ValueError),
+            # fmt: on
+        ]
+    )
+    def test_open_unix_txt_safely(
+        self, src_str_bin: bytes, expected_tgt_str_bin: bytes, raises: Optional[Exception] = None
+    ) -> None:
+        chunk_size: int = 4096
+        encoding = "utf-8"
+        expected_tgt_str = expected_tgt_str_bin.decode(encoding=encoding)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = os.path.join(tmp_dir, "src.txt")
+            path_out = os.path.join(tmp_dir, "dst.txt")
+
+            with open(path, "wb") as f:
+                f.write(src_str_bin)
+
+            content = None
+            if raises is None:
+                with path_utils.open_unix_safely(path, encoding=encoding, chunk_size=chunk_size) as f:
+                    content = f.read()
+            else:
+                with self.assertRaises(ValueError):
+                    with path_utils.open_unix_safely(path, encoding=encoding, chunk_size=chunk_size) as f:
+                        content = f.read()
+
+            if raises is None:
+                self.assertEqual(expected_tgt_str, content)
+                with path_utils.open_unix_safely(path_out, "w", encoding=encoding, chunk_size=chunk_size) as f:
+                    f.write(content)  # type: ignore [arg-type]
+                with open(path_out, "rb") as f:
+                    content_out = f.read()
+                self.assertEqual(expected_tgt_str_bin, content_out)
+            else:
+                self.assertIsNone(content)
+
+            with path_utils.open_unix_safely(path, correct_eol=True) as f:
+                content = f.read()
+
+            self.assertEqual(expected_tgt_str, content)
+
 
 unmocked_os_rename = path_utils.os.rename
 
 
-class mock_os_rename_fail_once:
+class MockOSRenameFailOnce:
+    # pylint: disable=[too-few-public-methods]
     num_os_rename_calls = 0
     num_os_rename_raises = 0
 
@@ -30,14 +134,14 @@ class mock_os_rename_fail_once:
         self.num_os_rename_calls += 1
         if self.num_os_rename_raises >= self.num_os_rename_calls:
             raise OSError(errno.EXDEV, "")
-        else:
-            unmocked_os_rename(old, new)
+        unmocked_os_rename(old, new)
 
 
-class TestMv(TestCase):
+class TestMv(pyfakefs.fake_filesystem_unittest.TestCase):
+    # pylint: disable=[too-many-public-methods]
     def setUp(self):
-        setattr(mock_os_rename_fail_once, "num_os_rename_calls", 0)
-        setattr(mock_os_rename_fail_once, "num_os_rename_raises", 0)
+        setattr(MockOSRenameFailOnce, "num_os_rename_calls", 0)
+        setattr(MockOSRenameFailOnce, "num_os_rename_raises", 0)
         self.setUpPyfakefs()
         self.dir = "/test/"
         self.create_dirs(self.dir)
@@ -59,18 +163,16 @@ class TestMv(TestCase):
     def assert_exists(self, num_files, num_dirs, *objects):
         counted_files = 0
         counted_dirs = 0
-        for base, dirs, files in os.walk(self.dir):
-            for fs in files:
-                counted_files += 1
-            for ds in dirs:
-                counted_dirs += 1
-        self.assertTrue(counted_files == num_files, "%s != %s" % (counted_files, num_files))
-        self.assertTrue(counted_dirs == num_dirs, "%s != %s" % (counted_dirs, num_dirs))
+        for _base, dirs, files in os.walk(self.dir):
+            counted_files += len(files)
+            counted_dirs += len(dirs)
+        self.assertTrue(counted_files == num_files, f"{counted_files} != {num_files}")
+        self.assertTrue(counted_dirs == num_dirs, f"{counted_dirs} != {num_dirs}")
         for obj in objects[:counted_files]:
-            self.assertTrue(os.path.isfile(obj), "File '%s' should exist!" % (obj))
+            self.assertTrue(os.path.isfile(obj), f"File '{obj}' should exist!")
         for obj in objects[counted_files:]:
-            self.assertTrue(os.path.isdir(obj), "Dir '%s' should exist!" % (obj))
-        self.assertTrue((num_files + num_dirs) == len(objects), "(%s + %s) != len(%s)" % (num_files, num_dirs, objects))
+            self.assertTrue(os.path.isdir(obj), f"Dir '{obj}' should exist!")
+        self.assertTrue((num_files + num_dirs) == len(objects), f"({num_files} + {num_dirs}) != len({objects})")
 
     def test__mv__file_base_case__success(self):
         self.create_files(self.old)
@@ -101,20 +203,20 @@ class TestMv(TestCase):
     def test__mv__file_old_lock_exists__raise_permission(self):
         old_lock = self.old + ".lock"
         self.create_files(self.old, old_lock)
-        self.assertRaises(PermissionError, path_utils.mv, self.old, self.new)
+        self.assertRaises(filelock.Timeout, path_utils.mv, self.old, self.new)
         self.assert_exists(2, 0, self.old, old_lock)
 
     def test__mv__file_new_lock_exists__raise_permission(self):
         new_lock = self.new + ".lock"
         self.create_files(self.old, new_lock)
-        self.assertRaises(PermissionError, path_utils.mv, self.old, self.new)
+        self.assertRaises(filelock.Timeout, path_utils.mv, self.old, self.new)
         self.assert_exists(2, 0, self.old, new_lock)
 
     def test__mv__old_lock_exists_new_lock_exists__raise_permission(self):
         old_lock = self.old + ".lock"
         new_lock = self.new + ".lock"
         self.create_files(self.old, old_lock, new_lock)
-        self.assertRaises(PermissionError, path_utils.mv, self.old, self.new)
+        self.assertRaises(filelock.Timeout, path_utils.mv, self.old, self.new)
         self.assert_exists(3, 0, self.old, old_lock, new_lock)
 
     def test__mv__file_ignore_locks_old_lock_exists__success(self):
@@ -216,20 +318,20 @@ class TestMv(TestCase):
         self.assertRaises(NotADirectoryError, path_utils.mv, self.old, self.new)
         self.assert_exists(0, 1, self.old)
 
-    @unittest.mock.patch("utils.path_utils.os.rename", side_effect=mock_os_rename_fail_once())
-    def test__mv__file_across_fs__success(self, mock_os_rename_):
+    @unittest.mock.patch("utils.path_utils.os.rename", side_effect=MockOSRenameFailOnce())
+    def test__mv__file_across_fs__success(self, _mock_os_rename_):
         dir_1 = self.dir + "dir_1/"
         dir_2 = self.dir + "dir_2/"
         self.create_dirs(dir_1, dir_2)
         self.old = dir_1 + "old.txt"
         self.new = dir_2 + "new.txt"
         self.create_files(self.old)
-        setattr(mock_os_rename_fail_once, "num_os_rename_raises", 1)
+        setattr(MockOSRenameFailOnce, "num_os_rename_raises", 1)
         path_utils.mv(self.old, self.new)
         self.assert_exists(1, 2, self.new, dir_1, dir_2)
 
-    @unittest.mock.patch("utils.path_utils.os.rename", side_effect=mock_os_rename_fail_once())
-    def test__mv__dir_across_fs__success(self, mock_os_rename_):
+    @unittest.mock.patch("utils.path_utils.os.rename", side_effect=MockOSRenameFailOnce())
+    def test__mv__dir_across_fs__success(self, _mock_os_rename_):
         dir_1 = self.dir + "dir_1/"
         dir_2 = self.dir + "dir_2/"
         self.old = dir_1 + "old_dir/"
@@ -238,15 +340,15 @@ class TestMv(TestCase):
         old_files = [self.old + "file_" + str(i) for i in range(11)]
         new_files = [self.new + "file_" + str(i) for i in range(11)]
         self.create_files(*old_files)
-        setattr(mock_os_rename_fail_once, "num_os_rename_raises", 1)
+        setattr(MockOSRenameFailOnce, "num_os_rename_raises", 1)
         path_utils.mv(self.old, self.new)
         self.assert_exists(11, 3, *new_files, dir_1, dir_2, self.new)
 
 
-class TestMvMulti(TestCase):
+class TestMvMulti(pyfakefs.fake_filesystem_unittest.TestCase):
     def setUp(self):
-        setattr(mock_os_rename_fail_once, "num_os_rename_calls", 0)
-        setattr(mock_os_rename_fail_once, "num_os_rename_raises", 0)
+        setattr(MockOSRenameFailOnce, "num_os_rename_calls", 0)
+        setattr(MockOSRenameFailOnce, "num_os_rename_raises", 0)
         self.setUpPyfakefs()
         self.dir = "/test/"
         self.create_dirs(self.dir)
@@ -268,18 +370,16 @@ class TestMvMulti(TestCase):
     def assert_exists(self, num_files, num_dirs, *objects):
         counted_files = 0
         counted_dirs = 0
-        for base, dirs, files in os.walk(self.dir):
-            for fs in files:
-                counted_files += 1
-            for ds in dirs:
-                counted_dirs += 1
-        self.assertTrue(counted_files == num_files, "%s != %s" % (counted_files, num_files))
-        self.assertTrue(counted_dirs == num_dirs, "%s != %s" % (counted_dirs, num_dirs))
+        for _base, dirs, files in os.walk(self.dir):
+            counted_files += len(files)
+            counted_dirs += len(dirs)
+        self.assertTrue(counted_files == num_files, f"{counted_files} != {num_files}")
+        self.assertTrue(counted_dirs == num_dirs, f"{counted_dirs} != {num_dirs}")
         for obj in objects[:counted_files]:
-            self.assertTrue(os.path.isfile(obj), "File '%s' should exist!" % (obj))
+            self.assertTrue(os.path.isfile(obj), f"File '{obj}' should exist!")
         for obj in objects[counted_files:]:
-            self.assertTrue(os.path.isdir(obj), "Dir '%s' should exist!" % (obj))
-        self.assertTrue((num_files + num_dirs) == len(objects), "(%s + %s) != len(%s)" % (num_files, num_dirs, objects))
+            self.assertTrue(os.path.isdir(obj), f"Dir '{obj}' should exist!")
+        self.assertTrue((num_files + num_dirs) == len(objects), f"({num_files} + {num_dirs}) != len({objects})")
 
     def test__mv_multi__files_base_case__success(self):
         self.create_files(*self.old)
@@ -310,20 +410,20 @@ class TestMvMulti(TestCase):
     def test__mv_multi__files_old_lock_exists__raise_permission(self):
         old_lock = self.old[-1] + ".lock"
         self.create_files(*self.old, old_lock)
-        self.assertRaises(PermissionError, path_utils.mv_multi, self.old, self.new)
+        self.assertRaises(filelock.Timeout, path_utils.mv_multi, self.old, self.new)
         self.assert_exists(12, 0, *self.old, old_lock)
 
     def test__mv_multi__files_new_lock_exists__raise_permission(self):
         new_lock = self.new[-1] + ".lock"
         self.create_files(*self.old, new_lock)
-        self.assertRaises(PermissionError, path_utils.mv_multi, self.old, self.new)
+        self.assertRaises(filelock.Timeout, path_utils.mv_multi, self.old, self.new)
         self.assert_exists(12, 0, *self.old, new_lock)
 
     def test__mv_multi__files_old_lock_exists_new_lock_exists__raise_permission(self):
         old_lock = self.old[-1] + ".lock"
         new_lock = self.new[-1] + ".lock"
         self.create_files(*self.old, old_lock, new_lock)
-        self.assertRaises(PermissionError, path_utils.mv_multi, self.old, self.new)
+        self.assertRaises(filelock.Timeout, path_utils.mv_multi, self.old, self.new)
         self.assert_exists(13, 0, *self.old, old_lock, new_lock)
 
     def test__mv_multi__files_old_not_exists__raise_file_not_found(self):

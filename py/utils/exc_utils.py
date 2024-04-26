@@ -36,20 +36,17 @@ def try_with_default(
     *args: Any,
     **kargs: Any
 ) -> Any:
-    """Returns result from calling <callable_>(<*args>, <**kargs>); if an exception in <exceptions> occurs return <default>
-
-    Imports:
-        from typing import Any, Callable, Union
+    """Returns <callable_>(<*args>, <**kargs>); if an exc in <exceptions> occurs instead return <default>
 
     Args:
-        exceptions (Union[Type[BaseException], Tuple[Type[BaseException]]]): Exceptions that cause <default> to be selected.
-        default (Any): Value to return if an exception in <exceptions> occurs
-        callable_ (Callable): Function like object to call as <callable_>(*<args>, **<kwargs>)
-        args (Any): Positional args to pass to <callable_>
-        kwargs (Any): Keyword args to pass to <callable_>
+        exceptions: Exceptions that cause <default> to be selected.
+        default: Value to return if an exception in <exceptions> occurs
+        callable_: Function like object to call as <callable_>(*<args>, **<kwargs>)
+        args: Positional args to pass to <callable_>
+        kwargs: Keyword args to pass to <callable_>
 
     Returns:
-        bool: <callable_>(*<args>, **<kwargs>) if no exception; <default> if exception in <exceptions> is raised
+        <callable_>(*<args>, **<kwargs>) if no exception; <default> if exception in <exceptions> is raised
     """
     try:
         return callable_(*args, **kargs)

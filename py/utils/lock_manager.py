@@ -25,7 +25,7 @@ class LockManager:
         if timeout is None:
             timeout = self.timeout
         for context in self.locks:
-            context.acquire(timeout)
+            context.acquire(timeout=timeout)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -43,9 +43,9 @@ class LockManager:
         for lock in self.locks:
             try:
                 lock.acquire(timeout=timeout)
-            except Exception as e:
+            except Exception:
                 self.release_locks()
-                raise PermissionError(f"Could not obtain lock '{lock.lock_file}'") from e
+                raise
 
     def release_locks(self) -> None:
         """Release each lock in <self.locks>"""

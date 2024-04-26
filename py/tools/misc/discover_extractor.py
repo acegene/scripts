@@ -64,7 +64,8 @@ def get_trans_list_from_pdf(pdf: str) -> List[Tuple[str, str, Any, float]]:
 
 
 def get_trans_list_from_pdf2(pdf: str) -> List[Tuple[str, str, Any, float]]:
-    pattern = r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d+) (.*?)(-?[\d,]+\.\d\d)$"  # pylint: disable=[line-too-long]
+    months = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    pattern = r"^" + months + r" (\d+) " + months + r" (\d+) (.*?)(-?[\d,]+\.\d\d)$"
     reader = PdfReader(pdf)
     transactions = []
     for page in reader.pages:

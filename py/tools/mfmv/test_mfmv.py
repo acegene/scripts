@@ -3,7 +3,7 @@
 # Tests mfmv.py
 #
 # usage
-#   * python mfmv_test.py
+#   * python test_mfmv.py
 #       * need to have mfmv.py in $PYTHONPATH or place mfmv.py in parent directory
 #
 # version 0.8
@@ -12,28 +12,25 @@
 #
 # todos
 #   * cases with more multifiles and files not part of multifiles
-#   * refactor creation of params
+#   * refactor creation of PARAMS
 #   * input prompts related to dir such as 'd ..'
 
 # type: ignore # TODO
 
+import contextlib
 import copy
 import os
-import sys
 import unittest
 import unittest.mock
 
+
+from typing import List, Sequence  # declaration of parameter and return types
+
 import parameterized  # python3 -m pip install parameterized
 
-from typing import List  # declaration of parameter and return types
+from tools import mfmv
+from utils.wrapped_indexable_callable import WrappedIndexableCallable
 
-try:
-    import mfmv
-    from utils.wrapped_indexable_callable import WrappedIndexableCallable
-except ImportError:
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    import mfmv
-    from utils.wrapped_indexable_callable import WrappedIndexableCallable
 ####################################################################################################
 ####################################################################################################
 # fmt: off
@@ -72,32 +69,61 @@ gen_indexable_part_0_99_indices = [
 # fmt: on
 ####################################################################################################
 ####################################################################################################
-coverage = "low"
-print("INFO: testing with coverage set to: " + coverage)
-if coverage == "low":
-    part_symbols = ["-"]
-    part_word = ["pt"]
-    dirs_out = ["."]
-    part_out = mfmv.gen_wrapped_indexable_callable()
-elif coverage == "mid":
-    part_symbols = ["_"]
-    part_word = ["pt", ""]
-    dirs_out = [None, "test"]
-    part_out = ["1", "part_a", "cd0"]
-elif coverage == "high":
-    part_symbols = ["_", "-", " ", ""]
-    part_word = ["pt", "part", ""]
-    dirs_out = [None, ".", "..", "test", "test" + os.sep + "level1"]
-    part_out = ["a", "1", "part_a", " pt0", "cd 6"]
+COVERAGE = "low"
+print("INFO: testing with COVERAGE set to: " + COVERAGE)
+if COVERAGE == "low":
+    PART_SYMBOLS = ["-"]
+    PART_WORD = ["pt"]
+    DIRS_OUT = ["."]
+    # PART_OUT = mfmv.gen_wrapped_indexable_callable()
+    PART_OUT = ["1", "part_a"]
+elif COVERAGE == "mid":
+    PART_SYMBOLS = ["_"]
+    PART_WORD = ["pt", ""]
+    DIRS_OUT = [None, "test"]
+    PART_OUT = ["1", "part_a", "cd0"]
+elif COVERAGE == "high":
+    PART_SYMBOLS = ["_", "-", " ", ""]
+    PART_WORD = ["pt", "part", ""]
+    DIRS_OUT = [None, ".", "..", "test", "test" + os.sep + "level1"]
+    PART_OUT = ["a", "1", "part_a", " pt0", "cd 6"]
 else:
-    raise
-params = [w for w in dirs_out]
-params = [[p, x + y + z] for p in params for x in part_symbols for y in part_word for z in part_symbols]
-params = [p + [o] for p in params for o in part_out]
-# print(params)
+    raise ValueError
+PARAMS = [w for w in DIRS_OUT]
+PARAMS = [[p, x + y + z] for p in PARAMS for x in PART_SYMBOLS for y in PART_WORD for z in PART_SYMBOLS]
+PARAMS = [p + [o] for p in PARAMS for o in PART_OUT]
+# for p in PARAMS:
+#     print(p)
+
+
+def make_argparse_args(args_dict):
+    as_cli_flag = lambda k: f"--{k}".replace("_", "-")
+    argparse_args = []
+    for k, v in args_dict.items():
+        if v is None:
+            continue
+        if isinstance(v, bool):
+            if v is True:
+                argparse_args.append(as_cli_flag(k))
+        elif isinstance(v, str):
+            argparse_args.extend((as_cli_flag(k), v))
+        elif isinstance(v, Sequence):
+            if len(v) > 0:
+                if k == "range_search":
+                    assert len(v) == 2, v
+                    argparse_args.extend((as_cli_flag(k), "-".join(str(e) for e in v)))
+                else:
+                    assert all(isinstance(e, (int, str)) for e in v)
+                    argparse_args.extend((as_cli_flag(k), *(str(e) for e in v)))
+        elif isinstance(v, int):
+            argparse_args.extend((as_cli_flag(k), str(v)))
+        else:
+            assert False, (k, v, type(v))
+    return argparse_args
 
 
 class MultifileMvTestCase(unittest.TestCase):
+    # pylint: disable=too-many-instance-attributes
     def setUp(self):
         default_parser_args = {
             "dir_in": ".",
@@ -107,123 +133,159 @@ class MultifileMvTestCase(unittest.TestCase):
             "inplace": False,
             "maxdepth": 5,
             "mindepth": 1,
-            "part_final": "1000",
+            # "part_final": "1000",
             "exts": ["mp4", "txt"],
             "exts_json": None,
             "exts_env": None,
             "range_search": [0, 1],
             "range_mv": None,
         }
-        self.args = lambda: None  # hack to 'forward declare' variable
-        self.set_cmd_args(default_parser_args)
+        self.args_dict = dict(default_parser_args)
         self.base = "base"
         self.ext = ".mp4"
-        self.input_side_effect = ["c"] * 200
         self.generate_parts(11)
         self.mvd = []
         self.files_in = []
         self.files_out = []
-
-    def set_cmd_args(self, dict_args):
-        [setattr(self.args, k, v) for k, v in dict_args.items()]
+        self.dir_mv = None
 
     def generate_parts(self, length: int) -> List[str]:
         digits = len(str(length))
         self.nums = [str(i) for i in range(0, length + 1)]
-        self.nums_padded = [n.zfill(digits) for i, n in enumerate(self.nums) if i < 10 ** digits - 1]
+        self.nums_padded = [n.zfill(digits) for i, n in enumerate(self.nums) if i < 10**digits - 1]
 
     def gen_parts(self, part_out: str, length: int) -> List[str]:
         if part_out.isdigit():
             return [str(i) for i in range(int(part_out), int(part_out) + length)]
-        else:
-            return gen_indexable_part_0_99_indices[-2][: length + 1]
+        return gen_indexable_part_0_99_indices[-2][: length + 1]
 
-    def listdir_side_effect(self, *args, **kwargs):
-        return self.files_in if args[0] == self.args.dir_in else []
+    @staticmethod
+    def side_effect_input(mock_inputs):
+        """Generator to yield mock inputs one at a time."""
+        for item in mock_inputs:
+            yield item
 
-    def listdir_dirs_side_effect(self, *args, **kwargs):
-        return [self.args.dir_in]
+    @staticmethod
+    def input_side_effect(mock_gen):
+        """Function to replace 'input'. It prints the prompt and returns the next item from the generator."""
 
-    def isfile_side_effect(self, *args, **kwargs):
-        for (lhs, rhs) in self.mvd:
+        def custom_input(prompt=""):
+            i = next(mock_gen)
+            print(f"{prompt}: {i}")
+            return i
+
+        return custom_input
+
+    def listdir_side_effect(self, *args, **_kwargs):
+        return self.files_in if args[0] == self.args_dict["dir_in"] else []
+
+    def listdir_dirs_side_effect(self, *_args, **_kwargs):
+        return [self.args_dict["dir_in"]]
+
+    def isfile_side_effect(self, *args, **_kwargs):
+        for lhs, rhs in self.mvd:
             if args[0] == rhs:
                 assert args[0] in [
                     os.path.join(self.dir_mv, f) for f in self.files_out
                 ], f"{args[0]} not in {[os.path.join(self.dir_mv, f) for f in self.files_out]}"
                 return True
-        for (lhs, rhs) in self.mvd:
+        for lhs, rhs in self.mvd:
             if args[0] == lhs:
-                assert args[0] in [os.path.join(self.args.dir_in, f) for f in self.files_in]
+                assert args[0] in [os.path.join(self.args_dict["dir_in"], f) for f in self.files_in]
                 return False
-        return args[0] in [os.path.join(self.args.dir_in, f) for f in self.files_in]
+        return args[0] in [os.path.join(self.args_dict["dir_in"], f) for f in self.files_in]
 
-    def isdir_side_effect(self, *args, **kwargs):
-        if args[0] == self.args.dir_in:
+    def isdir_side_effect(self, *args, **_kwargs):
+        if args[0] == self.args_dict["dir_in"]:
             return True
-        if args[0] == self.args.dir_out:
+        if args[0] == self.args_dict["dir_out"]:
             return True
         return False
 
-    def multifile_mv_side_effect(self, *args, **kwargs):
+    def multifile_mv_side_effect(self, *args, **_kwargs):
         self.mvd.append((args[0], args[1]))
 
-    def part_func_selection_terminal_side_effect(self, *args, **kwargs):
+    def part_func_selection_terminal_side_effect(self, *_args, **_kwargs):
         mfmv.gen_wrapped_indexable_callable()
 
-    def runTest(self, args, files_in, files_out, prepart, part_out):
-        self.set_cmd_args(args)
+    def run_test(self, args, files_in, files_out, prepart, part_out):
+        self.args_dict.update(args)
         self.files_in = copy.deepcopy(files_in)
         self.files_out = copy.deepcopy(files_out)
-        self.dir_mv = self.args.dir_out if self.args.dir_out != None else self.args.dir_in
+        self.dir_mv = self.args_dict["dir_in"] if self.args_dict["dir_out"] is None else self.args_dict["dir_out"]
         mv_pairs = [
-            (os.path.join(self.args.dir_in, i), os.path.join(self.dir_mv, o))
+            (os.path.join(self.args_dict["dir_in"], i), os.path.join(self.dir_mv, o))
             for i, o in zip(self.files_in, self.files_out)
         ]
-        # with unittest.mock.patch('builtins.input', side_effect=self.input_side_effect): # hardcode user input
-        with unittest.mock.patch(
-            "argparse.ArgumentParser.parse_args", return_value=copy.deepcopy(self.args)
-        ):  # hardcode user cmd line args
-            with unittest.mock.patch("mfmv.listdir_dirs", side_effect=self.listdir_dirs_side_effect):
-                with unittest.mock.patch("os.path.isfile", side_effect=self.isfile_side_effect):
-                    with unittest.mock.patch("os.path.isdir", side_effect=self.isdir_side_effect):
-                        with unittest.mock.patch("os.listdir", side_effect=self.listdir_side_effect):
-                            with unittest.mock.patch("mfmv.mv_atomic", side_effect=self.multifile_mv_side_effect) as mv:
-                                with unittest.mock.patch("mfmv.prepart_selection_terminal", return_value=prepart):
-                                    with unittest.mock.patch("mfmv.postpart_selection_terminal", return_value=""):
-                                        # with unittest.mock.patch('mfmv.part_func_selection_terminal', return_value=part_out):
-                                        # with unittest.mock.patch('builtins.print'): # silence output and speed up test
-                                        mfmv.main()
-                                        assert len(mv.call_args_list) == len(
-                                            mv_pairs
-                                        ), f"{len(mv.call_args_list)} != {len(mv_pairs)}"
-                                        for (args, kwargs), mv_pair in zip(mv.call_args_list, mv_pairs):
-                                            assert args == mv_pair, f"{args} != {mv_pair}"
+        part_selection_int = "29" if part_out[-1] == "a" else "20"
+        input_ = (part_selection_int, f"b {self.base}{prepart}", "c", "s")
+        input_side_effect = self.input_side_effect(self.side_effect_input(input_))
+        with contextlib.ExitStack() as stack:
+            for mgr in (
+                unittest.mock.patch("builtins.input", input_side_effect),
+                unittest.mock.patch("os.listdir", side_effect=self.listdir_side_effect),
+                unittest.mock.patch("os.path.isfile", side_effect=self.isfile_side_effect),
+                unittest.mock.patch("os.path.isdir", side_effect=self.isdir_side_effect),
+                unittest.mock.patch("tools.mfmv.mfmv.listdir_dirs", side_effect=self.listdir_dirs_side_effect),
+                unittest.mock.patch("tools.mfmv.mfmv.prepart_selection_terminal", return_value=""),
+                unittest.mock.patch("tools.mfmv.mfmv.postpart_selection_terminal", return_value=""),
+                # unittest.mock.patch("tools.mfmv.mfmv.part_func_selection_terminal", return_value=part_out),
+                # unittest.mock.patch('builtins.print'): # silence output and speed up test
+            ):
+                stack.enter_context(mgr)
+            mv = stack.enter_context(
+                unittest.mock.patch("tools.mfmv.mfmv.path_utils.mv", side_effect=self.multifile_mv_side_effect)
+            )
 
-    @parameterized.parameterized.expand(params)
-    def testNo1(self, dir_out, prepart, part_out):
-        args = {"dir_out": dir_out, "part_out": part_out}
+            argparse_args = make_argparse_args(self.args_dict)
+            mfmv.main(argparse_args)
+            assert len(mv.call_args_list) == len(
+                mv_pairs
+            ), f"{len(mv.call_args_list)} != {len(mv_pairs)};\nmv.call_args_list={mv.call_args_list}\nmv_pairs{mv_pairs}"
+            for mv_args, _mv_kwargs in mv.call_args_list:
+                assert mv_args in mv_pairs, f"{mv_args} not in {mv_pairs}"
+
+    @parameterized.parameterized.expand(PARAMS)
+    def test_no_1(self, dir_out, prepart, part_out):
+        # args = {"dir_out": dir_out, "part_out": part_out}
+        args = {"dir_out": dir_out}
         files_in = [self.base + prepart + p + self.ext for p in self.nums]
-        if len(part_out) < len(files_in):  # TODO:
-            return
-        files_out = [self.base + prepart + p + self.ext for p in part_out[0 : len(files_in)]]
+        print(f"files_in={files_in}")
+        print(f"base={self.base}; prepart={prepart}; ext={self.ext}")
+        # if len(part_out) < len(files_in):  # TODO:
+        #     print("len(part_out), len(files_in)", len(part_out), len(files_in))
+        #     print(f"files_in={files_in}")
+        #     print(f"part_out={part_out}")
+        #     return
+        # files_out = [self.base + prepart + p + self.ext for p in part_out[0 : len(files_in)]]
+        files_out = [  # part_out[:-1]
+            self.base + prepart + str(p) + self.ext
+            for i, p in enumerate(self.gen_parts(part_out[-1], len(files_in)))
+            if i < len(files_in)
+        ]
+        print(f"files_out={files_out}")
         if files_in[0] == files_out[0]:
+            print("files_in[0] == files_out[0]", files_in[0], files_out[0])
+            print(f"files_in={files_in}")
             return
-        self.runTest(args, files_in, files_out, prepart, part_out)
+        # self.input_side_effect = ["20", "3", "y", "4", "y", "c"]
+        # self.input_side_effect = ["20", "i", "b mid", "i", "b final", "e .ext", "c"]
+        self.run_test(args, files_in, files_out, prepart, part_out)
 
-    # @parameterized.parameterized.expand(params)
-    # def testNo2(self, dir_out, prepart, part_out):
+    # @parameterized.parameterized.expand(PARAMS)
+    # def test_no_2(self, dir_out, prepart, part_out):
     #     args = {'dir_out':dir_out, 'part_out':part_out}
     #     self.input_side_effect = ['20', 'i', 'b mid', 'i', 'b final', 'e .ext', 'c']
     #     files_in = [self.base + prepart + str(p) + 'fluff' + self.ext for p in self.nums[1:]]
     #     files_out = ['final' + part_out[:-1]  + str(p) + '.ext' for i, p in enumerate(self.gen_parts(part_out[-1], len(files_in))) if i < len(files_in)]
-    #     self.runTest(args, files_in, files_out)
+    #     self.run_test(args, files_in, files_out)
 
-    # @parameterized.parameterized.expand(params)
-    # def testNo3(self, dir_out, prepart, part_out):
+    # @parameterized.parameterized.expand(PARAMS)
+    # def test_no_3(self, dir_out, prepart, part_out):
     #     args = {'dir_out':dir_out, 'part_out':part_out, 'range_search':[0,2]}
     #     files_in = [self.base + prepart + str(p) + self.ext for p in self.nums[2:] if prepart + str(self.nums[2]) != part_out]
     #     files_out = [self.base + part_out[:-1] + str(p) + self.ext for i, p in enumerate(self.gen_parts(part_out[-1], len(files_in))) if i < len(files_in)]
-    #     self.runTest(args, files_in, files_out)
+    #     self.run_test(args, files_in, files_out)
 
     def gen_indexable_part_funcs_fixture(self):
         funcs, lengths = zip(*mfmv.gen_indexable_part_funcs())
@@ -231,17 +293,17 @@ class MultifileMvTestCase(unittest.TestCase):
         return {"funcs": funcs, "lengths": lengths, "wrapped_funcs": wrapped_funcs}
 
     @unittest.mock.patch("builtins.print")
-    def test_gen_indexable_part_funcs(self, print):
+    def test_gen_indexable_part_funcs(self, _print):
         dic = self.gen_indexable_part_funcs_fixture()
         for wf, length, expected in zip(dic["wrapped_funcs"], dic["lengths"], gen_indexable_part_0_99_indices):
             assert len(expected) > 0
             for actual, expected in zip(wf, expected):
                 assert actual == expected, str(actual) + " != " + str(expected)
             with self.assertRaises(IndexError):
-                wf[length]
+                wf[length]  # TODO: what is this?
 
     @unittest.mock.patch("builtins.print")
-    def test_part_func_selection_terminal(self, print):
+    def test_part_func_selection_terminal(self, _print):
         dic = self.gen_indexable_part_funcs_fixture()
         with unittest.mock.patch(
             "builtins.input", side_effect=[str(i) for i in reversed(range(1, len(dic["wrapped_funcs"]) + 1))]
@@ -253,7 +315,7 @@ class MultifileMvTestCase(unittest.TestCase):
                 assert len(wf) == len(actual), str(len(wf)) + " != " + str(len(actual))
 
     @unittest.mock.patch("builtins.print")
-    def test_prepart_selection_terminal(self, print):
+    def test_prepart_selection_terminal(self, _print):
         input_side_effect = [
             "1",
             "custom_input1",
@@ -277,7 +339,7 @@ class MultifileMvTestCase(unittest.TestCase):
                 )
 
     @unittest.mock.patch("builtins.print")
-    def test_postpart_selection_terminal(self, print):
+    def test_postpart_selection_terminal(self, _print):
         input_side_effect = [
             "1",
             "custom_input1",

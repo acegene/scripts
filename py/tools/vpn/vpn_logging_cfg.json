@@ -23,7 +23,7 @@
             "level": "DEBUG",
             "encoding": "utf-8",
             "formatter": "detailed_utc",
-            "filename": "global_var://_LOGFILE_PATH",
+            "filename": "global_var://_LOG_FILE_PATH",
             "maxBytes": 1000000,
             "backupCount": 3
         }

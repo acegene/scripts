@@ -19,6 +19,8 @@ import traceback
 from contextlib import contextmanager
 from typing import Any, Callable, Iterable, NoReturn, Optional, Tuple, Type, Union
 
+from utils import path_utils
+
 LVL_D = logging.getLevelName("DEBUG")
 LVL_I = logging.getLevelName("INFO")
 LVL_W = logging.getLevelName("WARNING")
@@ -26,7 +28,7 @@ LVL_E = logging.getLevelName("ERROR")
 LVL_F = logging.getLevelName("FATAL")
 LVL_C = logging.getLevelName("CRITICAL")
 
-_LOG_MANAGER_DEFAULT_LOGGING_CFG = os.path.join(os.path.dirname(__file__), "log-manager-logging-cfg.json")
+_LOG_MANAGER_DEFAULT_LOGGING_CFG = os.path.join(os.path.dirname(__file__), "log_manager_logging_cfg.json")
 
 ExceptableException = Union[Tuple[Type[BaseException], ...], Tuple[()], Type[BaseException]]
 MaybeCatchableExceptions = Optional[Union[Iterable[Type[BaseException]], Type[BaseException]]]
@@ -63,7 +65,7 @@ def cfg_replace_w_global_vars(cfg, globals_):
 
 
 def get_cfg_file_as_cfg_dict(cfg_file, globals_=None):
-    with open(_LOG_MANAGER_DEFAULT_LOGGING_CFG if cfg_file is None else cfg_file, encoding="utf-8") as f:
+    with path_utils.open_unix_safely(_LOG_MANAGER_DEFAULT_LOGGING_CFG if cfg_file is None else cfg_file) as f:
         if globals_ is None:
             return json.load(f)
         return cfg_replace_w_global_vars(json.load(f), globals_)
@@ -118,7 +120,7 @@ def disable_raise_exception_print():
 
 class LFFileHandler(logging.handlers.RotatingFileHandler):
     def _open(self):
-        return open(self.baseFilename, self.mode, encoding=self.encoding, newline="\n")
+        return path_utils.open_unix_safely(self.baseFilename, self.mode, encoding=self.encoding)
 
 
 class UTCFormatter(logging.Formatter):
@@ -134,23 +136,15 @@ class LogManager:
 
     # pylint: disable=[too-many-arguments, too-many-public-methods]
 
-    def __init__(self, name: Optional[str] = None, cfg_dict=None):
+    def __init__(self, name: Optional[str] = None):
         ## specify logger to be root or not depending on source of instantion
         self._logger = logging.getLogger(name)
-        if cfg_dict is None:
-            formatter = logging.Formatter(
-                "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s",
-                datefmt="%y%m%dT%H%M%S%z",
-            )
-            #### clear handlers to avoid double logs
-            # if self._logger.hasHandlers():
-            #     self._logger.handlers.clear()
-            #### setup handlers
-            std_err_handler = logging.StreamHandler(sys.stderr)
-            std_err_handler.setFormatter(formatter)
-            self._logger.addHandler(std_err_handler)
-        else:
-            logging.config.dictConfig(cfg_dict)
+
+    def add_stderr_hdlr(self, formatter=None, datefmt="%y%m%dT%H%M%S%z"):
+        formatter = LogManager.make_default_formatter(datefmt) if formatter is None else formatter
+        std_err_handler = logging.StreamHandler(sys.stderr)
+        std_err_handler.setFormatter(formatter)
+        self._logger.addHandler(std_err_handler)
 
     def __enter__(self):
         return self
@@ -162,10 +156,6 @@ class LogManager:
     def __getattr__(self, attr: Any) -> Any:
         """Pass unknown attributes to self._logger"""
         return getattr(self._logger, attr)
-
-    @staticmethod
-    def _err_to_str(err: RaisableException) -> str:
-        return f"{err.__class__.__name__}: {err}"
 
     def debug(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
         """Log <msg>"""
@@ -827,3 +817,44 @@ class LogManager:
 
     def exception(self, msg: Any, *msg_objs: Any, stacklevel: int = 0, **kwargs: Any) -> None:
         self._logger.exception(msg, *msg_objs, stacklevel=stacklevel + 3, **kwargs)
+
+    @staticmethod
+    def _err_to_str(err: RaisableException) -> str:
+        return f"{err.__class__.__name__}: {err}"
+
+    @staticmethod
+    def make_default_formatter(datefmt="%y%m%dT%H%M%S%z"):
+        return logging.Formatter(
+            "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s",
+            datefmt=datefmt,
+        )
+
+    @staticmethod
+    def set_cfg(cfg_dict):
+        logging.config.dictConfig(cfg_dict)
+
+    @staticmethod
+    def set_cfg_from_cfg_file(cfg_file, globals_=None):
+        logging.config.dictConfig(get_cfg_file_as_cfg_dict(cfg_file, globals_=globals_))
+
+    @staticmethod
+    def setup_logger(
+        globals_,
+        /,
+        name=None,
+        log_cfg=None,
+        log_file=None,
+        log_file_var_name="_LOG_FILE_PATH",
+        logger_var_name="logger",
+    ):
+        if name is None:
+            stack = inspect.stack()
+            caller_frame = stack[1]
+            name = caller_frame[0].f_globals["__name__"]
+
+        if log_file is not None:
+            globals_[log_file_var_name] = log_file
+        if log_cfg is not None:
+            LogManager.set_cfg_from_cfg_file(log_cfg, globals_)
+
+        globals_[logger_var_name] = LogManager(name)

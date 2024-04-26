@@ -10,10 +10,17 @@ import sys
 from typing import Dict, Optional, Sequence
 
 from utils import json_utils
+from utils import log_manager
+from utils import path_utils
 
 ## TODO:
 ## - cannot specify force via prompt or per bisync execution
+## - dry run with summary of expected changes
 
+_LOG_BASE = os.path.splitext(os.path.basename(__file__))[0]
+_LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else f"/tmp/{_LOG_BASE}.log"
+_LOGGING_CFG_DEFAULT = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{_LOG_BASE}_logging_cfg.json")
+logger = log_manager.LogManager()
 
 _JSON_CFG_DEFAULT = os.path.join(os.path.expanduser("~"), ".config", "cfg-gws.json")
 _RCLONE_TEST = "RCLONE_TEST"
@@ -27,7 +34,8 @@ def find_cfg_file(dir_: str) -> Optional[str]:
     return None
 
 
-def _init_rclone_bisync(rclone, rclone_bk_details: Dict, json_cfg: str) -> int:
+def _init_rclone_bisync(rclone, rclone_bk_details: Dict) -> int:
+    # pylint: disable=too-many-locals
     found_cfg = _JSON_CFG_DEFAULT if os.path.exists(_JSON_CFG_DEFAULT) else None
     for rclone_bk_detail in rclone_bk_details:
         local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["loc"])
@@ -42,15 +50,15 @@ def _init_rclone_bisync(rclone, rclone_bk_details: Dict, json_cfg: str) -> int:
         rclone_test_path = os.path.join(local, _RCLONE_TEST)
         if not os.path.exists(rclone_test_path):
             if len(os.listdir(local)) != 0:
-                print(f"ERROR: expected local={local} to be empty")
+                logger.error(f"expected local={local} to be empty")
                 sys.exit(1)
             rclone_test_cp_params = ["copyto", f"{remote}/RCLONE_TEST", rclone_test_path]
             rclone_test_cp_params_str = "' '".join(rclone_test_cp_params)
             cmd_str = f"'{rclone}' '{rclone_test_cp_params_str}'"
-            print(f"INFO: EXEC: {cmd_str}")
+            logger.info(f"EXEC: {cmd_str}")
             rclone_result = subprocess.run([rclone] + rclone_test_cp_params, check=False, capture_output=False)
             if rclone_result.returncode != 0:
-                print(f"ERROR: {cmd_str}; rclone_result.returncode={rclone_result.returncode}")
+                logger.error(f"{cmd_str}; rclone_result.returncode={rclone_result.returncode}")
                 return rclone_result.returncode
 
             resync_params = ["bisync", "--resync", local, remote, "--check-access", "--verbose"]
@@ -58,7 +66,7 @@ def _init_rclone_bisync(rclone, rclone_bk_details: Dict, json_cfg: str) -> int:
             cmd_str = f"'{rclone}' '{resync_params_str}'"
             resync_result = subprocess.run([rclone] + resync_params, check=False, capture_output=False)
             if resync_result.returncode != 0:
-                print(f"ERROR: {cmd_str}; resync_result.returncode={resync_result.returncode}")
+                logger.error(f"{cmd_str}; resync_result.returncode={resync_result.returncode}")
                 return resync_result.returncode
         if found_cfg is None:
             found_cfg = find_cfg_file(local)
@@ -69,7 +77,7 @@ def _init_rclone_bisync(rclone, rclone_bk_details: Dict, json_cfg: str) -> int:
         os.makedirs(parent_dir, exist_ok=True)
         found_cfg_abs = os.path.abspath(found_cfg)
         os.symlink(found_cfg_abs, _JSON_CFG_DEFAULT)
-        print(f"INFO: created symlink '{found_cfg_abs}' -> '{_JSON_CFG_DEFAULT}'")
+        logger.info(f"created symlink '{found_cfg_abs}' -> '{_JSON_CFG_DEFAULT}'")
 
     return 0
 
@@ -111,10 +119,10 @@ def _run_rclone_bisync(rclone, rclone_bk_details: Dict, force: bool) -> int:
 
         bisync_params_str = "' '".join(bisync_params)
         cmd_str = f"'{rclone}' '{bisync_params_str}'"
-        print(f"INFO: EXEC: {cmd_str}")
+        logger.info(f"EXEC: {cmd_str}")
         bisync_result = subprocess.run([rclone] + bisync_params, check=False, capture_output=False)
         if bisync_result.returncode != 0:
-            print(f"ERROR: {cmd_str}; bisync_result.returncode={bisync_result.returncode}")
+            logger.error(f"{cmd_str}; bisync_result.returncode={bisync_result.returncode}")
             return bisync_result.returncode
     return 0
 
@@ -124,14 +132,19 @@ def main(argparse_args: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--init", action="store_true", help="TODO")
     parser.add_argument("--force", action="store_true", help="Run in situations like too many deletes.")
     parser.add_argument("--json-cfg", default=_JSON_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
+    parser.add_argument("--log")
+    parser.add_argument("--log-cfg", help="Logging cfg, empty str uses LogManager default cfg")
     parser.add_argument("--rclone", default="rclone", help="The rclone version to use")
     args = parser.parse_args(argparse_args)
 
-    with open(args.json_cfg, "r", encoding="utf-8") as file:
+    log_cfg = _LOGGING_CFG_DEFAULT if args.log_cfg is None else (None if args.log_cfg == "" else args.log_cfg)
+    log_manager.LogManager.setup_logger(globals(), log_cfg=log_cfg, log_file=args.log)
+
+    with path_utils.open_unix_safely(args.json_cfg) as file:
         rclone_bk_details = json.load(file)["rclone_bk_details"]
 
     if args.init:
-        return _init_rclone_bisync(args.rclone, rclone_bk_details, args.json_cfg)
+        return _init_rclone_bisync(args.rclone, rclone_bk_details)
 
     return _run_rclone_bisync(args.rclone, rclone_bk_details, args.force)
 

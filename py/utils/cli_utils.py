@@ -19,11 +19,6 @@ from typing import Callable, List, Optional, Sequence
 def parse_range(range_in: str, raise_: bool = True) -> Optional[List[int]]:
     """Generate a list from <range_in>
 
-    https://stackoverflow.com/questions/4726168/parsing-command-line-input-for-numbers
-
-    Imports:
-        from typing import List, Optional
-
     Args:
         range_in (str): String to extract range_in from
         raise_ (bool): Determines whether an invalid <range_in> leads to a raised exc or return None
@@ -33,7 +28,11 @@ def parse_range(range_in: str, raise_: bool = True) -> Optional[List[int]]:
 
     Raises:
         ValueError: If <range_in> is invalid
+
+    See Also:
+        https://stackoverflow.com/questions/4726168/parsing-command-line-input-for-numbers
     """
+
     #### local funcs
     def new_list_elems_removed(elems, lst):
         return list(filter(lambda x: x not in elems, lst))
@@ -44,10 +43,10 @@ def parse_range(range_in: str, raise_: bool = True) -> Optional[List[int]]:
     error = ValueError if not error and range_in == "" else error
     error = (
         ValueError
-        if not error and not all([c.isdigit() for c in new_list_elems_removed(["-", ","], range_in)])
+        if not error and not all((c.isdigit() for c in new_list_elems_removed(["-", ","], range_in)))
         else error
     )
-    error = ValueError if not error and not all([c.isdigit() for c in [range_in[0], range_in[-1]]]) else error
+    error = ValueError if not error and not all((c.isdigit() for c in [range_in[0], range_in[-1]])) else error
     if error:
         print(f"ERROR: expect str with only positive ints, commas and hyphens, given {range_in}")
         if raise_:
@@ -56,7 +55,7 @@ def parse_range(range_in: str, raise_: bool = True) -> Optional[List[int]]:
     result = []
     for section in range_in.split(","):
         x = section.split("-")
-        result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
+        result += list(range(int(x[0]), int(x[-1]) + 1))
     return sorted(result)
 
 
@@ -87,18 +86,19 @@ def cmdline_split(s, platform="this"):
     https://stackoverflow.com/a/35900070/10630957
 
     """
+    # pylint: disable=[too-many-branches]
     if platform == "this":
         platform = sys.platform != "win32"
     if platform == 1:
-        RE_CMD_LEX = r""""((?:\\["\\]|[^"])*)"|'([^']*)'|(\\.)|(&&?|\|\|?|\d?\>|[<])|([^\s'"\\&|<>]+)|(\s+)|(.)"""
+        re_cmd_lex = r""""((?:\\["\\]|[^"])*)"|'([^']*)'|(\\.)|(&&?|\|\|?|\d?\>|[<])|([^\s'"\\&|<>]+)|(\s+)|(.)"""
     elif platform == 0:
-        RE_CMD_LEX = r""""((?:""|\\["\\]|[^"])*)"?()|(\\\\(?=\\*")|\\")|(&&?|\|\|?|\d?>|[<])|([^\s"&|<>]+)|(\s+)|(.)"""
+        re_cmd_lex = r""""((?:""|\\["\\]|[^"])*)"?()|(\\\\(?=\\*")|\\")|(&&?|\|\|?|\d?>|[<])|([^\s"&|<>]+)|(\s+)|(.)"""
     else:
-        raise AssertionError("unkown platform %r" % platform)
+        raise AssertionError(f"unkown platform {platform}")
 
     args = []
     accu = None  # collects pieces of one arg
-    for qs, qss, esc, pipe, word, white, fail in re.findall(RE_CMD_LEX, s):
+    for qs, qss, esc, pipe, word, white, fail in re.findall(re_cmd_lex, s):
         if word:
             pass  # most frequent
         elif esc:
@@ -130,23 +130,17 @@ def cmdline_split(s, platform="this"):
 def shell_split(cmd: str) -> Sequence[str]:
     """Like 'shlex.split', but uses the Windows OS splitting syntax when run on Windows.
 
-    https://stackoverflow.com/questions/44945815/how-to-split-a-string-into-command-line-arguments-like-the-shell-in-python
-
-    TODO:
-        Write a version of this that doesn't invoke a subprocess
-
-    Imports:
-        import json
-        import os
-        import shlex
-        import subprocess
-        from typing import Sequence
-
     Args:
-        cmd (str): Cmd str to extract into a list of str
+        cmd: Cmd str to extract into a Sequence[str]
 
     Returns:
         <cmd> split as a Sequence[str]
+
+    See Also:
+        https://stackoverflow.com/questions/44945815/how-to-split-a-string-into-command-line-arguments-like-the-shell-in-python
+
+    TODO:
+        Write a version of this that doesn't invoke a subprocess
     """
     if os.name == "posix":
         return shlex.split(cmd)
@@ -158,5 +152,5 @@ def shell_split(cmd: str) -> Sequence[str]:
     )
     ret = subprocess.check_output(full_cmd).decode()
     ret_val: Sequence[str] = json.loads(ret)
-    assert all([isinstance(val, str) for val in ret_val]), f"type(ret_val)={type(ret_val)}; ret_val={ret_val}"
+    assert all((isinstance(val, str) for val in ret_val)), f"type(ret_val)={type(ret_val)}; ret_val={ret_val}"
     return ret_val

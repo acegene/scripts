@@ -31,8 +31,6 @@
 #   * file input for cmdargs
 #       * allow custom user input auto filename formatter
 
-# type: ignore # TODO
-
 import argparse
 import itertools
 import json
@@ -42,41 +40,42 @@ import sys
 
 import math
 
-from typing import Any, Callable, List, Optional, Sequence, Type, Union
+from typing import Any, Callable, List, Optional, Sequence, Tuple, Type, Union
 
+from utils import path_utils
 from utils.wrapped_indexable_callable import WrappedIndexableCallable
 
-if sys.version_info < (3, 6):  # version 3.6.X or newer allows f strings
-    raise Exception(
-        "ERROR: python version needs to be 3.6.X or newer, instead is: "
-        + ".".join([str(m) for m in sys.version_info[:3]])
-    )
 ################&&!%@@%!&&################ AUTO GENERATED CODE BELOW THIS LINE ################&&!%@@%!&&################
 # yymmdd: 210116
 # generation cmd on the following line:
-# python "${GWSPY}/write_btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv_atomic" "raise_if_false" "try_or" "parse_range"
+# python "${GWSPY}/write_btw.py" "-t" "py" "-w" "${GWSPY}/mfmv.py" "-x" "mv" "raise_if_false" "try_or" "parse_range"
 
 
 def raise_if_false(exception: Type[Exception], expression: bool, string_if_except: str = None) -> None:
     """Throw <exception> if <expression> == False"""
     if not expression:
-        if string_if_except != None:
+        if string_if_except is not None:
             print(string_if_except)
         raise exception
 
 
 def try_or(
-    exceptions: Union[Type[Exception], Sequence[Type[Exception]]], call: Callable, *args, default: Any = None, **kargs
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException]]],
+    call: Callable,
+    *args,
+    default: Any = None,
+    **kargs,
 ) -> Any:
     """Returns result from calling <call> with <*args> <**kargs>; if an exception in <exceptions> occurs return default"""
     try:
         return call(*args, **kargs)
-    except (exceptions):
+    except exceptions:
         return default
 
 
 def parse_range(range_str: str, throw: bool = True) -> Optional[List[int]]:
     """Generate a list from <range_str>"""
+
     #### local funcs
     def new_list_elems_removed(elems, lst):
         return list(filter(lambda x: x not in elems, lst))
@@ -99,19 +98,18 @@ def parse_range(range_str: str, throw: bool = True) -> Optional[List[int]]:
     result = []
     for section in range_str.split(","):
         x = section.split("-")
-        result += [i for i in range(int(x[0]), int(x[-1]) + 1)]
+        result += list(range(int(x[0]), int(x[-1]) + 1))
     return sorted(result)
 
 
 def num_digits(num: int, base: int = 10, exception_if_neg: bool = False) -> int:
     if num > 0:
         return int(math.log(num, base)) + 1
-    elif num == 0:
+    if num == 0:
         return 1
-    else:
-        if exception_if_neg:
-            raise ValueError("If <exception_if_neg> == True then <num> must be positive")
-        return int(math.log10(-num)) + 1  # +1 if you don't count the '-'
+    if exception_if_neg:
+        raise ValueError("If <exception_if_neg> is True then <num> must be positive")
+    return int(math.log10(-num)) + 1  # +1 if you don't count the '-'
 
 
 def num_convert_base(num: int, base: int) -> Sequence[int]:
@@ -145,9 +143,6 @@ def int_from_alpha(string: str) -> int:
 
 def parse_range_alpha(range_str: str, throw=True) -> Union[List[int], List[str], None]:
     """Generate a list from <range_str>"""
-    #### local funcs
-    def newListRemove(element, lst):
-        return list(filter(lambda x: x != element, lst))
 
     error = None
     error = TypeError if not error and not isinstance(range_str, str) else error
@@ -159,22 +154,23 @@ def parse_range_alpha(range_str: str, throw=True) -> Union[List[int], List[str],
         return None
     if range_str[0].isalpha():
         range_lst = parse_range("".join([str(int_from_alpha(c)) if c.isalpha() else c for c in range_str]), throw)
-        if range_lst == None:
+        if range_lst is None:
             return None
-        return [alpha_from_int(x) for x in range_lst] if range_lst != None else None
+        return [alpha_from_int(x) for x in range_lst] if range_lst is not None else None
     else:
         return parse_range(range_str, throw)
 
 
-def parse_inputs() -> dict:
+def parse_inputs(argparse_args: Optional[Sequence[str]] = None) -> dict:
     """Parse cmd line inputs; set, check, and fix script's default variables"""
+
     #### local funcs
     def import_json_obj(f: str, key: str) -> List[str]:
         """Returns json object associated with key from file"""
-        with open(f, "r") as json_file:
+        with path_utils.open_unix_safely(f) as json_file:
             data = json.load(json_file)
             raise_if_false(ValueError, key in data)
-            return data[key]
+            return data[key]  # type: ignore [no-any-return]
 
     #### cmd line args parser
     parser = argparse.ArgumentParser()
@@ -212,48 +208,59 @@ def parse_inputs() -> dict:
         type=parse_range_alpha,
         help="indices range, inclusive, for multifile mv i.e. 0-4",
     )  # TODO:
-    args = parser.parse_args()
+    args = parser.parse_args(argparse_args)
     #### return dict assigned from attributes of argumentparser object
-    out = {attr: val for attr, val in args.__dict__.items()}
+    out = dict(args.__dict__.items())
     #### raise exceptions
     raise_if_false(ValueError, os.path.isdir(out["dir_in"]))
-    raise_if_false(ValueError, out["dir_out"] == None or os.path.isdir(out["dir_out"]))
+    raise_if_false(ValueError, out["dir_out"] is None or os.path.isdir(out["dir_out"]))
     raise_if_false(
         ValueError,
-        len([True for x in [out["regex"], out["exts"], out["exts_env"], out["exts_json"]] if x != None and x != False])
+        len(
+            [
+                True
+                for x in [out["regex"], out["exts"], out["exts_env"], out["exts_json"]]
+                if x is not None and x is True
+            ]
+        )
         <= 1,
     )
     raise_if_false(ValueError, out["maxdepth"] >= out["mindepth"] and out["mindepth"] > 0)
     #### convert range search range from alpha to int if given an alpha range
     out["range_search"] = [int_from_alpha(x) if isinstance(x, str) else x for x in out["range_search"]]
     #### when regex is None then its set using exts related args
-    if out["regex"] == None:
-        if out["exts_env"] == True:
+    if out["regex"] is None:
+        if out["exts_env"] is True:
             assert "GWSST" in os.environ
             out["exts_json"] = os.path.join(os.environ["GWSST"], "globals.json")
-        if out["exts_json"] != None:
+        if out["exts_json"] is not None:
             assert os.path.isfile(out["exts_json"])
             out["exts"] = import_json_obj(out["exts_json"], "video_exts")
-        if out["exts"] == None:
+        if out["exts"] is None:
             out["exts"] = ["mp4", "m4p", "mkv", "mpeg", "mpg", "avi", "wmv", "mov", "qt", "iso", "m4v", "flv"]
-        out["exts"] = "|".join(["\." + ext if ext[0] != "." else ext for ext in out["exts"]])
+        assert out["exts"] is not None
+        out["exts"] = "|".join([r"\." + ext if ext[0] != "." else ext for ext in out["exts"]])
         out["regex"] = "^.*(" + out["exts"] + ")$"
     #### get user specified part formatting for renaming multifiles
     out["parts_out"] = part_func_selection_terminal(gen_wrapped_indexable_callable())
-    assert out["parts_out"] != None
+    assert out["parts_out"] is not None
     out["prepart"] = prepart_selection_terminal()
-    assert out["prepart"] != None
+    assert out["prepart"] is not None
     out["postpart"] = postpart_selection_terminal()
-    assert out["postpart"] != None
+    assert out["postpart"] is not None
     #### remove entries from returned dict that are unused by the surrounding scope
-    [out.pop(k, None) for k in ["exts_env", "exts_json", "exts", "part_out"]]
+    for k in ("exts_env", "exts_json", "exts", "part_out"):
+        out.pop(k, None)
     #### return dictionary of modified cmd args
     return out
 
 
-def listdir_dirs(dir_in: str = "", mindepth: int = 1, maxdepth: int = 1, excludes: Sequence[str] = []) -> List[str]:
+def listdir_dirs(
+    dir_in: str = "", mindepth: int = 1, maxdepth: int = 1, excludes: Optional[Sequence[str]] = None
+) -> List[str]:
     """Get dirs from directory within the recursive depths mindepth-maxdepth and remove excludes"""
     #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
+    excludes = [] if excludes is None else excludes
     dirs_walk = [
         d[0]
         for d in os.walk(dir_in)
@@ -262,22 +269,23 @@ def listdir_dirs(dir_in: str = "", mindepth: int = 1, maxdepth: int = 1, exclude
         and d[0][len(dir_in) :].count(os.sep) >= mindepth - 1
     ]
     #### remove all excludes from dirs_walk
-    return [d for d in dirs_walk if all([False for e in excludes if e in d])]
+    return [d for d in dirs_walk if all(False for e in excludes if e in d)]
 
 
 def listdir_files(dir_in: str = ".", regex: str = ".*") -> List[str]:
     """Get files from dir_in that match the regex pattern reg"""
     files = [f for f in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, f))]
-    return [f for f in files if re.search(regex, f, re.IGNORECASE) != None]
+    return [f for f in files if re.search(regex, f, re.IGNORECASE) is not None]
 
 
-def gen_indexable_part_funcs() -> Sequence[Callable]:
+def gen_indexable_part_funcs() -> Sequence[Tuple[Callable, int]]:
     """Set the static variable _parts_lists"""
     max_digits = 9
     max_length = 10 ** (max_digits - 1)  # arbitrarily set to max of 1 billion - 1
     length = max_length
     assert length <= max_length
     assert length >= 26  # not strictly necessary but helps num to alpha conversions
+
     #### indexable functions numbers and lowercase letters
     def nums(index):
         return str(index)
@@ -289,8 +297,9 @@ def gen_indexable_part_funcs() -> Sequence[Callable]:
     alpha_lst = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
     # fmt: on
 
-    def alphas(index, lst=alpha_lst):
-        index_base26_lst = num_convert_base(index, 26)  # TODO:
+    def alphas(index, lst=None):
+        lst = alpha_lst
+        # index_base26_lst = num_convert_base(index, 26)  # TODO:
         return "".join([lst[n] for n in num_convert_base(index, 26)])
 
     #### function generators for numbers padded with zeros
@@ -310,28 +319,32 @@ def gen_indexable_part_funcs() -> Sequence[Callable]:
 
         return padded_nums_one
 
-    def make_padded_alphas(digits, lst=alpha_lst):
-        def padded_alphas(index, lst=alpha_lst):
+    def make_padded_alphas(digits, lst=None):
+        lst = alpha_lst if lst is None else lst
+
+        def padded_alphas(index, lst=None):
+            lst = alpha_lst if lst is None else lst
             if num_digits(index, 26) > digits:
                 raise IndexError
-            index_base26_lst = num_convert_base(index, 26)  # TODO:
+            # index_base26_lst = num_convert_base(index, 26)  # TODO:
             alpha_str = "".join([lst[n] for n in num_convert_base(index, 26)])
             return alpha_str.rjust(digits, "a")
 
         return padded_alphas
 
     #### generate return var
-    part_funcs = [(make_padded_nums(i), 10 ** i) for i in reversed(range(1, max_digits + 1))]
+    part_funcs = []
+    part_funcs += [(make_padded_nums(i), 10**i) for i in reversed(range(1, max_digits + 1))]
     part_funcs += [(nums, length)]
-    part_funcs += [(make_padded_nums_one(i), (10 ** i) - 1) for i in reversed(range(1, max_digits + 1))]
+    part_funcs += [(make_padded_nums_one(i), (10**i) - 1) for i in reversed(range(1, max_digits + 1))]
     part_funcs += [(nums_one, length)]
-    part_funcs += [(make_padded_alphas(i), 26 ** i) for i in reversed(range(1, max_digits + 1))]
-    part_funcs += [(alphas, 26 ** max_digits)]
+    part_funcs += [(make_padded_alphas(i), 26**i) for i in reversed(range(1, max_digits + 1))]
+    part_funcs += [(alphas, 26**max_digits)]
     return part_funcs
 
 
 def gen_wrapped_indexable_callable() -> Sequence[WrappedIndexableCallable]:
-    return [WrappedIndexableCallable(func, length) for func, length in gen_indexable_part_funcs()]
+    return tuple(WrappedIndexableCallable(func, length) for func, length in gen_indexable_part_funcs())
 
 
 def part_func_selection_terminal(part_funcs) -> Optional[WrappedIndexableCallable]:
@@ -340,12 +353,12 @@ def part_func_selection_terminal(part_funcs) -> Optional[WrappedIndexableCallabl
         print(f"{i + 1}: {func[0]}, {func[1]} ... {func[-2]}, {func[-1]}")
     while True:
         choice = input("PROMPT: (q)uit; or select the naming increment style you prefer using a given index above: ")
-        if choice == "quit" or choice == "q":
+        if choice in ("q", "quit"):
             print("INFO: aborting without selection")
             return None
         try:
             part_choice_int = int(choice) - 1
-        except:
+        except ValueError:
             print(
                 f"WARNING: invalid input of '{choice}', expecting a positive integer between 1 and {len(part_funcs)}."
             )
@@ -366,7 +379,7 @@ def postpart_selection_terminal():
     return pre_or_post_part_selection_terminal(recommended_postparts, "post")
 
 
-def pre_or_post_part_selection_terminal(recommended: Sequence[str], pre_or_post_str: str):
+def pre_or_post_part_selection_terminal(recommended: List[str], pre_or_post_str: str):
     while True:
         print("##########################################")
         for i, prepart in enumerate(["prompt user to type a custom " + pre_or_post_str + "part"] + recommended):
@@ -374,12 +387,12 @@ def pre_or_post_part_selection_terminal(recommended: Sequence[str], pre_or_post_
         choice = input(
             f"PROMPT: (q)uit; or select the naming {pre_or_post_str}part style you prefer using a given index above: "
         )
-        if choice == "quit" or choice == "q":
+        if choice in ("q", "quit"):
             print("INFO: aborting without selection")
             return None
         try:
             part_choice_int = int(choice) - 1
-        except:
+        except ValueError:
             print(
                 f"WARNING: invalid input of '{choice}', expecting a positive integer between 1 and {len(recommended) + 1}."
             )
@@ -393,34 +406,29 @@ def pre_or_post_part_selection_terminal(recommended: Sequence[str], pre_or_post_
             continue
         while True:
             confirmation = input(f"PROMPT: use the naming scheme '{choice_out}'? (y)es; (n)o ")
-            if confirmation == "yes" or confirmation == "y":
+            if confirmation in ("y", "yes"):
                 print(f"INFO: using {pre_or_post_str}part naming scheme '{choice_out}'.")
                 return choice_out
-            elif confirmation == "no" or confirmation == "n":
+            if confirmation in ("n", "no"):
                 print(f"INFO: rejecting {pre_or_post_str}part naming scheme '{choice_out}'.")
                 break
-            else:
-                print(f"ERROR: unrecognized confirmation '{confirmation}'.")
+            print(f"ERROR: unrecognized confirmation '{confirmation}'.")
 
 
 class Multifile:
     """Allows operation on a contiguous group of similarly named files"""
 
-    #### private class attributes
     __prefix_style: str = r"( - |_|-|| )(cd|ep|episode|pt|part|| )( - |_|-|| )"
-    _parts_lists: Optional[List[Sequence]] = None
-    #### magic methods
+    _parts_lists: Optional[Sequence[WrappedIndexableCallable]] = None
+
     def __init__(self, file_dict: dict) -> None:
-        assert all(
-            True if k in ["dir", "base", "prepart", "parts", "postpart", "ext"] else False for k in file_dict.keys()
-        )
+        assert all(k in ["dir", "base", "prepart", "parts", "postpart", "ext"] for k in file_dict.keys())
         #### object attributes
         self.file_dict: dict = file_dict
 
     def __getitem__(self, key: Union[str, int]) -> Any:
         return self.file_dict[key] if isinstance(key, str) else self.__get_nth_file(key)
 
-    #### public methods
     ## methods that manipulate the state of the multifile or its referenced contents
     def mv(
         self,
@@ -432,12 +440,12 @@ class Multifile:
     ) -> Optional["Multifile"]:
         """Move this object's files using the pattern specified by parts"""
         #### asserts
-        assert self.ismultifile()
+        assert self.ismultifile(), self.to_list()
         #### set output multifile dict
-        out_dict = {k: v for k, v in self.file_dict.items()}
-        out_dict["dir"] = dir_out if dir_out != None else self["dir"]
+        out_dict = dict(self.file_dict.items())
+        out_dict["dir"] = dir_out if dir_out is not None else self["dir"]
         out_dict["prepart"] = prepart
-        if range_mv == None:
+        if range_mv is None:
             # if len(parts_lst) < self.size():
             #     print(f"ERROR: selected parts_out not big enough for multifile, choose new part or range\nERROR: partlist: {parts}\nERROR: multifile: {out_dict['parts']}")
             parts_lst = parts_lst[: self.size()]
@@ -451,7 +459,7 @@ class Multifile:
         print("INFO: printing potential mv cmds to be executed...")
         while True:
             #### check if mv operations are valid, if not then abort
-            if range_mv == None:
+            if range_mv is None:
                 reduced_list = self.to_list()
             else:
                 reduced_list = [
@@ -478,25 +486,19 @@ class Multifile:
             for i, (old, new) in enumerate(
                 itertools.zip_longest(reduced_list, new_list, fillvalue="NO_EQUIVALENT_VALUE")
             ):
-                if max(length, new_length) < 10:
+                max_length = max(length, new_length)
+                if max_length < 10:
                     print(f"  mv {old} {new}")
                 else:
-                    if i in [
-                        0,
-                        1,
-                        2,
-                        max(length, new_length) - 3,
-                        max(length, new_length) - 2,
-                        max(length, new_length) - 1,
-                    ]:
+                    if i in [0, 1, 2, max_length - 3, max_length - 2, max_length - 1]:
                         print(f"  mv {old} {new}")
                     if i == 3:
-                        print(f"  ... {max(length, new_length)} files total")
+                        print(f"  ... {max_length} files total")
             print(
                 "PROMPT: (c)ontinue; (d)ir str; (b)ase str; (p)art str; (e)xt str; (r)ange_mv str; (i)nplace; (s)kip; (q)uit"
             )
             choice = input()
-            if choice == "continue" or choice == "c":
+            if choice in ("c", "continue"):
                 if length != new_length:
                     continue
                 if not all([True if old not in new_list else False for old in reduced_list]):
@@ -528,7 +530,7 @@ class Multifile:
                         sim_failed = True
                         break
                     if new in out_exists:
-                        print(f"ERROR: mv sim error: os.path.isfile(new) == True: mv '{old}' '{new}'")
+                        print(f"ERROR: mv sim error: os.path.isfile(new) is True: mv '{old}' '{new}'")
                         sim_failed = True
                         break
                     try_or(ValueError, out_exists.remove, old)
@@ -546,15 +548,15 @@ class Multifile:
                         #### asserts to prepare for mv
                         assert not os.path.isfile(new), f"ERROR: mv '{old}' '{new}'"
                         #### basic mv operation on single file
-                        mv_atomic(old, new)
+                        path_utils.mv(old, new)
                         #### asserts to prepare for mv
                         assert not os.path.isfile(old), f"ERROR: mv '{old}' '{new}'"
                     else:
                         #### basic mv operation on single file
-                        mv_atomic(old, new)
+                        path_utils.mv(old, new)
                     assert os.path.isfile(new), f"ERROR: mv '{old}' '{new}'"
-                self = out_mf
-                return self
+                # self = out_mf # TODO: this has no effect, was this actually necessary?
+                return out_mf
             elif choice[:9] == "range_mv " or choice[:2] == "r ":
                 tmp_range = choice.split(" ", 1)[1]
                 if tmp_range == "all":
@@ -580,12 +582,12 @@ class Multifile:
                 else:
                     out_dict["dir"] = tmp_dir
             elif choice[:5] == "base " or choice[:2] == "b ":
-                out_dict["base"] = choice.split(" ", 1)[1]
+                out_dict["base"] = choice.split(" ", 1)[1]  # TODO: should this be [1:]?
                 if not inplace:
                     out_dict["postpart"] = None
             elif choice[:5] == "part " or choice[:2] == "p ":
                 tmp_lst = part_func_selection_terminal(gen_wrapped_indexable_callable())
-                parts_lst = tmp_lst if tmp_lst != None else parts_lst
+                parts_lst = tmp_lst if tmp_lst is not None else parts_lst
             elif choice[:4] == "ext " or choice[:2] == "e ":
                 out_dict["ext"] = choice.split(" ", 1)[1]
             else:
@@ -596,7 +598,7 @@ class Multifile:
     ## methods that examine the state of the multifile or its referenced contents
     def ismultifile(self) -> bool:
         """Ensure this object has at least two valid and contiguous files"""
-        return all([os.path.isfile(f) for f in self.to_list()]) and self.size() > 1
+        return all((os.path.isfile(f) for f in self.to_list())) and self.size() > 1
 
     def size(self) -> int:
         return len(self["parts"])
@@ -619,95 +621,100 @@ class Multifile:
         return "".join([str(x) for x in out if x is not None])
 
     def __isalpha(self) -> bool:
-        return self["parts"][0][-1].isalpha()
+        return self["parts"][0][-1].isalpha()  # type: ignore [no-any-return]
 
-    #### class methods
     @classmethod
-    def extract_multifiles(cls, dir_in: str, files: List[str], min_in: int = 0, max_in: int = 1) -> List["Multifile"]:
-        """Returns a list of Multifile objects in dir_in"""
-        #### check and set inputs
-        assert os.path.isdir(dir_in)
-        assert all([True if os.path.isfile(os.path.join(dir_in, f)) else False for f in files])
-        assert min_in <= max_in
-        #### supports this method recursively calling itself
-        if len(files) == 0:
-            return []
-        #### initializes outputs
-        out = None
-        mfs_out = []
+    def extract_mfs(cls, file_strs: Sequence[str], min_in: int = 0, max_in: int = 1):
+        assert min_in <= max_in, (min_in, max_in)
+        file_strs_use = list(file_strs)
         #### max string length for regex iterating
-        max_length = max([len(str(f)) for f in files])
+        # max_length = max(len(str(f)) for f in files)  # TODO: how was this expected to be used?
         #### all of the possible combination of parts
-        file_part_indices_list = []
-        for parts_lst in cls.__get_parts_lists():
+        mf_details = []
+        for parts_lst in cls.__get_parts_lists():  # pylint: disable=[not-an-iterable]
             matches = []
-            #### find potential first file matches for every file for each part in parts_lst
+            ### find potential first file matches for every file for each part in parts_lst
             for i, part in enumerate(parts_lst[min_in : max_in + 1]):
-                if part == None:
-                    continue
-                file_part_indices_list.append([(f, i + min_in, re.finditer(part, f)) for f in files])
-            #### generate regex match list for capture groups
-            for file_part_indices in file_part_indices_list:
-                for (f, part_index, indices) in file_part_indices:
-                    for index in indices:
-                        regex = (
-                            "^(.{" + str(index.start()) + "})" + "(" + parts_lst[part_index] + ")(.*)(\..*)$"
-                        )  # TODO: f string
+                part_index = i + min_in
+                if part is None:
+                    break  # TODO: this was originally a continue?
+                for f in file_strs_use:
+                    for index in re.finditer(part, f):
+                        regex = "^(.{" + str(index.start()) + "})" + f"({parts_lst[part_index]}" + r")(.*)(\..*)$"
                         match = re.search(regex, f, re.IGNORECASE)
                         if match:
                             matches.append((part_index, match))
-            for (part_index, match) in matches:
+            for part_index, match in matches:
                 base = match.group(1)
                 part = match.group(2)
                 postpart = match.group(3)
                 ext = match.group(4)
                 num_files = 0
                 for i, part in enumerate(parts_lst[part_index:]):
-                    if part == None:
+                    if part is None:
                         continue
                     part_match = "".join(c for c in part if not c.isdigit())  # TODO: check
+                    # TODO: should this be ignore case?
                     part = re.sub(part_match, part_match, part, re.IGNORECASE)
                     file_out = base + part + postpart + ext
-                    if not os.path.isfile(os.path.join(dir_in, file_out)) or file_out not in files:
+                    if file_out not in file_strs_use:
                         break
                     num_files += 1
                 if num_files > 1:
+                    # TODO: should this be ignore case?
                     m = re.search(r"^(.*?)" + cls.__prefix_style + r"$", base, re.IGNORECASE)
+                    assert m is not None
                     base = m.group(1)
-                    mf = cls(
-                        {
-                            "dir": dir_in,
-                            "base": base,
-                            "prepart": m.group(2) + m.group(3) + m.group(4),
-                            "parts": parts_lst[part_index : part_index + num_files],
-                            "postpart": postpart,
-                            "ext": ext,
-                        }
+                    mf_detail = {
+                        "base": base,
+                        "prepart": m.group(2) + m.group(3) + m.group(4),
+                        "parts": parts_lst[part_index : part_index + num_files],
+                        "postpart": postpart,
+                        "ext": ext,
+                    }
+                    files_gen = tuple(
+                        f"{mf_detail['base']}{mf_detail['prepart']}{p}{mf_detail['postpart']}{mf_detail['ext']}"
+                        for p in mf_detail["parts"]
                     )
-                    assert all([True if os.path.isfile(x) else False for x in mf.to_list()]), f"ERROR: {mf.to_list()}"
-                    assert all(
-                        [True if x in files else False for x in mf.to_list(exc_dir=True)]
-                    ), f"ERROR: {mf.to_list(exc_dir=True)}"
-                    mfs_out.append(mf)
-        out = max(mfs_out, default=None, key=lambda mf: mf.size())
-        if out != None:
-            [files.remove(mf) for mf in out.to_list(exc_dir=True)]
-            return [out] + cls.extract_multifiles(dir_in=dir_in, files=files, min_in=min_in, max_in=max_in)
+                    assert all(f in file_strs_use for f in files_gen), (file_strs_use, files_gen)
+                    mf_details.append(mf_detail)
+
+        out = max(mf_details, default=None, key=lambda mf: len(mf["parts"]))
+        if out is not None:
+            for p in out["parts"]:
+                f_out = f"{out['base']}{out['prepart']}{p}{out['postpart']}{out['ext']}"
+                file_strs_use.remove(f_out)
+            return [out] + cls.extract_mfs(file_strs=file_strs_use, min_in=min_in, max_in=max_in)
         return []
 
+    #### class methods
     @classmethod
-    def __get_parts_lists(cls) -> List[Sequence]:
+    def extract_multifiles(
+        cls, dir_in: str, files: List[str], min_in: int = 0, max_in: int = 1
+    ) -> Tuple["Multifile", ...]:
+        """Returns a list of Multifile objects in dir_in"""
+        #### check and set inputs
+        assert os.path.isdir(dir_in), dir_in
+        assert all(os.path.isfile(os.path.join(dir_in, f)) for f in files), (dir_in, files)
+        assert min_in <= max_in, (min_in, max_in)
+        #### initializes outputs
+        return tuple(cls({"dir": dir_in, **mf_detail}) for mf_detail in cls.extract_mfs(files, min_in, max_in))
+
+    @classmethod
+    def __get_parts_lists(cls) -> Sequence[WrappedIndexableCallable]:
         """Get the parts generators for finding contiguous files"""
-        if cls._parts_lists == None:
+        if cls._parts_lists is None:
             cls._parts_lists = gen_wrapped_indexable_callable()
+        assert cls._parts_lists is not None
+        assert isinstance(cls._parts_lists, Sequence)
         return cls._parts_lists
 
 
 ####################################################################################################
 ####################################################################################################
-def main() -> None:
+def main(argparse_args: Optional[Sequence[str]] = None) -> None:
     #### parses script input to populate args dict
-    args = parse_inputs()
+    args = parse_inputs(argparse_args)
     #### recursively find all dirs in dir_in between levels mindepth and maxdepth with excludes removed
     dirs_walk = listdir_dirs(args["dir_in"], args["mindepth"], args["maxdepth"], args["excludes"])
     #### print useful info
@@ -718,6 +725,7 @@ def main() -> None:
         )
     print(f"INFO: regex file filter: '{args['regex']}'")
     #### search for multifiles in dirs_walk
+    # print(f"dirs_walk={dirs_walk}")
     mfs_list = [
         Multifile.extract_multifiles(
             d, listdir_files(d, args["regex"]), min_in=args["range_search"][0], max_in=args["range_search"][-1]
@@ -726,11 +734,9 @@ def main() -> None:
     ]
     print(f"INFO: found {sum(len(mfs) for mfs in mfs_list)} multifile candidates")
     #### mv each multifile
-    [
-        mf.mv(args["prepart"], args["parts_out"], args["dir_out"], args["range_mv"], args["inplace"])
-        for mfs in mfs_list
-        for mf in mfs
-    ]
+    for mfs in mfs_list:
+        for mf in mfs:
+            mf.mv(args["prepart"], args["parts_out"], args["dir_out"], args["range_mv"], args["inplace"])
     print("INFO: SUCCESS")
 
 

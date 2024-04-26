@@ -44,11 +44,11 @@ def is_slice_empty(slice_: slice, length: int) -> bool:
     Returns:
         bool: 'len(container[<slice_>]) == 0' when len(container) = <length>
     """
-    #### if start == stop and start != None then return True
+    #### if start == stop and start is not None then return True
     start, stop, step = slice_.indices(length)
     if start == stop:
         return True
-    if ((stop - start) > 0) != (step > 0):
+    if ((stop - start) > 0) is not (step > 0):
         return True
     return False
 
@@ -58,37 +58,38 @@ def slice_clean(slice_: slice, length: int, allow_nones: bool = True) -> slice:
 
     slice_cleaned.start is bounded by [0,length]
     slice_cleaned.stop is bounded by [0, length] or set to None/-length-1 when necessary
-    slice_cleaned.step = 1 if <slice_>.step == None else <slice_.step>
+    slice_cleaned.step = 1 if <slice_>.step is None else <slice_.step>
 
     https://stackoverflow.com/q/33943533/10630957
 
     Args:
-        slice_ (slice): Slice to be cleaned
-        length (int): Length of the first dimension of the container being sliced
-        allow_nones (bool): If stop would be -length-1, set it to None instead
+        slice_: Slice to be cleaned
+        length: Length of the first dimension of the container being sliced
+        allow_nones: If stop would be -length-1, set it to None instead
 
     Returns:
-        slice: A cleaned slice object equivalent to <slice_> when len(container) = <length>
+        A cleaned slice object equivalent to <slice_> when len(container) = <length>
     """
+    # pylint: disable=[too-many-branches,too-many-return-statements]
     #### initialize outputs
     start = slice_.start
     stop = slice_.stop
-    step = 1 if slice_.step == None else slice_.step
-    #### if start == stop and start != None then return empty slice
-    if start != None and start == stop:
+    step = 1 if slice_.step is None else slice_.step
+    #### if start == stop and start is not None then return empty slice
+    if start is not None and start == stop:
         return slice(0, 0, step)
     if step > 0:
         #### set value of start when step > 0
-        if start == None:
+        if start is None:
             start = 0
         elif start > length - 1:
             return slice(0, 0, step)
         elif start < 0:
             start = start + length if start > -length else 0
         #### set value of stop when step > 0
-        if stop == None:
+        if stop is None:
             stop = length
-        elif stop == 0 or stop == -length:
+        elif stop in set((0, -length)):
             return slice(0, 0, step)
         elif stop < 0:
             if stop > -length:
@@ -97,7 +98,7 @@ def slice_clean(slice_: slice, length: int, allow_nones: bool = True) -> slice:
                 return slice(0, 0, step)
     else:
         #### set value of start when step < 0
-        if start == None:
+        if start is None:
             start = length - 1
         elif start < 0:
             if start < -length:
@@ -106,7 +107,7 @@ def slice_clean(slice_: slice, length: int, allow_nones: bool = True) -> slice:
         elif start > length - 1:
             start = length - 1
         #### set value of stop when step < 0
-        if stop == None:
+        if stop is None:
             stop = None if allow_nones else -length - 1
         elif stop > length - 2 or stop == -1:
             return slice(0, 0, step)
@@ -120,37 +121,34 @@ def slice_clean(slice_: slice, length: int, allow_nones: bool = True) -> slice:
 
 
 def slice_index(index: int, slice_: slice, length: int) -> int:
-    """Return <index_container> such that 'container[<index_container>] == container[<slice_>][<index>]' when len(container) = <length>
+    """Return <index_slice> such that 'cntnr[<index_slice>] == cntnr[<slice_>][<index>]' when len(cntnr) == <length>
 
     Args:
-        index (int): Index of <slice_> to locate in original container
-        slice_ (slice): Slice to find the corresponding containers index from
-        length (int): Length of the first dimension of the container being sliced
+        index: Index of <slice_> to locate in original cntnr
+        slice_: Slice to find the corresponding containers index from
+        length: Length of the first dimension of the cntnr being sliced
 
     Returns:
-        int: index_container such that 'container[<index_container>] == container[<slice_>][<index>]' when len(container) = <length>
+        index_slice such that 'cntnr[<index_slice>] == cntnr[<slice_>][<index>]' when len(cntnr) == <length>
 
     Raises:
-        IndexError: If container[<slice_>][<index>] would raise a IndexError when len(container) = <length>
+        IndexError: If cntnr[<slice_>][<index>] would raise a IndexError when len(cntnr) = <length>
     """
     start, _, step = slice_.indices(length)
     if index < 0:
         index_normalized = index + slice_length(slice_, length)
         if index_normalized < 0:
             raise IndexError
-        index_container = start + (step * index_normalized)
-        if in_slice(index_container, slice_, length):
-            return index_container
-        else:
-            raise IndexError
-    else:
-        index_container = start + (step * index)
-        if index_container < 0:
-            raise IndexError
-        if in_slice(index_container, slice_, length):
-            return index_container
-        else:
-            raise IndexError
+        index_slice = start + (step * index_normalized)
+        if in_slice(index_slice, slice_, length):
+            return index_slice
+        raise IndexError
+    index_slice = start + (step * index)
+    if index_slice < 0:
+        raise IndexError
+    if in_slice(index_slice, slice_, length):
+        return index_slice
+    raise IndexError
 
 
 def slice_length(slice_: slice, length: int) -> int:
@@ -182,8 +180,8 @@ def slice_merge(slices: Sequence[slice], length: int, allow_nones: bool = True) 
 
     def slice_merge_impl(lhs: slice, rhs: slice, length: int, allow_nones: bool) -> slice:
         #### get step sizes
-        lhs_step = lhs.step if lhs.step != None else 1
-        rhs_step = rhs.step if rhs.step != None else 1
+        lhs_step = lhs.step if lhs.step is not None else 1
+        rhs_step = rhs.step if rhs.step is not None else 1
         step = lhs_step * rhs_step
         #### get indices from slicing with <lhs> assuming length=<length>
         lhs_indices = lhs.indices(length)

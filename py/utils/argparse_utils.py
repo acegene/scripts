@@ -52,13 +52,14 @@ class RegexAction(argparse.Action):
             raise SystemExit(f"ValueError: Regex pattern '{values}' is not valid.") from e
 
 
-class PathType:  # pylint: disable=too-few-public-methods
+class PathType:
     """
 
     https://stackoverflow.com/a/33181083/10630957
 
     """
 
+    # pylint: disable=too-few-public-methods
     def __init__(self, exists=True, type_="file", dash_ok=True):
         """
         exists:
@@ -115,13 +116,14 @@ class PathType:  # pylint: disable=too-few-public-methods
         return path_str
 
 
-class DirType:  # pylint: disable=too-few-public-methods
+class DirType:
     """
 
     https://stackoverflow.com/a/33181083/10630957
 
     """
 
+    # pylint: disable=too-few-public-methods
     def __init__(self, exists=True):
         """exists:
         True: a path that does exist

@@ -33,7 +33,6 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
     """Parse cmd line inputs; set, check, and fix script's default variables"""
 
     # pylint: disable=too-many-locals
-
     def validate_args(args: argparse.Namespace) -> None:
         """Ensure inputs to parser were valid"""
         logger.error_assert(
@@ -132,12 +131,12 @@ def formatter_whitespace(objs: str, mode: str, eol: str):
             objs_unmodified.append(obj)
         elif mode == "prompt":
             if content != content_modified:
-                with open(obj, "r", encoding="cp437") as open_file:
+                with open(obj, "r", encoding="cp437") as open_file:  # TODO: why cp347
                     tmp_obj = path_utils.generate_tmp_from_path(obj)
                     with open(tmp_obj, "wb") as open_tmp_file:
                         open_tmp_file.write(content_modified)
                     try:
-                        with open(tmp_obj, "r", encoding="cp437") as open_tmp_file:
+                        with open(tmp_obj, "r", encoding="cp437") as open_tmp_file:  # TODO: why cp347
                             diff = difflib.unified_diff(
                                 open_file.readlines(),
                                 open_tmp_file.readlines(),
