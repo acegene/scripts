@@ -300,7 +300,7 @@ class MultifileMvTestCase(unittest.TestCase):
             for actual, expected in zip(wf, expected):
                 assert actual == expected, str(actual) + " != " + str(expected)
             with self.assertRaises(IndexError):
-                wf[length]  # TODO: what is this?
+                _ = wf[length]
 
     @unittest.mock.patch("builtins.print")
     def test_part_func_selection_terminal(self, _print):

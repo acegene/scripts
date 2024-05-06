@@ -1,8 +1,5 @@
 import unittest
 
-
-from collections import OrderedDict
-
 # from typing import List, Sequence  # declaration of parameter and return types
 
 import parameterized  # type: ignore [import-untyped] # python3 -m pip install parameterized

@@ -82,7 +82,7 @@ def _init_rclone_bisync(rclone, rclone_bk_details: Dict) -> int:
     return 0
 
 
-def _run_rclone_bisync(rclone, rclone_bk_details: Dict, force: bool) -> int:
+def _run_rclone_bisync(rclone, rclone_bk_details: Dict, /, dry_run: bool = True, force: bool = False) -> int:
     for rclone_bk_detail in rclone_bk_details:
         local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["loc"])
         bk_local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["bk_loc"])
@@ -114,6 +114,8 @@ def _run_rclone_bisync(rclone, rclone_bk_details: Dict, force: bool) -> int:
             "--verbose",
         ]
 
+        if dry_run:
+            bisync_params.append("--dry-run")
         if force:
             bisync_params.append("--force")
 
@@ -129,6 +131,7 @@ def _run_rclone_bisync(rclone, rclone_bk_details: Dict, force: bool) -> int:
 
 def main(argparse_args: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Run rclone bisync with details extracted from json.")
+    parser.add_argument("--dry-run", "--dry", action="store_true")
     parser.add_argument("--init", action="store_true", help="TODO")
     parser.add_argument("--force", action="store_true", help="Run in situations like too many deletes.")
     parser.add_argument("--json-cfg", default=_JSON_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
@@ -146,7 +149,7 @@ def main(argparse_args: Optional[Sequence[str]] = None) -> int:
     if args.init:
         return _init_rclone_bisync(args.rclone, rclone_bk_details)
 
-    return _run_rclone_bisync(args.rclone, rclone_bk_details, args.force)
+    return _run_rclone_bisync(args.rclone, rclone_bk_details, dry_run=args.dry_run, force=args.force)
 
 
 if __name__ == "__main__":
