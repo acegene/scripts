@@ -233,14 +233,19 @@ def _log_cmd_w_output(cmd: Sequence[str], result, is_error: bool = True) -> None
     _log_stream_if_unempty("stderr", _strip_nl_and_hyphens(result.stderr))
 
 
-def subprocess_run_wrapped(cmd):
-    return subprocess.run(
-        cmd,
-        # ["/usr/bin/env", "bash", "-c", " ".join(cmd)], # to force interpreter
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+def subprocess_run_wrapped(cmd: Sequence[str], timeout: int = 20) -> None:
+    try:
+        return subprocess.run(
+            cmd,
+            # ["/usr/bin/env", "bash", "-c", " ".join(cmd)], # to force interpreter
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        logger.error("failed to execute cmd=%s within timeout=%s", cmd, timeout)
+        raise
 
 
 # TODO: it is not understood why this is necessary, i.e. where the excess chars come from

@@ -3,7 +3,7 @@
 
 import logging
 
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 import git
 
@@ -12,6 +12,14 @@ import git
 ## git for-each-ref --format='%(upstream:short)' $(git rev-parse --symbolic-full-name <SOMEBRANCH>)
 
 logger = logging.getLogger(__name__)
+
+
+def _build_git_cmd_str(prefix: str, args: Sequence[str]) -> str:
+    if len(args) == 0:
+        return prefix
+    args_delim = "' '"
+    return f"{prefix} '{args_delim.join(args)}'"
+
 
 ####
 #### Get python object for git reference
@@ -76,7 +84,7 @@ def does_file_exist_on_git_ref(repo: git.Repo, git_ref: str, file: str) -> bool:
         repo.git.cat_file("-e", f"{git_ref}:{file}")
         return True
     except git.exc.GitCommandError as e:
-        assert e.status == 1 or e.status == 128, e.status
+        assert e.status in (1, 128), e.status
         return False
 
 
@@ -128,8 +136,9 @@ def fetch_all_remotes(repo: git.Repo, ignore_no_remotes: bool = False, dry_run: 
     try:
         for remote in repo.remotes:
             if dry_run:
-                logger.info("dry run, would have executed: git fetch %s", remote)
+                logger.info("DRYRUN: EXEC: git fetch %s", remote)
             else:
+                logger.info("EXEC: git fetch %s", remote)
                 remote.fetch()
     except git.exc.GitCommandError as e:
         logger.error("failed fetch of remote=%s, printing error msg:", remote)
@@ -140,10 +149,11 @@ def fetch_all_remotes(repo: git.Repo, ignore_no_remotes: bool = False, dry_run: 
 
 def merge_fast_forward(repo: git.Repo, local_branch_obj: git.Head, git_ref: str, dry_run: bool = False) -> bool:
     if dry_run:
-        logger.info("dry run, would have executed: git merge --ff-only %s %s", local_branch_obj, git_ref)
+        logger.info("DRYRUN: EXEC: git merge --ff-only %s %s", local_branch_obj, git_ref)
         return True
 
     try:
+        logger.info("EXEC: git merge --ff-only %s %s", local_branch_obj, git_ref)
         repo.git.merge("--ff-only", local_branch_obj, git_ref)
         return True
     except git.exc.GitCommandError as e:
@@ -156,8 +166,9 @@ def merge_fast_forward(repo: git.Repo, local_branch_obj: git.Head, git_ref: str,
 def stash_apply(repo: git.Repo, log_conflict_msg: bool = False, dry_run: bool = False) -> bool:
     try:
         if dry_run:
-            logger.info("dry run, would have executed: git stash apply")
+            logger.info("DRYRUN: EXEC: git stash apply")
         else:
+            logger.info("EXEC: git stash apply")
             repo.git.stash("apply")
     except git.exc.GitCommandError as e:
         logger.error("stash apply resulted in error, printing error msg:")
@@ -171,8 +182,9 @@ def stash_apply(repo: git.Repo, log_conflict_msg: bool = False, dry_run: bool = 
 def stash_pop(repo: git.Repo, log_conflict_msg: bool = False, dry_run: bool = False) -> bool:
     try:
         if dry_run:
-            logger.info("dry run, would have executed: git stash pop")
+            logger.info("DRYRUN: EXEC: git stash pop")
         else:
+            logger.info("EXEC: git stash pop")
             repo.git.stash("pop")
     except git.exc.GitCommandError as e:
         logger.error("stash pop resulted in error, printing error msg:")
@@ -186,30 +198,32 @@ def stash_pop(repo: git.Repo, log_conflict_msg: bool = False, dry_run: bool = Fa
 def stash_push_w_behavior(repo: git.Repo, stash_behavior: str, msg: str = None, dry_run: bool = False) -> None:
     msg_args = [] if msg is None else ["-m", msg]
     if stash_behavior == "all":
-        stash_args = ("push", "--all", *msg_args)
+        stash_args = tuple("push", "--all", *msg_args)
     elif stash_behavior == "no":
         stash_args = None
     elif stash_behavior == "staged":
-        stash_args = ("push", "--staged", *msg_args)
+        stash_args = tuple("push", "--staged", *msg_args)
     elif stash_behavior == "tracked":
-        stash_args = ("push", *msg_args)
+        stash_args = tuple("push", *msg_args)
     elif stash_behavior == "tracked_w_untracked":
-        stash_args = ("push", "--include-untracked", *msg_args)
+        stash_args = tuple("push", "--include-untracked", *msg_args)
     else:
         assert False, stash_behavior
 
     if stash_args is not None:
         if dry_run:
-            logger.info("dry run, would have executed: git stash %s", " ".join(stash_args))
+            logger.info("DRYRUN: EXEC: %s", _build_git_cmd_str("git stash", stash_args))
         else:
+            logger.info("EXEC: %s", _build_git_cmd_str("git stash", stash_args))
             stash_result = repo.git.stash(*stash_args)
             assert stash_result != "No local changes to save"
 
 
 def reset_hard(repo: git.Repo, git_ref: str, dry_run: bool = False) -> None:
     if dry_run:
-        logger.info("dry run, would have executed: git reset --hard %s", git_ref)
+        logger.info("DRYRUN: EXEC: git reset --hard %s", git_ref)
     else:
+        logger.info("EXEC: git reset --hard %s", git_ref)
         repo.git.reset("--hard", git_ref)
 
 
@@ -228,6 +242,7 @@ def get_hash(git_ref_obj: Union[git.Commit, git.Reference]) -> str:
         return git_ref_obj.hexsha
     if isinstance(git_ref_obj, git.Reference):
         return git_ref_obj.commit.hexsha  # type: ignore [no-any-return]
+    assert False, (type(git_ref_obj), git_ref_obj)
 
 
 ## https://stackoverflow.com/a/27940027
@@ -262,12 +277,9 @@ def get_merge_base(repo: git.Repo, git_ref_lhs: str, git_ref_rhs: str) -> str:
 
 def is_ancestor(repo: git.Repo, git_ref_potential_ancestor: str, git_ref: str) -> bool:
     try:
+        logger.debug("EXEC: git merge-base --is-ancestor %s %s", git_ref_potential_ancestor, git_ref)
         repo.git.merge_base(git_ref_potential_ancestor, git_ref, is_ancestor=True)
         return True
     except git.GitCommandError as err:
         assert err.status == 1
         return False
-
-
-def tmp():
-    logger.info("tmp log __name__=%s", __name__)

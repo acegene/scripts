@@ -3,11 +3,11 @@
     "disable_existing_loggers": false,
     "formatters": {
         "simple": {
-            "format": "%(levelname)s: %(message)s tmp:gu"
+            "format": "%(levelname)s: %(message)s"
         },
         "detailed_utc": {
             "()": "utils.log_manager.UTCFormatter",
-            "format": "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s tmp:gu",
+            "format": "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s",
             "datefmt": "%y%m%dT%H%M%SZ"
         }
     },

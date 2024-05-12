@@ -186,10 +186,20 @@ def _check_if_can_overwrite_files(
     return ret_val
 
 
+def _checkout_branch(repo: git.Repo, branch: str, current_branch: str, dry_run: bool):
+    if current_branch != branch:
+        if dry_run:
+            logger.info(f"DRYRUN: EXEC: git checkout {branch}")
+        else:
+            logger.info(f"EXEC: git checkout {branch}")
+            repo.git.checkout(branch)
+
+
 def _update_branch_head_to_git_ref(repo: git.Repo, branch: str, git_ref: str, git_ref_msg: str, dry_run: bool) -> None:
     if dry_run:
-        logger.info(f'dry run, would have executed: git update-ref -m "{git_ref_msg}" refs/heads/{branch} {git_ref}')
+        logger.info(f"DRYRUN: EXEC: git update-ref -m '{git_ref_msg}' refs/heads/{branch} {git_ref}")
     else:
+        logger.info(f"EXEC: git update-ref -m '{git_ref_msg}' refs/heads/{branch} {git_ref}")
         repo.git.update_ref("-m", git_ref_msg, f"refs/heads/{branch}", git_ref)
 
 
@@ -199,6 +209,7 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
     ask_no_yes_options: Dict[str, Union[Tuple[str, ...], str]] = {"choices": ("ask", "no", "yes"), "default": "ask"}
     parser = argparse.ArgumentParser()
     parser.add_argument("--branch", "-b")
+    parser.add_argument("--checkout", "-c", action="store_true")
     parser.add_argument("--cmd-execute-dir", "-C")
     parser.add_argument("--dry-run", "-d", action="store_true")
     parser.add_argument("--git-ref", "--gr")
@@ -255,6 +266,8 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
 
     if git_utils.get_hash(branch) == git_utils.get_hash(git_ref_obj):
         logger.info(f"skipped update: hash for {branch} and {git_ref_obj} are the same")
+        if args.checkout is True:
+            _checkout_branch(repo, branch, current_branch, dry_run=args.dry_run)
         sys.exit(0)
 
     do_fast_forward = False
@@ -342,6 +355,9 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
             git_utils.stash_apply(repo, log_conflict_msg=True, dry_run=args.dry_run)
         else:
             logger.info(f"a stash is available with the changes before updating '{branch}' to '{git_ref_obj}'")
+
+    if args.checkout is True:
+        _checkout_branch(repo, branch, current_branch, dry_run=args.dry_run)
 
     if args.dry_run:
         logger.info("dry-run complete, no anticipated errors")
