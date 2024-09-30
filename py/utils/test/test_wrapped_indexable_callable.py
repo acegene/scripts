@@ -5,21 +5,18 @@
 # usage
 #   * python test_wrapped_indexable_callable.py
 #       * need to have wrapped_indexable_callable.py in $PYTHONPATH or place wrapped_indexable_callable.py in parent directory
-
-# type: ignore # TODO
-
 import itertools
-import unittest
 import unittest.mock
 
 try:
-    from utils.wrapped_indexable_callable import wrapped_indexable_callable
+    pass
+    # from utils.wrapped_indexable_callable import wrapped_indexable_callable  # type: ignore[attr-defined] # TODO
 except ImportError:
     import os
     import sys
 
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from utils.wrapped_indexable_callable import wrapped_indexable_callable
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))  # TODO: do this better
+    # from utils.wrapped_indexable_callable import wrapped_indexable_callable  # type: ignore[attr-defined] # TODO
 ####################################################################################################
 ####################################################################################################
 
@@ -35,9 +32,7 @@ def zip_equal(*iterables):
     for combo in itertools.zip_longest(*iterables, fillvalue=sentinel):
         if any(sentinel is c for c in combo):
             raise ValueError(
-                "Iterables have different lengths. Iterable(s) #{} (of 0..{}) ran out first.".format(
-                    [i for i, c in enumerate(combo) if c is sentinel], len(combo) - 1
-                )
+                f"Iterables have different lengths. Iterable(s) #{[i for i, c in enumerate(combo) if c is sentinel]} (of 0..{len(combo) - 1}) ran out first.",
             )
         yield combo
 
@@ -68,18 +63,14 @@ class WrappedIndexableCallableTestCase(unittest.TestCase):
         expected_base = [0, 1, 2]
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
-        starts = [start for start in range(-expected_base[-1] - 1, expected_base[-1] + 2)] + [None]
-        stops = [stop for stop in range(-expected_base[-1] - 1, expected_base[-1] + 2)] + [None]
-        steps = (
-            [step for step in range(-expected_base[-1] - 1, 0)]
-            + [step for step in range(1, expected_base[-1] + 2)]
-            + [None]
-        )
+        starts = list(range(-expected_base[-1] - 1, expected_base[-1] + 2)) + [None]
+        stops = list(range(-expected_base[-1] - 1, expected_base[-1] + 2)) + [None]
+        steps = list(range(-expected_base[-1] - 1, 0)) + list(range(1, expected_base[-1] + 2)) + [None]
         slices = [slice(start, stop, step) for start in starts for stop in stops for step in steps]
         #### iterate over slices and test class
         for s1 in slices:
-            actual_func = WrappedIndexableCallable(self.indexable_func, expected_base_length, s1)
-            actual_list = WrappedIndexableCallable([0, 1, 2, 3, 4, 5], expected_base_length, s1)
+            actual_func = WrappedIndexableCallable(self.indexable_func, expected_base_length, s1)  # type: ignore[name-defined] # pylint: disable=undefined-variable# TODO
+            actual_list = WrappedIndexableCallable([0, 1, 2, 3, 4, 5], expected_base_length, s1)  # type: ignore[name-defined] # pylint: disable=undefined-variable# TODO
             assert len(expected_base[s1]) == len(actual_func)
             assert len(expected_base[s1]) == len(actual_list)
             self.assert_containers_equal(expected_base[s1], actual_func, s1)

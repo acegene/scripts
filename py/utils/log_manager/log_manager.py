@@ -5,40 +5,40 @@
 #   * logger = LogManager(__name__)
 #
 # author: acegene <acegene22@gmail.com>
-
 import datetime
 import inspect
 import json
-import logging
 import logging.config
 import logging.handlers
 import os
 import sys
 import traceback
-
+from collections.abc import Callable
+from collections.abc import Iterable
 from contextlib import contextmanager
-from typing import Any, Callable, Iterable, NoReturn, Optional, Tuple, Type, Union
+from typing import Any
+from typing import NoReturn
 
 from utils import path_utils
 
-LVL_D = logging.getLevelName("DEBUG")
-LVL_I = logging.getLevelName("INFO")
-LVL_W = logging.getLevelName("WARNING")
-LVL_E = logging.getLevelName("ERROR")
-LVL_F = logging.getLevelName("FATAL")
-LVL_C = logging.getLevelName("CRITICAL")
+LVL_D = logging.getLevelName(logging.DEBUG)
+LVL_I = logging.getLevelName(logging.INFO)
+LVL_W = logging.getLevelName(logging.WARNING)
+LVL_E = logging.getLevelName(logging.ERROR)
+LVL_F = logging.getLevelName(logging.FATAL)
+LVL_C = logging.getLevelName(logging.CRITICAL)
 
 _LOG_MANAGER_DEFAULT_LOGGING_CFG = os.path.join(os.path.dirname(__file__), "log_manager_logging_cfg.json")
 
-ExceptableException = Union[Tuple[Type[BaseException], ...], Tuple[()], Type[BaseException]]
-MaybeCatchableExceptions = Optional[Union[Iterable[Type[BaseException]], Type[BaseException]]]
-RaisableException = Union[BaseException, Type[BaseException]]
-MaybeRaisableException = Optional[RaisableException]
+ExceptableException = tuple[type[BaseException], ...] | tuple[()] | type[BaseException]
+MaybeCatchableExceptions = Iterable[type[BaseException]] | type[BaseException] | None
+RaisableException = BaseException | type[BaseException]
+MaybeRaisableException = RaisableException | None
 
 
 def _get_exceptions_tuple(excs: MaybeCatchableExceptions) -> ExceptableException:
     if excs is None:
-        return tuple()
+        return ()
     if isinstance(excs, Iterable):
         if not all(inspect.isclass(exc) and issubclass(exc, BaseException) for exc in excs):
             raise ValueError
@@ -72,8 +72,7 @@ def get_cfg_file_as_cfg_dict(cfg_file, globals_=None):
 
 
 def full_stack(stacklevel=0, include_exc=True):
-    """
-    Get full calling stack of calling function as a string
+    """Get full calling stack of calling function as a string.
 
     https://stackoverflow.com/a/16589622
     """
@@ -92,8 +91,7 @@ def full_stack(stacklevel=0, include_exc=True):
 
 @contextmanager
 def disable_raise_exception_traceback_print():
-    """
-    All traceback information is suppressed and only the exception type and value are printed
+    """All traceback information is suppressed and only the exception type and value are printed.
 
     https://stackoverflow.com/a/63657211
     """
@@ -105,9 +103,7 @@ def disable_raise_exception_traceback_print():
 
 @contextmanager
 def disable_raise_exception_print():
-    """
-    Suppresses printing of the exception details (type, value, traceback)
-    """
+    """Suppresses printing of the exception details (type, value, traceback)"""
     original_hook = sys.excepthook
 
     def custom_excepthook(_type, _value, _traceback):
@@ -132,11 +128,11 @@ class UTCFormatter(logging.Formatter):
 
 
 class LogManager:
-    """Wrapper for python logging module that enables consolidated settings and helper logging/exception handling"""
+    """Wrapper for python logging module that enables consolidated settings and helper logging/exception handling."""
 
     # pylint: disable=[too-many-arguments, too-many-public-methods]
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: str | None = None):
         ## specify logger to be root or not depending on source of instantion
         self._logger = logging.getLogger(name)
 
@@ -154,7 +150,7 @@ class LogManager:
             self.error("%s", f"\n{full_stack()}")
 
     def __getattr__(self, attr: Any) -> Any:
-        """Pass unknown attributes to self._logger"""
+        """Pass unknown attributes to self._logger."""
         return getattr(self._logger, attr)
 
     def debug(self, msg: Any, *msg_objs, stacklevel: int = 0, **kwargs: Any) -> None:
@@ -193,12 +189,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False."""
         self.log_assert(
             LVL_D,
             expr_result,
@@ -220,12 +216,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False."""
         self.log_assert(
             LVL_I,
             expr_result,
@@ -247,12 +243,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False."""
         self.log_assert(
             LVL_W,
             expr_result,
@@ -274,12 +270,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False."""
         self.log_assert(
             LVL_E,
             expr_result,
@@ -301,12 +297,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False."""
         self.log_assert(
             LVL_F,
             expr_result,
@@ -328,12 +324,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log <msg> and throw <exc_to_log> if <expr_result> == False"""
+        """Log <msg> and throw <exc_to_log> if <expr_result> == False."""
         self.log_assert(
             LVL_C,
             expr_result,
@@ -356,12 +352,12 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
     ) -> None:
-        """Log and throw <exc_to_log> if <expr_result> == False"""
+        """Log and throw <exc_to_log> if <expr_result> == False."""
         if not expr_result:
             tb_str = f"\n{full_stack(stacklevel+1)}" if log_exc else ""
             msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc_to_log
@@ -380,7 +376,13 @@ class LogManager:
                         raise AssertionError() if raise_exc is None else raise_exc
                 raise AssertionError() if raise_exc is None else raise_exc
             self._logger.log(
-                level, msg, LogManager._err_to_str(exc_to_log), *msg_objs, tb_str, stacklevel=stacklevel + 2, **kwargs
+                level,
+                msg,
+                LogManager._err_to_str(exc_to_log),
+                *msg_objs,
+                tb_str,
+                stacklevel=stacklevel + 2,
+                **kwargs,
             )
             if print_exc is False or (print_exc is None and log_exc is True):
                 with disable_raise_exception_print():
@@ -396,7 +398,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -428,7 +430,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -460,7 +462,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -492,7 +494,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -524,7 +526,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -556,7 +558,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -589,7 +591,7 @@ class LogManager:
         catch_excs: MaybeCatchableExceptions = None,
         log_exc: bool = True,
         msg_unhdld: Any = None,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         raise_unhdld_exc: MaybeRaisableException = None,
         skip_hndld_excs: bool = True,
@@ -648,7 +650,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -673,7 +675,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -698,7 +700,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -723,7 +725,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -748,7 +750,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -773,7 +775,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -799,7 +801,7 @@ class LogManager:
         /,
         *msg_objs: Any,
         log_exc: bool = True,
-        print_exc: Optional[bool] = None,
+        print_exc: bool | None = None,
         raise_exc: MaybeRaisableException = None,
         stacklevel: int = 0,
         **kwargs: Any,
@@ -808,7 +810,13 @@ class LogManager:
         msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc_to_log
         tb_str = f"\n{full_stack(stacklevel + 1)}" if log_exc else ""
         self._logger.log(
-            level, msg, LogManager._err_to_str(exc_to_log), *msg_objs, tb_str, stacklevel=stacklevel + 2, **kwargs
+            level,
+            msg,
+            LogManager._err_to_str(exc_to_log),
+            *msg_objs,
+            tb_str,
+            stacklevel=stacklevel + 2,
+            **kwargs,
         )
         if print_exc is False or (print_exc is None and log_exc is True):
             with disable_raise_exception_print():

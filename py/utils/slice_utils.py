@@ -5,10 +5,8 @@
 #       * adding this to a python file allows usage of functions as slice_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
-
 import functools
-
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def in_slice(index: int, slice_: slice, length: int) -> bool:
@@ -89,7 +87,7 @@ def slice_clean(slice_: slice, length: int, allow_nones: bool = True) -> slice:
         #### set value of stop when step > 0
         if stop is None:
             stop = length
-        elif stop in set((0, -length)):
+        elif stop in {0, -length}:
             return slice(0, 0, step)
         elif stop < 0:
             if stop > -length:
@@ -167,7 +165,7 @@ def slice_length(slice_: slice, length: int) -> int:
 
 
 def slice_merge(slices: Sequence[slice], length: int, allow_nones: bool = True) -> slice:
-    """Combine slices such that 'container[s1][s2] == container[slice_merge(s1, s2, len(container))]'
+    """Combine slices such that 'container[s1][s2] == container[slice_merge(s1, s2, len(container))]'.
 
     Args:
         slices (Sequence[slice]): Slices to be merged

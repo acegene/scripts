@@ -1,9 +1,7 @@
 ## TODO:
 ## - add relative option for generating file lists
-
 import logging
-
-from typing import List, Optional, Sequence, Union
+from collections.abc import Sequence
 
 import git
 
@@ -27,35 +25,35 @@ def _build_git_cmd_str(prefix: str, args: Sequence[str]) -> str:
 
 
 ## TODO: works for origin/master, still need func that looks through tracking_branches or remote branches directly
-def get_commit_obj(repo: git.Repo, ref_name: str) -> Optional[git.Commit]:
+def get_commit_obj(repo: git.Repo, ref_name: str) -> git.Commit | None:
     try:
         return repo.commit(ref_name)
     except git.BadName:
         return None
 
 
-def get_current_branch(repo: git.Repo) -> Optional[git.Head]:
+def get_current_branch(repo: git.Repo) -> git.Head | None:
     try:
         return repo.active_branch
     except TypeError:
         return None
 
 
-def get_local_branch_obj(repo: git.Repo, ref_name: str) -> Optional[git.Head]:
+def get_local_branch_obj(repo: git.Repo, ref_name: str) -> git.Head | None:
     try:
         return repo.heads[ref_name]
     except IndexError:
         return None
 
 
-def get_tag_obj(repo: git.Repo, ref_name: str) -> Optional[git.TagObject]:
+def get_tag_obj(repo: git.Repo, ref_name: str) -> git.TagObject | None:
     try:
         return repo.tags[ref_name]
     except IndexError:
         return None
 
 
-def get_ref_obj(repo: git.Repo, ref_name: str) -> Optional[Union[git.Commit, git.Head, git.Reference, git.TagObject]]:
+def get_ref_obj(repo: git.Repo, ref_name: str) -> git.Commit | git.Head | git.Reference | git.TagObject | None:
     obj = get_local_branch_obj(repo, ref_name)
     if obj is not None:
         return obj
@@ -69,7 +67,7 @@ def get_ref_obj(repo: git.Repo, ref_name: str) -> Optional[Union[git.Commit, git
         return obj
 
     try:
-        return repo.refs[ref_name]  # type: ignore [index, no-any-return]
+        return repo.refs[ref_name]  # type: ignore[index, no-any-return]
     except IndexError:
         return None
 
@@ -88,38 +86,38 @@ def does_file_exist_on_git_ref(repo: git.Repo, git_ref: str, file: str) -> bool:
         return False
 
 
-def get_conflict_files(repo: git.Repo) -> List[str]:
+def get_conflict_files(repo: git.Repo) -> list[str]:
     conflict_files: str = repo.git.diff("--name-only", "--diff-filter=U", "-z").strip("\x00")
     return [] if conflict_files == "" else conflict_files.split("\x00")
 
 
-def get_changed_files_between_git_refs(repo: git.Repo, git_ref_lhs: str, git_ref_rhs: str) -> List[str]:
+def get_changed_files_between_git_refs(repo: git.Repo, git_ref_lhs: str, git_ref_rhs: str) -> list[str]:
     changed_files: str = repo.git.diff("--name-only", "-z", f"{git_ref_lhs}..{git_ref_rhs}").strip("\x00")
     return [] if changed_files == "" else changed_files.split("\x00")
 
 
-def get_changed_files_between_index_and_git_ref(repo: git.Repo, git_ref: str) -> List[str]:
+def get_changed_files_between_index_and_git_ref(repo: git.Repo, git_ref: str) -> list[str]:
     changed_files: str = repo.git.diff("--name-only", "--staged", "-z", f"{git_ref}").strip("\x00")
     return [] if changed_files == "" else changed_files.split("\x00")
 
 
-def get_changed_files_between_working_tree_and_git_ref(repo: git.Repo, git_ref: str) -> List[str]:
+def get_changed_files_between_working_tree_and_git_ref(repo: git.Repo, git_ref: str) -> list[str]:
     changed_files: str = repo.git.diff("--name-only", "-z", f"{git_ref}").strip("\x00")
     return [] if changed_files == "" else changed_files.split("\x00")
 
 
-def get_staged_files(repo: git.Repo) -> List[str]:
+def get_staged_files(repo: git.Repo) -> list[str]:
     staged_files: str = repo.git.diff("--name-only", "--cached", "-z").strip("\x00")
     return [] if staged_files == "" else staged_files.split("\x00")
 
 
 ## includes conflict files
-def get_tracked_changed_files(repo: git.Repo) -> List[str]:
+def get_tracked_changed_files(repo: git.Repo) -> list[str]:
     tracked_changed_files: str = repo.git.diff("--name-only", "-z").strip("\x00")
     return [] if tracked_changed_files == "" else tracked_changed_files.split("\x00")
 
 
-def get_untracked_ignored_files(repo: git.Repo) -> List[str]:
+def get_untracked_ignored_files(repo: git.Repo) -> list[str]:
     untracked_ignored_files: str = repo.git.ls_files("--exclude-standard", "--others", "--ignored", "-z").strip("\x00")
     return [] if untracked_ignored_files == "" else untracked_ignored_files.split("\x00")
 
@@ -198,15 +196,15 @@ def stash_pop(repo: git.Repo, log_conflict_msg: bool = False, dry_run: bool = Fa
 def stash_push_w_behavior(repo: git.Repo, stash_behavior: str, msg: str = None, dry_run: bool = False) -> None:
     msg_args = [] if msg is None else ["-m", msg]
     if stash_behavior == "all":
-        stash_args = tuple("push", "--all", *msg_args)
+        stash_args = tuple("push", "--all", *msg_args)  # type: ignore[call-arg]
     elif stash_behavior == "no":
         stash_args = None
     elif stash_behavior == "staged":
-        stash_args = tuple("push", "--staged", *msg_args)
+        stash_args = tuple("push", "--staged", *msg_args)  # type: ignore[call-arg]
     elif stash_behavior == "tracked":
         stash_args = tuple("push", *msg_args)
     elif stash_behavior == "tracked_w_untracked":
-        stash_args = tuple("push", "--include-untracked", *msg_args)
+        stash_args = tuple("push", "--include-untracked", *msg_args)  # type: ignore[call-arg]
     else:
         assert False, stash_behavior
 
@@ -237,11 +235,11 @@ GIT_FORMAT_OPTIONS_ONE_LINE = (
 )
 
 
-def get_hash(git_ref_obj: Union[git.Commit, git.Reference]) -> str:
+def get_hash(git_ref_obj: git.Commit | git.Reference) -> str:
     if isinstance(git_ref_obj, git.Commit):
         return git_ref_obj.hexsha
     if isinstance(git_ref_obj, git.Reference):
-        return git_ref_obj.commit.hexsha  # type: ignore [no-any-return]
+        return git_ref_obj.commit.hexsha  # type: ignore[no-any-return]
     assert False, (type(git_ref_obj), git_ref_obj)
 
 
@@ -272,7 +270,7 @@ def get_ahead_behind_status_str(repo: git.Repo, git_ref_lhs: str, git_ref_rhs: s
 
 
 def get_merge_base(repo: git.Repo, git_ref_lhs: str, git_ref_rhs: str) -> str:
-    return repo.git.merge_base(git_ref_lhs, git_ref_rhs)  # type: ignore [no-any-return]
+    return repo.git.merge_base(git_ref_lhs, git_ref_rhs)  # type: ignore[no-any-return]
 
 
 def is_ancestor(repo: git.Repo, git_ref_potential_ancestor: str, git_ref: str) -> bool:

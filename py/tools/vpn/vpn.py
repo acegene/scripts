@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import argparse
 import datetime
@@ -8,9 +9,8 @@ import math
 import os
 import subprocess
 import sys
-
 from collections import OrderedDict
-from typing import Dict, Optional, Sequence, Union
+from collections.abc import Sequence
 
 from utils import argparse_utils
 from utils import lock_manager
@@ -59,20 +59,20 @@ _NORD_POST_CONNECT_SETTINGS = (_NORD_CMDS["killswitch_on"],)
 
 _NORD_FLAG_TO_PRE_RUN_CMDS = {
     "connect": _NORD_PRE_CONNECT_SETTINGS,
-    "disconnect": tuple(),
+    "disconnect": (),
     "reconnect": _NORD_PRE_CONNECT_SETTINGS,  # TODO: is this right, also post for reconnect
-    "status": tuple(),
-    "login": tuple(),
-    "logout": tuple(),
+    "status": (),
+    "login": (),
+    "logout": (),
 }
 
 _NORD_FLAG_TO_POST_RUN_CMDS = {
     "connect": _NORD_POST_CONNECT_SETTINGS,
     "disconnect": (_NORD_CMDS["killswitch_off"],),
     "reconnect": _NORD_POST_CONNECT_SETTINGS,
-    "status": tuple(),
+    "status": (),
     "login": _NORD_PRE_LOGIN_SETTINGS,
-    "logout": tuple(),
+    "logout": (),
 }
 
 _NORD_SET_SETTING_NAME_TO_PRINTED = {
@@ -115,7 +115,7 @@ _NORD_PRINTED_SETTING_NAME_TO_PRINTED_VALUE_FORM_FUNC = {
 
 @functools.total_ordering
 class DateTimeUTC:
-    def __init__(self, datetime_: Optional[Union[datetime.datetime, str]] = None, str_format: str = "%y%m%dT%H%M%SZ"):
+    def __init__(self, datetime_: datetime.datetime | str | None = None, str_format: str = "%y%m%dT%H%M%SZ"):
         if datetime_ is None:
             self.datetime = datetime.datetime.now(datetime.timezone.utc)
         elif isinstance(datetime_, datetime.datetime):
@@ -127,7 +127,7 @@ class DateTimeUTC:
         self.str_format = str_format
         self.str = self.datetime.strftime(self.str_format)
 
-    def __add__(self, other: Union[datetime.timedelta, float, int, str]) -> "DateTimeUTC":
+    def __add__(self, other: datetime.timedelta | float | int | str) -> DateTimeUTC:
         if isinstance(other, datetime.timedelta):
             return DateTimeUTC(self.datetime + other)
         if isinstance(other, float):
@@ -145,7 +145,7 @@ class DateTimeUTC:
             return self.datetime == other
         return False
 
-    def __lt__(self, other: Union["DateTimeUTC", datetime.datetime]) -> bool:
+    def __lt__(self, other: DateTimeUTC | datetime.datetime) -> bool:
         if isinstance(other, DateTimeUTC):
             return self.datetime < other.datetime
         if isinstance(other, datetime.datetime):
@@ -153,8 +153,9 @@ class DateTimeUTC:
         raise TypeError(f"Unexpected type(other)={type(other)}; other={other}")
 
     def __sub__(
-        self, other: Union["DateTimeUTC", datetime.datetime, datetime.timedelta, float, int, str]
-    ) -> Union["DateTimeUTC", datetime.timedelta]:
+        self,
+        other: DateTimeUTC | datetime.datetime | datetime.timedelta | float | int | str,
+    ) -> DateTimeUTC | datetime.timedelta:
         if isinstance(other, DateTimeUTC):
             return self.datetime - other.datetime
         if isinstance(other, datetime.datetime):
@@ -173,7 +174,7 @@ class DateTimeUTC:
         return self.str
 
     @staticmethod
-    def from_utc_time_str(s: str, str_format: str = "%y%m%dT%H%M%SZ") -> "DateTimeUTC":
+    def from_utc_time_str(s: str, str_format: str = "%y%m%dT%H%M%SZ") -> DateTimeUTC:
         return DateTimeUTC(datetime.datetime.strptime(s, str_format).replace(tzinfo=datetime.timezone.utc))
 
     @staticmethod
@@ -233,7 +234,7 @@ def _log_cmd_w_output(cmd: Sequence[str], result, is_error: bool = True) -> None
     _log_stream_if_unempty("stderr", _strip_nl_and_hyphens(result.stderr))
 
 
-def subprocess_run_wrapped(cmd: Sequence[str], timeout: int = 20) -> None:
+def subprocess_run_wrapped(cmd: Sequence[str], timeout: int = 20) -> subprocess.CompletedProcess:
     try:
         return subprocess.run(
             cmd,
@@ -251,8 +252,8 @@ def subprocess_run_wrapped(cmd: Sequence[str], timeout: int = 20) -> None:
 # TODO: it is not understood why this is necessary, i.e. where the excess chars come from
 def _strip_nl_and_hyphens(s: str) -> str:
     out_s = s
-    startswith = lambda s, delims: any((s.startswith(d) for d in delims))
-    endswith = lambda s, delims: any((s.endswith(d) for d in delims))
+    startswith = lambda s, delims: any(s.startswith(d) for d in delims)
+    endswith = lambda s, delims: any(s.endswith(d) for d in delims)
     symbols = ("\n", "-", "/", "\\", "|")
     while startswith(out_s, symbols) or endswith(out_s, ("\n", "-")):
         out_s = out_s.strip()
@@ -261,11 +262,11 @@ def _strip_nl_and_hyphens(s: str) -> str:
     return out_s
 
 
-def _get_dict_from_json_file(json_file: str) -> Dict:
+def _get_dict_from_json_file(json_file: str) -> dict:
     if not os.path.exists(json_file):
         return {}
     with path_utils.open_unix_safely(json_file) as f:
-        return json.load(f)  # type: ignore [no-any-return]
+        return json.load(f)  # type: ignore[no-any-return]
 
 
 def _exec_nordvpn_cmd_w_error_handling(cmd: Sequence[str], print_on_succ: bool = False) -> bool:
@@ -279,7 +280,7 @@ def _exec_nordvpn_cmd_w_error_handling(cmd: Sequence[str], print_on_succ: bool =
     return False
 
 
-def _exec_nordvpn_set_cmd_w_error_handling(cmd: Sequence[str], settings: Dict, print_on_succ: bool = False) -> bool:
+def _exec_nordvpn_set_cmd_w_error_handling(cmd: Sequence[str], settings: dict, print_on_succ: bool = False) -> bool:
     assert cmd[1] == "set", cmd
     assert cmd[2] in settings, (cmd, settings)
     cmd_setting_value_as_would_be_printed = _NORD_PRINTED_SETTING_NAME_TO_PRINTED_VALUE_FORM_FUNC[cmd[2]](*cmd[3:])
@@ -304,7 +305,9 @@ def _exec_nordvpn_cmd_w_exit_on_failure(cmd: Sequence[str], print_on_succ: bool 
 
 
 def _exec_nordvpn_set_cmds_w_error_handling(
-    cmds: Sequence[Sequence[str]], settings: Dict, print_on_succ: bool = False
+    cmds: Sequence[Sequence[str]],
+    settings: dict,
+    print_on_succ: bool = False,
 ) -> bool:
     for cmd in cmds:
         if not _exec_nordvpn_set_cmd_w_error_handling(cmd, settings, print_on_succ):
@@ -319,7 +322,7 @@ def connect(is_connected: bool = False) -> bool:
     return _exec_nordvpn_cmd_w_error_handling(_NORD_CMDS["connect"])
 
 
-def get_settings() -> Dict:
+def get_settings() -> dict:
     cmd = ("nordvpn", "settings")
     result = subprocess_run_wrapped(cmd)
     settings_to_values = OrderedDict()
@@ -369,7 +372,7 @@ def login(is_connected: bool = False) -> None:
             sys.exit(1)
 
 
-def write_dict_to_file_as_json(json_dict: Dict, filename: str) -> None:
+def write_dict_to_file_as_json(json_dict: dict, filename: str) -> None:
     with path_utils.open_unix_safely(filename, "w") as f:
         json.dump(json_dict, f)
 
@@ -404,7 +407,7 @@ def nordvpn_cmd_execution(flag, vpn_status, status, duration_fail_connect_until_
             sys.exit(1)
 
 
-def nordvpn_main(args: argparse.Namespace, vpn_status: Dict) -> None:
+def nordvpn_main(args: argparse.Namespace, vpn_status: dict) -> None:
     time_now = DateTimeUTC()
 
     logger.info("#### STATUS PRE CMD")
@@ -416,7 +419,7 @@ def nordvpn_main(args: argparse.Namespace, vpn_status: Dict) -> None:
         logger.info(
             f"Set cron_pause_until={cron_pause_until};"
             f" time_now={time_now};"
-            f" cron_pause_until_duration={args.cron_job_pause_duration}"
+            f" cron_pause_until_duration={args.cron_job_pause_duration}",
         )
 
     if args.cron_job:
@@ -426,7 +429,7 @@ def nordvpn_main(args: argparse.Namespace, vpn_status: Dict) -> None:
                 logger.info(
                     f"Skipping cron job;"
                     f" time_now={time_now} < pause_until={pause_until};"
-                    " setting args.flag=status"
+                    " setting args.flag=status",
                 )
                 args.flag = "status"
             else:
@@ -438,11 +441,11 @@ def nordvpn_main(args: argparse.Namespace, vpn_status: Dict) -> None:
 
     pre_settings = get_settings()
     logger.info(
-        "#### SETTINGS PRE CMD\n"
-        + "\n".join(
+        "#### SETTINGS PRE CMD\n%s",
+        "\n".join(
             f"  {setting_name}: {pre_value}"
             for setting_name, pre_value in sorted(list((k, v) for k, v in pre_settings.items()), key=lambda t: t[0])
-        )
+        ),
     )
     logger.info("#### CHANGE SETTINGS PRE CMD")
     pre_connect_cmds = _NORD_FLAG_TO_PRE_RUN_CMDS[args.flag]
@@ -474,7 +477,7 @@ def nordvpn_main(args: argparse.Namespace, vpn_status: Dict) -> None:
             logger.info(f"changed '{setting_name}' from '{pre_value}' to '{final_value}'")
 
 
-def main(argparse_args: Optional[Sequence[str]] = None) -> None:
+def main(argparse_args: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cron-job", action="store_true")
     parser.add_argument("--cron-job-pause-duration", "--pause")
@@ -508,7 +511,10 @@ def main(argparse_args: Optional[Sequence[str]] = None) -> None:
     vpn_status = _get_dict_from_json_file(args.file_out_vpn_status)  # write must be atomic or this can get corrupted
 
     locks_deleted_log_msgs = _delete_locks_if_timed_out(
-        lm.lock_names, time_script_start, vpn_status.get("time_last_lock", None), args.lock_timeout_duration_rm
+        lm.lock_names,
+        time_script_start,
+        vpn_status.get("time_last_lock", None),
+        args.lock_timeout_duration_rm,
     )
 
     with lm:

@@ -42,7 +42,6 @@
 #   * consider auto encoding detection confidence from chardet (or replacing chardet alltogether?)
 #   * carefully consider each usage of newline=""
 #   * consider checking if content matches file before writing
-
 import argparse
 import enum
 import io
@@ -50,11 +49,11 @@ import logging
 import os
 import re
 import sys
+from collections.abc import Sequence
+from typing import Any
+from typing import NoReturn
 
-from typing import Any, Dict, Optional, NoReturn, Sequence, Tuple
-
-import chardet  # type: ignore [import-untyped]
-
+import chardet  # type: ignore[import-untyped]
 from utils import path_utils
 from utils import re_utils
 
@@ -91,8 +90,8 @@ def setup_logger(logger_name: str) -> logging.Logger:
     return logger_out
 
 
-def parse_inputs(cmd_args: Optional[Sequence[str]] = None) -> Dict[str, Any]:
-    """Parse cmd line inputs; set, check, and fix script's default vars"""
+def parse_inputs(cmd_args: Sequence[str] | None = None) -> dict[str, Any]:
+    """Parse cmd line inputs; set, check, and fix script's default vars."""
     # pylint: disable=too-many-statements
     #### cmd args parser
     parser = argparse.ArgumentParser(usage=usage())
@@ -243,20 +242,20 @@ def str_btw_internal(
     str_end: str,
     str_out: str,
     pattern_btw: str,
-    indices: Optional[Sequence[int]],
-) -> Tuple[str, int]:
+    indices: Sequence[int] | None,
+) -> tuple[str, int]:
     pattern = re.escape(str_beg) + pattern_btw + re.escape(str_end)
     return re_utils.re_replace(pattern, str_in, group_replace=[str_out], indices=indices, flags=re.S)
 
 
-def file_btw(
+def file_btw(  # pylint: disable=too-many-positional-arguments
     file_: str,
     file_mode: str,
     str_beg: str,
     str_end: str,
     str_out: str,
     pattern_btw: str,
-    indices: Optional[Sequence[int]],
+    indices: Sequence[int] | None,
     encoding_file: str,
     encoding_stdout: str,
 ) -> int:
@@ -285,7 +284,7 @@ def str_btw(
     str_end: str,
     str_out: str,
     pattern_btw: str,
-    indices: Optional[Sequence[int]],
+    indices: Sequence[int] | None,
     encoding_stdout: str,
 ) -> int:
     str_final, num_matches = str_btw_internal(str_in, str_beg, str_end, str_out, pattern_btw, indices)
@@ -293,7 +292,7 @@ def str_btw(
     return num_matches
 
 
-def write_btw(cmd_args: Optional[Sequence[str]] = None) -> None:
+def write_btw(cmd_args: Sequence[str] | None = None) -> None:
     #### parse and check cmd line args
     args_parsed = parse_inputs(cmd_args)
     #### select and call func with appropriate args depending on mode

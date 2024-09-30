@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-
 import argparse
 import datetime
-import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 
-from typing import Dict, Optional, Sequence
-
-from utils import json_utils
+import yaml  # type: ignore[import-untyped]
+from utils import cfg_utils
 from utils import log_manager
 from utils import path_utils
 
@@ -22,24 +20,24 @@ _LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else
 _LOGGING_CFG_DEFAULT = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{_LOG_BASE}_logging_cfg.json")
 logger = log_manager.LogManager()
 
-_JSON_CFG_DEFAULT = os.path.join(os.path.expanduser("~"), ".config", "cfg-gws.json")
+_CFG_DEFAULT = os.path.join(os.path.expanduser("~"), ".config", "cfg-gws.yaml")
 _RCLONE_TEST = "RCLONE_TEST"
 
 
-def find_cfg_file(dir_: str) -> Optional[str]:
+def find_cfg_file(dir_: str) -> str | None:
     for root, _, files in os.walk(dir_):
         for file in files:
-            if file == "cfg-gws.json":
+            if file == "cfg-gws.yaml":
                 return os.path.abspath(os.path.join(root, file))
     return None
 
 
-def _init_rclone_bisync(rclone, rclone_bk_details: Dict) -> int:
+def _init_rclone_bisync(rclone, rclone_bk_details: dict, relatives: dict[str, dict]) -> int:
     # pylint: disable=too-many-locals
-    found_cfg = _JSON_CFG_DEFAULT if os.path.exists(_JSON_CFG_DEFAULT) else None
+    found_cfg = _CFG_DEFAULT if os.path.exists(_CFG_DEFAULT) else None
     for rclone_bk_detail in rclone_bk_details:
-        local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["loc"])
-        bk_local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["bk_loc"])
+        local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["loc"], relatives)
+        bk_local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["bk_loc"], relatives)
         remote = os.path.expandvars(rclone_bk_detail["rem"])
 
         if not os.path.exists(local):
@@ -71,26 +69,32 @@ def _init_rclone_bisync(rclone, rclone_bk_details: Dict) -> int:
         if found_cfg is None:
             found_cfg = find_cfg_file(local)
 
-    if not os.path.exists(_JSON_CFG_DEFAULT):
+    if not os.path.exists(_CFG_DEFAULT):
         assert found_cfg is not None
-        parent_dir = os.path.dirname(_JSON_CFG_DEFAULT)
+        parent_dir = os.path.dirname(_CFG_DEFAULT)
         os.makedirs(parent_dir, exist_ok=True)
         found_cfg_abs = os.path.abspath(found_cfg)
-        os.symlink(found_cfg_abs, _JSON_CFG_DEFAULT)
-        logger.info(f"created symlink '{found_cfg_abs}' -> '{_JSON_CFG_DEFAULT}'")
+        os.symlink(found_cfg_abs, _CFG_DEFAULT)
+        logger.info(f"created symlink '{found_cfg_abs}' -> '{_CFG_DEFAULT}'")
 
     return 0
 
 
-def _run_rclone_bisync(rclone, rclone_bk_details: Dict, /, dry_run: bool = True, force: bool = False) -> int:
+def _run_rclone_bisync(
+    rclone,
+    rclone_bk_details: dict,
+    relatives: dict[str, dict],
+    /,
+    dry_run: bool = True,
+    force: bool = False,
+) -> int:
     for rclone_bk_detail in rclone_bk_details:
-        local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["loc"])
-        bk_local = json_utils.create_path_from_json_relative_path(rclone_bk_detail["bk_loc"])
+        local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["loc"], relatives)
+        bk_local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["bk_loc"], relatives)
         remote = os.path.expandvars(rclone_bk_detail["rem"])
         bk_remote = os.path.expandvars(rclone_bk_detail["bk_rem"])
 
-        current_utc_time = datetime.datetime.utcnow()
-        formatted_time = current_utc_time.strftime("%y%m%dt%H%M%Sz")
+        formatted_utc_time = datetime.datetime.utcnow().strftime("%y%m%dt%H%M%Sz")
 
         bisync_params = [
             "bisync",
@@ -105,9 +109,9 @@ def _run_rclone_bisync(rclone, rclone_bk_details: Dict, /, dry_run: bool = True,
             "--conflict-loser",
             "pathname",
             "--conflict-suffix",
-            f"-{formatted_time}-loc,-{formatted_time}-rem",
+            f"-{formatted_utc_time}-loc,-{formatted_utc_time}-rem",
             "--suffix",
-            f"-{formatted_time}-bk",
+            f"-{formatted_utc_time}-bk",
             "--suffix-keep-extension",
             "--check-access",
             "--resilient",
@@ -129,12 +133,12 @@ def _run_rclone_bisync(rclone, rclone_bk_details: Dict, /, dry_run: bool = True,
     return 0
 
 
-def main(argparse_args: Optional[Sequence[str]] = None) -> int:
+def main(argparse_args: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run rclone bisync with details extracted from json.")
     parser.add_argument("--dry-run", "--dry", action="store_true")
     parser.add_argument("--init", action="store_true", help="TODO")
     parser.add_argument("--force", action="store_true", help="Run in situations like too many deletes.")
-    parser.add_argument("--json-cfg", default=_JSON_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
+    parser.add_argument("--cfg", default=_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
     parser.add_argument("--log")
     parser.add_argument("--log-cfg", help="Logging cfg, empty str uses LogManager default cfg")
     parser.add_argument("--rclone", default="rclone", help="The rclone version to use")
@@ -143,13 +147,16 @@ def main(argparse_args: Optional[Sequence[str]] = None) -> int:
     log_cfg = _LOGGING_CFG_DEFAULT if args.log_cfg is None else (None if args.log_cfg == "" else args.log_cfg)
     log_manager.LogManager.setup_logger(globals(), log_cfg=log_cfg, log_file=args.log)
 
-    with path_utils.open_unix_safely(args.json_cfg) as file:
-        rclone_bk_details = json.load(file)["rclone_bk_details"]
+    with path_utils.open_unix_safely(args.cfg, encoding="utf-8") as f:
+        yaml_data = yaml.safe_load(f)
+
+    rclone_bk_details = yaml_data["rclone_bk_details"]
+    references = yaml_data.get("references", {})
 
     if args.init:
-        return _init_rclone_bisync(args.rclone, rclone_bk_details)
+        return _init_rclone_bisync(args.rclone, rclone_bk_details, references)
 
-    return _run_rclone_bisync(args.rclone, rclone_bk_details, dry_run=args.dry_run, force=args.force)
+    return _run_rclone_bisync(args.rclone, rclone_bk_details, references, dry_run=args.dry_run, force=args.force)
 
 
 if __name__ == "__main__":

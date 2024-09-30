@@ -12,31 +12,31 @@
 #
 # todos
 #   * rename file to prevent 'is overriding the stdlib module "format_actions"'
-
-# type: ignore # TODO
-
 import argparse
 import difflib
 import os
-
-from typing import Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from utils import cli_utils
-from utils import format_utils
 from utils import filter_utils
+from utils import format_utils
 from utils import path_utils
-from utils.argparse_utils import ArgumentParserWithDefaultChecking, DirAction
+from utils.argparse_utils import ArgumentParserWithDefaultChecking
+from utils.argparse_utils import DirAction
 from utils.log_manager import LogManager
 
 
-def _parse_input(args: Sequence[str] = None) -> List[Dict]:
-    """Parse cmd line inputs; set, check, and fix script's default variables"""
+def _parse_input(argparse_args: Sequence[str] = None) -> list[dict]:
+    """Parse cmd line inputs; set, check, and fix script's default variables."""
 
     # pylint: disable=too-many-locals
     def validate_args(args: argparse.Namespace) -> None:
-        """Ensure inputs to parser were valid"""
+        """Ensure inputs to parser were valid."""
         logger.error_assert(
-            hasattr(args, "formatter"), ValueError("Must specify '--formatter'."), raise_exc=SystemExit(1)
+            hasattr(args, "formatter"),
+            ValueError("Must specify '--formatter'."),
+            raise_exc=SystemExit(1),
         )
 
     def generate_parser():
@@ -51,18 +51,18 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
     def generate_parser_basenames_to_lower(_: str, mode: str) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
-        return parser
+        return parser  # type: ignore[return-value] # TODO
 
     def generate_parser_whitespace(_: str, mode: str) -> argparse.ArgumentParser:
         parser = ArgumentParserWithDefaultChecking()
         parser.add_argument("--mode", "-m", default=mode, help="Formatter execution mode")
         parser.add_argument("--eol", "-e", default="lf", help="End of line character(s)")
-        return parser
+        return parser  # type: ignore[return-value] # TODO
 
     #### cmd line args parser
     ## toplevel script parser
     parser = generate_parser()
-    args = parser.parse_args(args)
+    args = parser.parse_args(argparse_args)
     validate_args(args)
     ## generate formatter specific arg parsers
     parser_basenames_to_lower = generate_parser_basenames_to_lower(args.dir, args.mode)
@@ -78,16 +78,17 @@ def _parse_input(args: Sequence[str] = None) -> List[Dict]:
             formatter_parser = formatter_parsers[f_type]
         except KeyError:
             logger.error_raise(
-                ValueError(f"Formatter type '{f_type}' must be one of {list(formatter_parsers.keys())}."), SystemExit(1)
+                ValueError(f"Formatter type '{f_type}' must be one of {list(formatter_parsers.keys())}."),
+                SystemExit(1),
             )
         args_internal = formatter_parser.parse_args(formatter_cmd_split[1:])
         args_formatter = dict(args_internal.__dict__.items())
         formatter_lst.append({"formatter": f_type, "args": args_formatter})
     #### return args
-    return formatter_lst, args.filters
+    return formatter_lst, args.filters  # type: ignore[return-value] # TODO
 
 
-def formatter_basenames_to_lower(objs: str, mode):
+def formatter_basenames_to_lower(objs: str, mode) -> Sequence[Any]:
     objs_modified = []
     objs_unmodified = []
     if mode == "dryrun":
@@ -115,13 +116,13 @@ def formatter_basenames_to_lower(objs: str, mode):
     return objs_modified, objs_unmodified
 
 
-def formatter_whitespace(objs: str, mode: str, eol: str):
+def formatter_whitespace(objs: str, mode: str, eol: str) -> Sequence[Any]:
     objs_modified = []
     objs_unmodified = []
     for obj in objs:
         with open(obj, "rb") as open_file:
             content = open_file.read()
-            content_modified = format_utils.convert_newlines(content, eol=eol)
+            content_modified = format_utils.convert_newlines(content, eol=eol)  # type: ignore[arg-type] # TODO
             content_modified = format_utils.convert_tabs_to_spaces(content_modified)
             content_modified = format_utils.remove_trailing_line_spaces(content_modified, eol=eol)
             content_modified = format_utils.one_trailing_newline(content_modified, eol=eol)
@@ -131,12 +132,12 @@ def formatter_whitespace(objs: str, mode: str, eol: str):
             objs_unmodified.append(obj)
         elif mode == "prompt":
             if content != content_modified:
-                with open(obj, "r", encoding="cp437") as open_file:  # TODO: why cp347
+                with open(obj, encoding="cp437") as open_file:  # TODO: why cp347
                     tmp_obj = path_utils.generate_tmp_from_path(obj)
                     with open(tmp_obj, "wb") as open_tmp_file:
-                        open_tmp_file.write(content_modified)
+                        open_tmp_file.write(content_modified)  # type: ignore[arg-type] # TODO
                     try:
-                        with open(tmp_obj, "r", encoding="cp437") as open_tmp_file:  # TODO: why cp347
+                        with open(tmp_obj, encoding="cp437") as open_tmp_file:  # TODO: why cp347
                             diff = difflib.unified_diff(
                                 open_file.readlines(),
                                 open_tmp_file.readlines(),
@@ -151,7 +152,8 @@ def formatter_whitespace(objs: str, mode: str, eol: str):
                         raise err
 
                 if cli_utils.prompt_return_bool(
-                    f"INFO: ############ change {obj} with diff shown above? ", ["yes", "y"]
+                    f"INFO: ############ change {obj} with diff shown above? ",
+                    ["yes", "y"],
                 ):
                     objs_modified.append(obj)
                     os.replace(tmp_obj, obj)
@@ -168,7 +170,7 @@ def formatter_whitespace(objs: str, mode: str, eol: str):
     return objs_modified, objs_unmodified
 
 
-def formatter_run(formatter: str, objs: str, args: Dict) -> Sequence[Any]:
+def formatter_run(formatter: str, objs: str, args: dict) -> Sequence[Any]:
     if formatter == "basenames_to_lower":
         return formatter_basenames_to_lower(objs, **args)
     if formatter == "whitespace":
@@ -179,9 +181,9 @@ def formatter_run(formatter: str, objs: str, args: Dict) -> Sequence[Any]:
 def main(args: Sequence[str] = None) -> None:
     formatters, args_filters = _parse_input(args)
     #### parse filters
-    objs = filter_utils.main(cli_utils.shell_split(args_filters))
+    objs = filter_utils.main(cli_utils.shell_split(args_filters))  # type: ignore[arg-type] # TODO
     for formatter in formatters:
-        objs_modified, objs_unmodified = formatter_run(formatter["formatter"], objs, formatter["args"])
+        objs_modified, objs_unmodified = formatter_run(formatter["formatter"], objs, formatter["args"])  # type: ignore[arg-type] # TODO
         print("UNMODIFIED below:")
         for obj in objs_unmodified:
             print(f"    {obj}")

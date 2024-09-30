@@ -4,19 +4,17 @@
 #
 # todos
 #   * detect/specify (?) binary files and handle binary file diffs
-
 import argparse
 import difflib
 import filecmp
-import json
 import os
 import shutil
 import sys
+from collections.abc import Callable
 
-from typing import Callable, Dict, List, Optional
-
+import yaml  # type: ignore[import-untyped]
+from utils import cfg_utils
 from utils import cli_utils
-from utils import json_utils
 from utils import path_utils
 
 
@@ -40,14 +38,14 @@ def preview_cp(src_path: str, dst_path: str) -> str:
     return dst_path
 
 
-def action_make_symlinks(src, links, options=None, references=None) -> Dict:
+def action_make_symlinks(src, links, options=None, references=None) -> dict:
     # pylint: disable=unused-argument
     relatives = None if references is None else references.get("relatives", None)
 
-    src_path = json_utils.create_path_from_json_relative_path(src, relatives)
+    src_path = cfg_utils.create_path_from_relative_path(src, relatives)
     link_paths = []
     for link in links:
-        link_path = json_utils.create_path_from_json_relative_path(link, relatives)
+        link_path = cfg_utils.create_path_from_relative_path(link, relatives)
         if os.path.exists(link_path):
             if os.path.islink(link_path):
                 print(f"INFO: skipping: make_symlink '{src_path}' '{link_path}'; symlink already exists")
@@ -61,11 +59,7 @@ def action_make_symlinks(src, links, options=None, references=None) -> Dict:
     return {"error_code": 0, "link_paths": link_paths}
 
 
-def get_path_type_from_json_path(obj):
-    return obj["path"][-1]["path_type"]
-
-
-def action_cp_to_dst_directory(src, dst, options=None, relatives=None) -> Dict:
+def action_cp_to_dst_directory(src, dst, options=None, relatives=None) -> dict:
     # pylint: disable=unused-argument
     # for (dirpath, dirnames, filenames) in os.walk(path):
     #     for dirname in dirnames:
@@ -73,17 +67,17 @@ def action_cp_to_dst_directory(src, dst, options=None, relatives=None) -> Dict:
     assert False
 
 
-def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> Dict:
+def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> dict:
     # pylint: disable=[too-many-branches,too-many-return-statements,too-many-statements]
     options = {} if options is None else options
 
     overwrite_status = options.get("overwite_status", "NO_W_ERROR")
     preview = options.get("preview", True)
 
-    cp_func: Callable[[str, str], str] = preview_cp if preview else shutil.copy2  # type: ignore
+    cp_func: Callable[[str, str], str] = preview_cp if preview else shutil.copy2  # type: ignore[assignment]
 
-    src_path = json_utils.create_path_from_json_relative_path(src, relatives)
-    dst_path = json_utils.create_path_from_json_relative_path(dst, relatives)
+    src_path = cfg_utils.create_path_from_relative_path(src, relatives)
+    dst_path = cfg_utils.create_path_from_relative_path(dst, relatives)
 
     if os.path.exists(dst_path):
         if filecmp.cmp(src_path, dst_path):
@@ -144,18 +138,17 @@ def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> Dict:
     return {"error_code": 0, "dst_path": dst_path}
 
 
-def action_cp_to_dsts(src, dsts, options=None, references=None) -> Dict:
+def action_cp_to_dsts(src, dsts, options=None, references=None) -> dict:
     relatives = None if references is None else references.get("relatives", None)
-
-    src_path_type = get_path_type_from_json_path(src)
+    src_path_type = src.get("path_type", "FILE")
 
     for dst in dsts:
-        dst_path_type = get_path_type_from_json_path(dst)
+        dst_path_type = dst.get("path_type", "FILE")
         if src_path_type != dst_path_type:
             print("ERROR: mismatched path_type; src_path_type != dst_path_type; {src_path_type} != {dst_path_type}")
             return {"error_code": 1, "dst_paths": []}
 
-    action_cp_to_dst: Callable[..., Dict]
+    action_cp_to_dst: Callable[..., dict]
     if src_path_type == "DIRECTORY":
         action_cp_to_dst = action_cp_to_dst_directory
     elif src_path_type == "FILE":
@@ -164,7 +157,7 @@ def action_cp_to_dsts(src, dsts, options=None, references=None) -> Dict:
         print(f"ERROR: unrecognized src_path_type={src_path_type}")
         return {"error_code": 1, "dst_paths": []}
 
-    dst_paths: List[Optional[Dict]] = []
+    dst_paths: list[dict | None] = []
     for dst in dsts:
         cp_to_dst_result = action_cp_to_dst(src, dst, options=options, relatives=relatives)
         if cp_to_dst_result["error_code"] != 0:
@@ -174,7 +167,7 @@ def action_cp_to_dsts(src, dsts, options=None, references=None) -> Dict:
     return {"error_code": 0, "dst_paths": dst_paths}
 
 
-def handle_action(action, references, prev_ret_val=None) -> Dict:
+def handle_action(action, references, prev_ret_val=None) -> dict:
     prev_ret_val_kwargs = {}
     if action.get("prev_ret_val_to_extract", None) is not None:
         for key, value in action["prev_ret_val_to_extract"].items():
@@ -188,27 +181,31 @@ def handle_action(action, references, prev_ret_val=None) -> Dict:
     sys.exit(1)
 
 
-def parse_json_and_execute_actions(action_json):
-    with path_utils.open_unix_safely(action_json, encoding="utf-8") as f:
-        json_data = json.load(f)
+def parse_yaml_and_execute_actions(action_yaml):
+    with path_utils.open_unix_safely(action_yaml, encoding="utf-8") as f:
+        yaml_data = yaml.safe_load(f)
 
-    references = json_data.get("references") if "references" in json_data else {}
+    references = yaml_data.get("references", {})
 
-    prev_ret_val: Dict = {}
-    for action in json_data.get("actions"):
+    prev_ret_val: dict = {}
+    for action in yaml_data.get("actions"):
         prev_ret_val = handle_action(action, references, prev_ret_val=prev_ret_val)
 
 
-def parse_inputs() -> Dict:
-    """Parse cmd line inputs; set, check, and fix script's default variables"""
+def parse_inputs(argparse_args: list[str] | None = None) -> dict:
+    """Parse cmd line inputs; set, check, and fix script's default variables."""
     #### cmd line args parser
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json", help="json file specifying actions")
-    args = parser.parse_args()
+    parser.add_argument("--yaml", help="yaml file specifying actions")
+    args = parser.parse_args(argparse_args)
 
-    return {"json_path": args.json}
+    return {"yaml_path": args.yaml}
+
+
+def main(argparse_args: list[str] | None = None):
+    inputs = parse_inputs(argparse_args)
+    parse_yaml_and_execute_actions(inputs["yaml_path"])
 
 
 if __name__ == "__main__":
-    inputs = parse_inputs()
-    parse_json_and_execute_actions(inputs["json_path"])
+    main()

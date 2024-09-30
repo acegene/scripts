@@ -5,7 +5,6 @@
 #   * lock_manager = LockManager(files_to_lock)
 #
 # author: acegene <acegene22@gmail.com>
-
 import logging
 
 import filelock  # python3 -m pip install filelock

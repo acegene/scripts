@@ -27,7 +27,8 @@ class ArgumentParserWithDefaultChecking:
         for arg in self.actions:
             if getattr(args_, arg.dest) == arg.default:
                 if isinstance(
-                    arg, (argparse._StoreTrueAction, argparse._StoreFalseAction)  # pylint: disable=protected-access
+                    arg,
+                    (argparse._StoreTrueAction, argparse._StoreFalseAction),  # pylint: disable=protected-access
                 ):
                     continue
                 arg(self.parser, args_, arg.default, "TODO:")

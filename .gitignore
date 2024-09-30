@@ -1,10 +1,17 @@
-#### Created by https://www.toptal.com/developers/gitignore/api/batch,bazel,c,c++,clion,diff,git,java,jupyternotebooks,linux,macos,matlab,nohup,powershell,python,vim,visualstudio,visualstudiocode,windows,zsh
-.gitignore
+## git files
 .gitattributes
+.gitignore
+.gitlint
+
+## cfg files
 .jsbeautifyrc
+.hadolint.yaml
 .mypy.ini
+.pre-commit-config.yaml
 .pylintrc
 pyproject.toml
+
+#### START created by https://www.toptal.com/developers/gitignore/api/batch,bazel,c,c++,clion,diff,git,java,jupyternotebooks,linux,macos,matlab,nohup,powershell,python,vim,visualstudio,visualstudiocode,windows,zsh
 ### Batch ###
 # BatchFiles
 *.bat
@@ -936,4 +943,4 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 *.tlog
 
-# End of https://www.toptal.com/developers/gitignore/api/batch,bazel,c,c++,clion,diff,git,java,jupyternotebooks,linux,macos,matlab,nohup,powershell,python,vim,visualstudio,visualstudiocode,windows,zsh
+# End created by https://www.toptal.com/developers/gitignore/api/batch,bazel,c,c++,clion,diff,git,java,jupyternotebooks,linux,macos,matlab,nohup,powershell,python,vim,visualstudio,visualstudiocode,windows,zsh

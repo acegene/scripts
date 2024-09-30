@@ -9,19 +9,21 @@
 #       * to execute this as a script; this particular example lists all uppercase containing filenames in <DIR>
 #
 # author: acegene <acegene22@gmail.com>
-
 import argparse
 import os
 import re
-
-from typing import Any, Callable, Dict, List, Iterable, Optional, Pattern, Sequence
+from collections.abc import Callable
+from collections.abc import Iterable
+from collections.abc import Sequence
+from re import Pattern
+from typing import Any
 
 import git  # python3 -m pip install GitPython
-
 from utils import cli_utils
-from utils import re_utils
 from utils import path_utils
-from utils.argparse_utils import DirType, RegexAction
+from utils import re_utils
+from utils.argparse_utils import DirType
+from utils.argparse_utils import RegexAction
 from utils.log_manager import LogManager
 
 
@@ -37,12 +39,12 @@ class _AccumulateAndsOrsAction(argparse.Action):
         )
 
 
-def _parse_input(argparse_args: Optional[Sequence[str]] = None) -> List[Dict]:
-    """Parse cmd line inputs; set, check, and fix script's default variables"""
+def _parse_input(argparse_args: Sequence[str] | None = None) -> list[dict]:
+    """Parse cmd line inputs; set, check, and fix script's default variables."""
 
     # pylint: disable=[too-many-locals,too-many-statements]
     def validate_args(args: argparse.Namespace) -> None:
-        """Ensure inputs to parser were valid"""
+        """Ensure inputs to parser were valid."""
         logger.error_assert(
             hasattr(args, "ands_ors"),
             ValueError("One of '--and' or '--or' must be specified."),
@@ -54,7 +56,11 @@ def _parse_input(argparse_args: Optional[Sequence[str]] = None) -> List[Dict]:
         parser.add_argument("--and", "-a", action=_AccumulateAndsOrsAction, help="TODO")
         parser.add_argument("--or", "-o", action=_AccumulateAndsOrsAction, help="TODO")
         parser.add_argument(
-            "--dir", "-d", default=".", type=DirType(), help="directory that serves as default for filters"
+            "--dir",
+            "-d",
+            default=".",
+            type=DirType(),
+            help="directory that serves as default for filters",
         )
         return parser
 
@@ -97,7 +103,11 @@ def _parse_input(argparse_args: Optional[Sequence[str]] = None) -> List[Dict]:
         parser = argparse.ArgumentParser()
         parser.add_argument("--dir", "-d", default=dir_, type=DirType(), help="directory for git repo")
         parser.add_argument(
-            "--show-ignored", "--si", action="store_true", default=False, help="show files ignored by .gitignore"
+            "--show-ignored",
+            "--si",
+            action="store_true",
+            default=False,
+            help="show files ignored by .gitignore",
         )
         return parser
 
@@ -206,7 +216,10 @@ def filter_apple_junk(dir_: str, excludes: Iterable[str]) -> Iterable[str]:
 
 
 def _filter_apple_junk_wrapped(
-    objs_in: Iterable[str], operation: str, dir_: str, excludes: Iterable[str]
+    objs_in: Iterable[str],
+    operation: str,
+    dir_: str,
+    excludes: Iterable[str],
 ) -> Iterable[str]:
     objs_out = filter_apple_junk(dir_, excludes)
     return _operation_apply(operation, objs_in, objs_out)
@@ -304,7 +317,7 @@ def _filter_git_text_wrapped(files_in: Iterable[str], operation: str, dir_: str,
         logger.error_raise(ValueError("For filter 'text' <operation> == 'or' is not allowed."), raise_exc=SystemExit(1))
     #### process files and check which ones are ignored
     files_out = filter_git_text(files_in, dir_, eol)
-    return files_out  # type: ignore [no-any-return] # TODO: should this be needed?
+    return files_out  # type: ignore[no-any-return] # TODO: should this be needed?
 
 
 def filter_git_tracked(dir_: str) -> Iterable[str]:
@@ -340,7 +353,10 @@ def filter_git_untracked(dir_: str, show_ignored: bool) -> Iterable[str]:
 
 
 def _filter_git_untracked_wrapped(
-    files_in: Iterable[str], operation: str, dir_: str, show_ignored: bool
+    files_in: Iterable[str],
+    operation: str,
+    dir_: str,
+    show_ignored: bool,
 ) -> Iterable[str]:
     files_out = filter_git_untracked(dir_, show_ignored)
     return _operation_apply(operation, files_in, files_out)
@@ -356,16 +372,19 @@ def filter_regex(objs_in: Iterable[str], regex: Pattern, file_mode: bool = False
 def _filter_regex_wrapped(objs_in: Iterable[str], operation: str, regex: Pattern, file_mode: bool) -> Iterable[str]:
     if operation == "or":
         logger.error_raise(
-            ValueError("For filter 'regex' <operation> == 'or' is not allowed."), raise_exc=SystemExit(1)
+            ValueError("For filter 'regex' <operation> == 'or' is not allowed."),
+            raise_exc=SystemExit(1),
         )
     return filter_regex(objs_in, regex, file_mode)
 
 
-def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: Dict) -> Iterable[Any]:
+def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: dict) -> Iterable[Any]:
     logger.error_assert(
-        operation in ["and", "or"], ValueError("<operation> not in ['and', 'or']."), raise_exc=SystemExit(1)
+        operation in ["and", "or"],
+        ValueError("<operation> not in ['and', 'or']."),
+        raise_exc=SystemExit(1),
     )
-    str_to_func: Dict[str, Callable[..., Iterable[Any]]] = {
+    str_to_func: dict[str, Callable[..., Iterable[Any]]] = {
         "apple_junk": _filter_apple_junk_wrapped,
         "files": _filter_files_wrapped,
         "git_ignored": _filter_git_ignored_wrapped,
@@ -381,7 +400,7 @@ def filter_run(objs: Iterable[Any], operation: str, filter_: str, args: Dict) ->
     return str_to_func[filter_](objs, operation, **args)
 
 
-def main(args: Sequence[str] = None, initial_objs: Optional[Iterable] = None) -> Iterable[Any]:
+def main(args: Sequence[str] = None, initial_objs: Iterable | None = None) -> Iterable[Any]:
     initial_objs = set() if initial_objs is None else initial_objs
     filter_list = _parse_input(args)
     filter_final_result = initial_objs

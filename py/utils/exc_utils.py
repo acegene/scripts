@@ -5,12 +5,12 @@
 #       * adding this to a python file allows usage of functions as exc_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
+from collections.abc import Callable
+from typing import Any
 
-from typing import Any, Callable, Optional, Tuple, Type, Union
 
-
-def raise_if_false(do_not_raise: bool, exception: Exception, print_object: Optional[Any] = None) -> None:
-    """Throw <exception> if <do_not_raise> == False
+def raise_if_false(do_not_raise: bool, exception: Exception, print_object: Any | None = None) -> None:
+    """Throw <exception> if <do_not_raise> == False.
 
     Args:
         do_not_raise (bool): Determines whether to raise <exception>
@@ -30,11 +30,11 @@ def raise_if_false(do_not_raise: bool, exception: Exception, print_object: Optio
 
 
 def try_with_default(
-    exceptions: Union[Type[BaseException], Tuple[Type[BaseException]]],
+    exceptions: type[BaseException] | tuple[type[BaseException]],
     default: Any,
     callable_: Callable,
     *args: Any,
-    **kargs: Any
+    **kargs: Any,
 ) -> Any:
     """Returns <callable_>(<*args>, <**kargs>); if an exc in <exceptions> occurs instead return <default>
 

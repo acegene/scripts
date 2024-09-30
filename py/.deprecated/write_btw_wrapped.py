@@ -8,18 +8,17 @@
 # todos
 #   * take input file from pipe
 #   * python properly extract oy functions even if they have extra newlines
-
 import argparse  # cmd line arg parsing
 import os  # filesystem interactions
 import re  # regex
 import sys
-
 from datetime import date
+
 
 ####################################################################################################
 ####################################################################################################
 def parse_inputs():
-    """Parse cmd line inputs; set, check, and fix script's default variables"""
+    """Parse cmd line inputs; set, check, and fix script's default variables."""
     global args_raw
     global files_write
     global funcs_write
@@ -95,7 +94,7 @@ def parse_inputs():
 
 def extract_funcs(f, pattern):
     funcs = []
-    with open(f, "r") as f:
+    with open(f) as f:
         f_str = f.read()
         match = re.finditer(pattern, f_str, flags=re.S)
         assert match
@@ -185,7 +184,7 @@ if empty:
     txt_write = f"{beg}\n{end}"
 elif all_read:
     print("INFO: mode is all_read")
-    with open(file_read, "r") as f:
+    with open(file_read) as f:
         txt_write = f"{beg}\n{f.read()}\n{end}"
 else:
     print("INFO: mode is funcs")
@@ -193,6 +192,7 @@ else:
     for f in funcs_write:
         assert f in [func.group(1) for func in funcs]
     funcs_write = [func.group(0).strip(" \t\n") for func in funcs if func.group(1) in funcs_write]
-    txt_write = f"{beg}\n{disclaimer}\n\n{'\n\n'.join(funcs_write)}\n{end}"
+    double_nl = "\n\n"
+    txt_write = f"{beg}\n{disclaimer}\n\n{double_nl.join(funcs_write)}\n{end}"
 
 write_over_patterns(files_write, r"" + beg + ".*?" + end, txt_write)

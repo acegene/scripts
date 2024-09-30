@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-
 import argparse
 import os
 import sys
-
-from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
+from collections.abc import Iterable
 
 import git
-
 from utils import argparse_utils
 from utils import git_utils
 from utils import log_manager
@@ -23,7 +20,7 @@ _LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else
 _LOGGING_CFG_DEFAULT = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{_LOG_BASE}_logging_cfg.json")
 logger = log_manager.LogManager()
 
-_stash_behaviors_to_file_types: Dict[str, Set[str]] = {
+_stash_behaviors_to_file_types: dict[str, set[str]] = {
     "all": {"staged", "tracked_changed", "untracked", "untracked_ignored"},
     "no": set(),
     "staged": {"staged"},
@@ -31,7 +28,7 @@ _stash_behaviors_to_file_types: Dict[str, Set[str]] = {
     "tracked_w_untracked": {"tracked_changed", "untracked"},
 }
 
-_FilesDict = Dict[str, List[str]]
+_FilesDict = dict[str, list[str]]
 
 
 def _removeprefix(s: str, prefix: str) -> str:
@@ -39,19 +36,22 @@ def _removeprefix(s: str, prefix: str) -> str:
 
 
 def _get_final_override_ff_only(
-    override_simple_ff_only: str, git_ref_lhs: str, git_ref_rhs: str, can_fast_forward: bool
+    override_simple_ff_only: str,
+    git_ref_lhs: str,
+    git_ref_rhs: str,
+    can_fast_forward: bool,
 ) -> bool:
     if override_simple_ff_only == "ask":
         while True:
             if can_fast_forward:
                 user_input = input(
                     f"PROMPT: '{git_ref_lhs}' cannot simply fast forward to '{git_ref_rhs}' due to local "
-                    "modifications listed above which will be overwritten, continue anyway? (yes/no): "
+                    "modifications listed above which will be overwritten, continue anyway? (yes/no): ",
                 ).lower()
             else:
                 user_input = input(
                     f"PROMPT: '{git_ref_lhs}' cannot fast forward to '{git_ref_rhs}', they may have diverged "
-                    "or be otherwise incompatible, continue anyway? (yes/no): "
+                    "or be otherwise incompatible, continue anyway? (yes/no): ",
                 ).lower()
             if user_input == "no":
                 return False
@@ -91,7 +91,10 @@ def _get_merge_fast_forward_conflict_files(repo: git.Repo, git_ref: str, categor
 
 
 def _is_merge_fast_forward_possible(
-    repo: git.Repo, git_ref: str, categorized_files: _FilesDict, stashable_file_types: Iterable[str]
+    repo: git.Repo,
+    git_ref: str,
+    categorized_files: _FilesDict,
+    stashable_file_types: Iterable[str],
 ) -> bool:
     conflict_files = _get_merge_fast_forward_conflict_files(repo, git_ref, categorized_files)
     return sum((len(v) for k, v in conflict_files.items() if k not in stashable_file_types)) == 0
@@ -110,7 +113,10 @@ def _get_to_be_overwritten_files(repo: git.Repo, git_ref: str, categorized_files
 
 
 def _log_files_w_overwrite_flag_details(
-    files: List[str], file_type: str, stash_behavior: str, overwrite_flag: Optional[str]
+    files: list[str],
+    file_type: str,
+    stash_behavior: str,
+    overwrite_flag: str | None,
 ) -> None:
     s_base = f"the following {len(files)} '{file_type}' "
     o_str = f"overwrite_flag='{overwrite_flag}'"
@@ -120,11 +126,11 @@ def _log_files_w_overwrite_flag_details(
         logger.info(f"{s_base}files will be overwritten; {s_str} includes '{file_type}':\n{files_str}")
     elif overwrite_flag == "ask":
         logger.warning(
-            f"{s_base}files will be overwritten; {o_str} for '{file_type}', will prompt for user feedback:\n{files_str}"
+            f"{s_base}files will be overwritten; {o_str} for '{file_type}', will prompt for user feedback:\n{files_str}",
         )
     elif overwrite_flag == "no":
         logger.error(
-            f"{s_base}files can NOT be overwritten as {o_str} and {s_str} does not include '{file_type}':\n{files_str}"
+            f"{s_base}files can NOT be overwritten as {o_str} and {s_str} does not include '{file_type}':\n{files_str}",
         )
     elif overwrite_flag == "yes":
         logger.info(f"{s_base}files will be overwritten; {o_str} for '{file_type}':\n{files_str}")
@@ -134,7 +140,7 @@ def _log_files_w_overwrite_flag_details(
 
 def _log_overwritable_files(
     to_be_overwritten_files: _FilesDict,
-    overwrite_flags: Dict[str, str],
+    overwrite_flags: dict[str, str],
     stashable_file_types: Iterable[str],
     stash_behavior: str,
 ) -> None:
@@ -150,7 +156,7 @@ def _log_overwritable_files(
 
 def _check_if_can_overwrite_files(
     to_be_overwritten_files: _FilesDict,
-    overwrite_flags: Dict[str, str],
+    overwrite_flags: dict[str, str],
     stashable_file_types: Iterable[str],
 ) -> bool:
     ret_val = True
@@ -174,7 +180,7 @@ def _check_if_can_overwrite_files(
         while True:
             user_input = input(
                 f"PROMPT: file_types={file_types_to_prompt_for_overwrite} have their overwrite flags set to 'ask' and "
-                "are listed in the above warnings; should they be overwritten? (yes/no): "
+                "are listed in the above warnings; should they be overwritten? (yes/no): ",
             ).lower()
             if user_input == "yes":
                 ret_val = True
@@ -203,10 +209,10 @@ def _update_branch_head_to_git_ref(repo: git.Repo, branch: str, git_ref: str, gi
         repo.git.update_ref("-m", git_ref_msg, f"refs/heads/{branch}", git_ref)
 
 
-def main(argparse_args: Optional[List[str]] = None) -> None:
+def main(argparse_args: list[str] | None = None) -> None:
     # pylint: disable=[too-many-branches,too-many-locals,too-many-statements]
 
-    ask_no_yes_options: Dict[str, Union[Tuple[str, ...], str]] = {"choices": ("ask", "no", "yes"), "default": "ask"}
+    ask_no_yes_options: dict[str, tuple[str, ...] | str] = {"choices": ("ask", "no", "yes"), "default": "ask"}
     parser = argparse.ArgumentParser()
     parser.add_argument("--branch", "-b")
     parser.add_argument("--checkout", "-c", action="store_true")
@@ -216,11 +222,11 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
     parser.add_argument("--fetch", action="store_true")
     parser.add_argument("--log")
     parser.add_argument("--log-cfg", help="Logging cfg, empty str uses LogManager default cfg")
-    parser.add_argument("--override-simple-ff-only", "--osfo", "-o", **ask_no_yes_options)  # type: ignore [arg-type]
-    parser.add_argument("--overwrite-staged", "--os", **ask_no_yes_options)  # type: ignore [arg-type]
-    parser.add_argument("--overwrite-tracked-changed", "--ot", **ask_no_yes_options)  # type: ignore [arg-type]
-    parser.add_argument("--overwrite-untracked", "--ou", **ask_no_yes_options)  # type: ignore [arg-type]
-    parser.add_argument("--overwrite-untracked-ignored", "--oui", **ask_no_yes_options)  # type: ignore [arg-type]
+    parser.add_argument("--override-simple-ff-only", "--osfo", "-o", **ask_no_yes_options)  # type: ignore[arg-type]
+    parser.add_argument("--overwrite-staged", "--os", **ask_no_yes_options)  # type: ignore[arg-type]
+    parser.add_argument("--overwrite-tracked-changed", "--ot", **ask_no_yes_options)  # type: ignore[arg-type]
+    parser.add_argument("--overwrite-untracked", "--ou", **ask_no_yes_options)  # type: ignore[arg-type]
+    parser.add_argument("--overwrite-untracked-ignored", "--oui", **ask_no_yes_options)  # type: ignore[arg-type]
     parser.add_argument("--stash-behavior", "--sb", choices=_stash_behaviors_to_file_types.keys(), default="tracked")
     parser.add_argument("--skip-log-changes", "--slc", action="store_true")
     stash_group = parser.add_mutually_exclusive_group()
@@ -244,6 +250,10 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
     branch = current_branch if args.branch is None else git_utils.get_local_branch_obj(repo, args.branch)
     if branch is None:
         logger.error(f"the following is not a branch: '{'HEAD' if args.branch is None else args.branch}'")
+        sys.exit(1)
+
+    if current_branch is None:
+        logger.error("current_branch is None")  # TODO: is this necessary, there might need to be a way to continue
         sys.exit(1)
 
     if args.fetch:
@@ -277,7 +287,10 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
         stashable_file_types = _stash_behaviors_to_file_types[args.stash_behavior]
         categorized_files = _get_categorized_files(repo, branch, git_ref_obj)
         do_fast_forward = can_fast_forward and _is_merge_fast_forward_possible(
-            repo, git_ref_obj, categorized_files, stashable_file_types
+            repo,
+            git_ref_obj,
+            categorized_files,
+            stashable_file_types,
         )
         to_be_overwritten_files = _get_to_be_overwritten_files(repo, git_ref_obj, categorized_files)
         if not do_fast_forward:
@@ -285,17 +298,24 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
             if not can_fast_forward:
                 merge_base = git_utils.get_merge_base(repo, branch, git_ref_obj)
                 merge_base_log = repo.git.log(
-                    "--oneline", "-n", "1", *git_utils.GIT_FORMAT_OPTIONS_ONE_LINE, merge_base
+                    "--oneline",
+                    "-n",
+                    "1",
+                    *git_utils.GIT_FORMAT_OPTIONS_ONE_LINE,
+                    merge_base,
                 )
                 ahead_behind_status = git_utils.get_ahead_behind_status_str(repo, branch, git_ref_obj)
                 logger.warning(
                     f"cannot fast forward as '{branch}' is not an ancestor of '{git_ref_obj}', "
                     "see the following details about the divergence:\n"
                     f"  common ancestor: {merge_base_log}\n"
-                    f"  {ahead_behind_status}"
+                    f"  {ahead_behind_status}",
                 )
             override_simple_ff_only = _get_final_override_ff_only(
-                args.override_simple_ff_only, branch, git_ref_obj, can_fast_forward
+                args.override_simple_ff_only,
+                branch,
+                git_ref_obj,
+                can_fast_forward,
             )
             change_str = "fast forward" if can_fast_forward else "update"
             error_str_prefix = f"Force {change_str} of '{branch}' to '{git_ref_obj}' not allowed due to"
@@ -327,12 +347,15 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
         logger.info(f"{change_str} non-checked out branch='{branch}' to '{git_ref_obj}'")
         if not can_fast_forward:
             override_simple_ff_only = _get_final_override_ff_only(
-                args.override_simple_ff_only, branch, git_ref_obj, can_fast_forward
+                args.override_simple_ff_only,
+                branch,
+                git_ref_obj,
+                can_fast_forward,
             )
             if not override_simple_ff_only:
                 logger.error(
                     f"Cannot force update of '{branch}' to '{git_ref_obj}' as "
-                    f"override_simple_ff_only={override_simple_ff_only}"
+                    f"override_simple_ff_only={override_simple_ff_only}",
                 )
                 sys.exit(1)
         git_ref_msg = f"merge {git_ref_obj}: {'Fast forward' if can_fast_forward else 'Force ref update'}"
@@ -342,7 +365,8 @@ def main(argparse_args: Optional[List[str]] = None) -> None:
         if not args.skip_log_changes:
             at_1 = "@{1}"
             logger.info(
-                f"git diff --stat {branch}{at_1} {branch}%s", repo.git.diff("--stat", f"{branch}{at_1}", branch)
+                f"git diff --stat {branch}{at_1} {branch}%s",
+                repo.git.diff("--stat", f"{branch}{at_1}", branch),
             )
         logger.info(f"{'fast forwarded' if can_fast_forward else 'updated'} '{branch}' to '{git_ref_obj}'")
 

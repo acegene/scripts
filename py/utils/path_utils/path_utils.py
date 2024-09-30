@@ -5,16 +5,17 @@
 #       * adding this to a python file allows usage of functions as path_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
-
 import errno
 import logging
 import os
-import shutil
 import pathlib
+import shutil
 import tempfile
 import uuid
-
-from typing import Any, BinaryIO, Optional, Sequence, TextIO, Union
+from collections.abc import Sequence
+from typing import Any
+from typing import BinaryIO
+from typing import TextIO
 
 from utils.lock_manager import LockManager
 
@@ -44,7 +45,7 @@ def generate_tmp_from_path(path: str):
 
 
 def is_filesystem_case_sensitive(dir_: str = ".") -> bool:
-    """Check whether <dir_> is part of a case sensitive filesystem
+    """Check whether <dir_> is part of a case sensitive filesystem.
 
     Args:
         dir_: Directory that is being tested for case sensitivity
@@ -59,14 +60,14 @@ def is_filesystem_case_sensitive(dir_: str = ".") -> bool:
         Requires write access to <dir_>
     """
     try:
-        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return]
+        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore[attr-defined, no-any-return]
     except AttributeError:
         setattr(is_filesystem_case_sensitive, "case_sensitive_dir_dict", {})
     except KeyError:
         pass
     with tempfile.NamedTemporaryFile(prefix="TmP", dir=dir_) as tmp_file:
-        is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_] = not os.path.exists(tmp_file.name.lower())  # type: ignore [attr-defined] # pylint: disable=[no-member]
-        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore [attr-defined, no-any-return] # pylint: disable=[no-member]
+        is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_] = not os.path.exists(tmp_file.name.lower())  # type: ignore[attr-defined] # pylint: disable=[no-member]
+        return is_filesystem_case_sensitive.case_sensitive_dir_dict[dir_]  # type: ignore[attr-defined, no-any-return] # pylint: disable=[no-member]
 
 
 def _mv_raise_if_paths_not_correct_status(src: str, dst: str, overwrite: bool = False) -> None:
@@ -89,7 +90,7 @@ def _mv_raise_if_paths_not_correct_status(src: str, dst: str, overwrite: bool = 
 
 
 def mv(src: str, dst: str, /, ignore_locks: bool = False, overwrite: bool = False) -> None:
-    """Atomically move object <src> to <dst> even across filesystems
+    """Atomically move object <src> to <dst> even across filesystems.
 
     Avoids race conditions with programs that utilize advisory locking system (see LockManager)
 
@@ -119,11 +120,11 @@ def mv(src: str, dst: str, /, ignore_locks: bool = False, overwrite: bool = Fals
     #### normalize inputs
     src_nrm = path_clean(src)
     dst_nrm = path_clean(dst)
-    files_nrm = set((dst_nrm, src_nrm))
+    files_nrm = {dst_nrm, src_nrm}
     ### check that a mv <src> to <dst> is possible
     _mv_raise_if_paths_not_correct_status(src_nrm, dst_nrm, overwrite=overwrite)
     #### lock <src> and <dst> prior to interacting with them to avoid race condition
-    lock_files = tuple() if ignore_locks else files_nrm
+    lock_files = () if ignore_locks else files_nrm
     with LockManager(*lock_files):
         ### check that a mv <src> to <dst> is possible, redundantly now that locks obtained
         _mv_raise_if_paths_not_correct_status(src_nrm, dst_nrm, overwrite=overwrite)
@@ -148,7 +149,7 @@ def mv(src: str, dst: str, /, ignore_locks: bool = False, overwrite: bool = Fals
 
 
 def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
-    """Move objects <srcs> to <dsts> even across filesystems
+    """Move objects <srcs> to <dsts> even across filesystems.
 
     Args:
         srcs: Objects to move
@@ -202,7 +203,7 @@ def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
         ## all of <dsts> must not exist unless also part of <srcs>
         for dst in dsts_nrm:
             if os.path.exists(dst):
-                if not any((os.path.samefile(src, dst) for src in srcs_nrm)):
+                if not any(os.path.samefile(src, dst) for src in srcs_nrm):
                     if os.path.isfile(dst):
                         raise FileExistsError(f"File '{dst}' from <dsts> should not exist!")
                     raise FileExistsError(f"Directory '{dst}' from <dsts> should not exist!")
@@ -225,7 +226,7 @@ def mv_multi(srcs: Sequence[str], dsts: Sequence[str]) -> None:
 
 
 def path_basename_to_lower(path: str, ignore_locks: bool = False) -> str:
-    """Rename <path> to lowercase
+    """Rename <path> to lowercase.
 
     Args:
         path: Path to rename to lowercase
@@ -255,7 +256,7 @@ def is_path_basename_lower(path: str) -> bool:
 
 
 def path_clean(path: str) -> str:
-    """Clean <path> representation to give deterministic comparable representation
+    """Clean <path> representation to give deterministic comparable representation.
 
     Args:
         path: Path to clean and return
@@ -278,9 +279,9 @@ LE_LF_B = b"\n"
 LINE_ENDINGS_B = (LE_CR_B, LE_CRLF_B, LE_LF_B)
 
 
-def eol_str_to_bin_str(str_in: Union[bytes, str]) -> bytes:
+def eol_str_to_bin_str(str_in: bytes | str) -> bytes:
     if str_in in LINE_ENDINGS_B:
-        return str_in  # type: ignore [return-value]
+        return str_in  # type: ignore[return-value]
     if str_in == "cr":
         return LE_CR_B
     if str_in == "crlf":
@@ -291,9 +292,7 @@ def eol_str_to_bin_str(str_in: Union[bytes, str]) -> bytes:
 
 
 def file_as_eol_lf(src_file, dst_file=None, /, chunk_size=4096):
-    """
-    Converts all types of eol (CRLF, CR) to LF.
-    If <dst_file> is not provided, overwrite <src_file> in place.
+    """Converts all types of eol (CRLF, CR) to LF. If <dst_file> is not provided, overwrite <src_file> in place.
 
     :param src_file: Path to the file which may contain mixed eol.
     :param dst_file: Optional; Path to the write file with LF only line endings.
@@ -313,8 +312,7 @@ def file_as_eol_lf(src_file, dst_file=None, /, chunk_size=4096):
 
 
 def is_file_content_equal(lhs, rhs, chunk_size=4096):
-    """
-    Compare two files in a binary mode chunk by chunk.
+    """Compare two files in a binary mode chunk by chunk.
 
     Args:
         lhs: Path to the first file.
@@ -338,7 +336,7 @@ def open_unix_safely(
     path: str,
     mode: str = "r",
     buffering: int = -1,
-    encoding: Optional[str] = "utf-8",
+    encoding: str | None = "utf-8",
     correct_eol: bool = False,
     chunk_size=4096,
     **kwargs: Any,
@@ -374,10 +372,10 @@ def open_unix_safely(
         raise ValueError("Binary mode not supported in this function.")
     forbidden_keywords = {"closefd", "errors", "newline"}
     assert not any(key in kwargs for key in forbidden_keywords), kwargs
-    return open(path, mode=mode, buffering=buffering, encoding=encoding, errors="strict", newline="\n", **kwargs)  # type: ignore [return-value]
+    return open(path, mode=mode, buffering=buffering, encoding=encoding, errors="strict", newline="\n", **kwargs)  # type: ignore[return-value]
 
 
-def replace_eol_bin(bin_str: bytes, eol: Union[bytes, str] = LE_LF_B) -> bytes:
+def replace_eol_bin(bin_str: bytes, eol: bytes | str = LE_LF_B) -> bytes:
     #### https://stackoverflow.com/questions/47178459/replace-crlf-with-lf-in-python-3-6
     #### https://gist.github.com/jonlabelle/dd8c3caa7808cbe4cfe0a47ee4881059
     #### check eol
@@ -396,9 +394,7 @@ def replace_eol_bin(bin_str: bytes, eol: Union[bytes, str] = LE_LF_B) -> bytes:
 
 
 def write_src_to_tgt_as_eol_lf_using_chunks(src: BinaryIO, tgt: BinaryIO, chunk_size=4096) -> None:
-    """
-    Read from src and write to tgt and force all eol to lf.
-    Handles large files and chunk boundary edge cases.
+    """Read from src and write to tgt and force all eol to lf. Handles large files and chunk boundary edge cases.
 
     :param src: Source file object opened in binary mode for reading.
     :param tgt: Target file object opened in binary mode for writing.

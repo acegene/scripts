@@ -1,2 +1,10 @@
+#### https://github.com/psf/black
+
 [tool.black]
 line-length = 120
+
+[tool.docformatter]
+black = true
+recursive = true
+wrap-descriptions = 120
+wrap-summaries = 120

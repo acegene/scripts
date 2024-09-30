@@ -5,18 +5,17 @@
 #       * adding this to a python file allows usage of functions as cli_utils.func()
 #
 # author: acegene <acegene22@gmail.com>
-
 import json
 import os
 import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Callable
+from collections.abc import Sequence
 
-from typing import Callable, List, Optional, Sequence
 
-
-def parse_range(range_in: str, raise_: bool = True) -> Optional[List[int]]:
+def parse_range(range_in: str, raise_: bool = True) -> list[int] | None:
     """Generate a list from <range_in>
 
     Args:
@@ -43,10 +42,10 @@ def parse_range(range_in: str, raise_: bool = True) -> Optional[List[int]]:
     error = ValueError if not error and range_in == "" else error
     error = (
         ValueError
-        if not error and not all((c.isdigit() for c in new_list_elems_removed(["-", ","], range_in)))
+        if not error and not all(c.isdigit() for c in new_list_elems_removed(["-", ","], range_in))
         else error
     )
-    error = ValueError if not error and not all((c.isdigit() for c in [range_in[0], range_in[-1]])) else error
+    error = ValueError if not error and not all(c.isdigit() for c in [range_in[0], range_in[-1]]) else error
     if error:
         print(f"ERROR: expect str with only positive ints, commas and hyphens, given {range_in}")
         if raise_:
@@ -75,8 +74,8 @@ def prompt_with_exec(msg: str, exec_strs: Sequence[str], callable_: Callable, *a
 
 
 def cmdline_split(s, platform="this"):
-    """Multi-platform variant of shlex.split() for command-line splitting.
-    For use with subprocess, for argv injection etc. Using fast REGEX.
+    """Multi-platform variant of shlex.split() for command-line splitting. For use with subprocess, for argv injection
+    etc. Using fast REGEX.
 
     platform: 'this' = auto from current platform;
               1 = POSIX;
@@ -84,7 +83,6 @@ def cmdline_split(s, platform="this"):
               (other values reserved)
 
     https://stackoverflow.com/a/35900070/10630957
-
     """
     # pylint: disable=[too-many-branches]
     if platform == "this":
@@ -105,7 +103,7 @@ def cmdline_split(s, platform="this"):
             word = esc[1]
         elif white or pipe:
             if accu is not None:
-                args.append(accu)  # type: ignore [unreachable]
+                args.append(accu)  # type: ignore[unreachable]
             if pipe:
                 args.append(pipe)
             accu = None
@@ -152,5 +150,5 @@ def shell_split(cmd: str) -> Sequence[str]:
     )
     ret = subprocess.check_output(full_cmd).decode()
     ret_val: Sequence[str] = json.loads(ret)
-    assert all((isinstance(val, str) for val in ret_val)), f"type(ret_val)={type(ret_val)}; ret_val={ret_val}"
+    assert all(isinstance(val, str) for val in ret_val), f"type(ret_val)={type(ret_val)}; ret_val={ret_val}"
     return ret_val

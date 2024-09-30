@@ -1,6 +1,7 @@
 import re
-
-from typing import Callable, Pattern, Sequence, Tuple, Union
+from collections.abc import Callable
+from collections.abc import Sequence
+from re import Pattern
 
 #### TODO: consider filename length restriction
 
@@ -34,10 +35,10 @@ REGEX_FN_STRICT_1 = regex_or_operation(REG_STR_FN_1A, REG_STR_FN_2A, REG_STR_FN_
 REGEX_FN_STRICT_2 = regex_or_operation(REG_STR_FN_1B, REG_STR_FN_2B, REG_STR_FN_3A, REG_STR_FN_4A)
 REGEX_FN_HAS_UPPER = re.compile(REG_STR_FN_1C)  # TODO: does this need '^(' or ')$'?
 
-ReplaceType = Union[str, Callable[[str], str], None]
+ReplaceType = str | Callable[[str], str] | None
 
 
-def re_replace(reg: str, str_in: str, group_replace: Sequence[ReplaceType], indices=None, flags=0) -> Tuple[str, int]:
+def re_replace(reg: str, str_in: str, group_replace: Sequence[ReplaceType], indices=None, flags=0) -> tuple[str, int]:
     def __create_replace_str(str_in: str, replace: ReplaceType):
         if replace is None:
             return str_in
@@ -47,7 +48,7 @@ def re_replace(reg: str, str_in: str, group_replace: Sequence[ReplaceType], indi
 
     if re.compile(reg, flags=flags).groups != len(group_replace):
         raise ValueError(
-            f"num capture-groups != len(group_replace): {re.compile(reg, flags=flags).groups} != {len(group_replace)}"
+            f"num capture-groups != len(group_replace): {re.compile(reg, flags=flags).groups} != {len(group_replace)}",
         )
     str_out = str_in
     offset = 0
@@ -61,7 +62,7 @@ def re_replace(reg: str, str_in: str, group_replace: Sequence[ReplaceType], indi
     return str_out, len(selected)
 
 
-def re_select(reg: str, str_in: str, flags=0) -> Sequence[Sequence[Tuple[str, Tuple[int, int]]]]:
+def re_select(reg: str, str_in: str, flags=0) -> Sequence[Sequence[tuple[str, tuple[int, int]]]]:
     return [
         [(group, match.span(i + 1)) for i, group in enumerate(match.groups())]
         for match in re.finditer(reg, str_in, flags=flags)

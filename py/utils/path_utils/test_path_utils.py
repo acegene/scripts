@@ -1,15 +1,11 @@
 import errno
 import os
 import tempfile
-import unittest
 import unittest.mock
-
-from typing import Optional
-from parameterized import parameterized  # type: ignore [import-untyped]
 
 import filelock
 import pyfakefs.fake_filesystem_unittest  # python3 -m pip install pyfakefs
-
+from parameterized import parameterized  # type: ignore[import-untyped]
 from utils import path_utils
 
 
@@ -30,7 +26,7 @@ class TestFileAsEolLf(unittest.TestCase):
             ((b"Hello\r\n" * 2048) + b"World", (b"Hello\n" * 2048) + b"World"),
             (b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\rMixedIn\n", b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\nMixedIn\n"),
             # fmt: on
-        ]
+        ],
     )
     def test_file_as_eol_lf(self, src_str_bin: bytes, expected_tgt_str_bin: bytes, chunk_max_size: int = 4096) -> None:
         chunk_size = chunk_max_size
@@ -79,10 +75,13 @@ class TestOpenUnixTxtSafely(unittest.TestCase):
             ((b"Hello\r\n" * 2048) + b"World", (b"Hello\n" * 2048) + b"World", ValueError),
             (b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\rMixedIn\n", b"Random\xe2\x98\x83DataWith\xc3\xa9Breaks\nMixedIn\n", ValueError),
             # fmt: on
-        ]
+        ],
     )
     def test_open_unix_txt_safely(
-        self, src_str_bin: bytes, expected_tgt_str_bin: bytes, raises: Optional[Exception] = None
+        self,
+        src_str_bin: bytes,
+        expected_tgt_str_bin: bytes,
+        raises: Exception | None = None,
     ) -> None:
         chunk_size: int = 4096
         encoding = "utf-8"
@@ -106,7 +105,7 @@ class TestOpenUnixTxtSafely(unittest.TestCase):
             if raises is None:
                 self.assertEqual(expected_tgt_str, content)
                 with path_utils.open_unix_safely(path_out, "w", encoding=encoding, chunk_size=chunk_size) as f:
-                    f.write(content)  # type: ignore [arg-type]
+                    f.write(content)  # type: ignore[arg-type]
                 with open(path_out, "rb") as f:
                     content_out = f.read()
                 self.assertEqual(expected_tgt_str_bin, content_out)

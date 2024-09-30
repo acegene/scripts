@@ -5,7 +5,6 @@
 # author: acegene <acegene22@gmail.com>
 # todos
 #   * check encoding
-
 import argparse
 import os
 import re

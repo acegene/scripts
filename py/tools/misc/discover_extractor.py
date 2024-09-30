@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 #
 # python3 -m pip install pypdf
-
 import glob
 import re
-
-from typing import Any, List, Tuple
+from typing import Any
 
 from pypdf import PdfReader
 
@@ -44,7 +42,7 @@ def get_pdf_date(pdf: str) -> str:
     return match[1]
 
 
-def get_trans_list_from_pdf(pdf: str) -> List[Tuple[str, str, Any, float]]:
+def get_trans_list_from_pdf(pdf: str) -> list[tuple[str, str, Any, float]]:
     # TODO: negative
     pattern_trans = r"(\d{2}/\d{2})([^/].*?)(-?\$[\d.,]+\.\d\d)"
     reader = PdfReader(pdf)
@@ -63,7 +61,7 @@ def get_trans_list_from_pdf(pdf: str) -> List[Tuple[str, str, Any, float]]:
     return transactions
 
 
-def get_trans_list_from_pdf2(pdf: str) -> List[Tuple[str, str, Any, float]]:
+def get_trans_list_from_pdf2(pdf: str) -> list[tuple[str, str, Any, float]]:
     months = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
     pattern = r"^" + months + r" (\d+) " + months + r" (\d+) (.*?)(-?[\d,]+\.\d\d)$"
     reader = PdfReader(pdf)
@@ -79,7 +77,7 @@ def get_trans_list_from_pdf2(pdf: str) -> List[Tuple[str, str, Any, float]]:
                     match[5],
                     force_to_float(match[6]),
                 )
-                transactions.append((t))
+                transactions.append(t)
     return transactions
 
 
@@ -110,7 +108,7 @@ def get_transactions_text_from_pdf(pdf: str) -> Any:
     return transactions_texts[0]
 
 
-def split_trasactions_text_to_list(transactions_text: str) -> List[str]:
+def split_trasactions_text_to_list(transactions_text: str) -> list[str]:
     pattern_transaction = r"^\d{2}/\d{2}"
 
     transactions = []

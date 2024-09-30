@@ -5,8 +5,6 @@
 # usage
 #   * python test_slice_utils.py
 #       * need to have slice_utils.py in $PYTHONPATH or place slice_utils.py in parent directory
-
-import unittest
 import unittest.mock
 
 try:
@@ -28,19 +26,19 @@ class SliceLibTest(unittest.TestCase):
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
         starts = (
-            [start for start in expected_base]
+            list(expected_base)
             + [-start - 1 for start in expected_base]
             + [None]
             + [expected_base[-1] + 1, -expected_base[-1] - 2]
         )
         stops = (
-            [stop for stop in expected_base]
+            list(expected_base)
             + [-stop - 1 for stop in expected_base]
             + [None]
             + [expected_base[-1] + 1, -expected_base[-1] - 2]
         )
         steps = (
-            [step for step in expected_base[1:]]
+            list(expected_base[1:])
             + [-step for step in expected_base[1:]]
             + [None]
             + [expected_base[-1] + 1, -expected_base[-1] - 1]
@@ -62,13 +60,9 @@ class SliceLibTest(unittest.TestCase):
         expected_base = [0, 1, 2, 3, 4, 5]
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
-        starts = [start for start in range(-expected_base[-1] - 3, expected_base[-1] + 3)] + [None]
-        stops = [stop for stop in range(-expected_base[-1] - 3, expected_base[-1] + 3)] + [None]
-        steps = (
-            [step for step in range(-expected_base[-1] - 3, 0)]
-            + [step for step in range(1, expected_base[-1] + 3)]
-            + [None]
-        )
+        starts = list(range(-expected_base[-1] - 3, expected_base[-1] + 3)) + [None]
+        stops = list(range(-expected_base[-1] - 3, expected_base[-1] + 3)) + [None]
+        steps = list(range(-expected_base[-1] - 3, 0)) + list(range(1, expected_base[-1] + 3)) + [None]
         slices = [slice(start, stop, step) for start in starts for stop in stops for step in steps]
         #### iterate over slices and test function
         for s in slices:
@@ -81,13 +75,9 @@ class SliceLibTest(unittest.TestCase):
         expected_base = [0, 1, 2, 3, 4, 5]
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
-        starts = [start for start in range(-expected_base[-1] - 3, expected_base[-1] + 3)] + [None]
-        stops = [stop for stop in range(-expected_base[-1] - 3, expected_base[-1] + 3)] + [None]
-        steps = (
-            [step for step in range(-expected_base[-1] - 3, 0)]
-            + [step for step in range(1, expected_base[-1] + 3)]
-            + [None]
-        )
+        starts = list(range(-expected_base[-1] - 3, expected_base[-1] + 3)) + [None]
+        stops = list(range(-expected_base[-1] - 3, expected_base[-1] + 3)) + [None]
+        steps = list(range(-expected_base[-1] - 3, 0)) + list(range(1, expected_base[-1] + 3)) + [None]
         slices = [slice(start, stop, step) for start in starts for stop in stops for step in steps]
         #### iterate over slices and test function
         for s in slices:
@@ -99,14 +89,14 @@ class SliceLibTest(unittest.TestCase):
             assert (
                 s_cleaned_neg.stop >= 0 or s_cleaned_neg.stop == -expected_base_length - 1
             ), f"Cleaned slice={s_cleaned_neg} has invalid stop value"
-            assert s_cleaned_neg.step != None, f"Cleaned slice={s_cleaned_neg} has invalid step value"
+            assert s_cleaned_neg.step is not None, f"Cleaned slice={s_cleaned_neg} has invalid step value"
             s_cleaned = slice_utils.slice_clean(s, expected_base_length, True)
             assert (
                 expected_base[s] == expected_base[s_cleaned]
             ), f"{s} != {s_cleaned} so {expected_base[s]} != {expected_base[s_cleaned]}"
             assert s_cleaned.start >= 0, f"Cleaned slice={s_cleaned} has invalid start value"
-            assert s_cleaned.stop == None or s_cleaned.stop >= 0, f"Cleaned slice={s_cleaned} has invalid stop value"
-            assert s_cleaned.step != None, f"Cleaned slice={s_cleaned} has invalid step value"
+            assert s_cleaned.stop is None or s_cleaned.stop >= 0, f"Cleaned slice={s_cleaned} has invalid stop value"
+            assert s_cleaned.step is not None, f"Cleaned slice={s_cleaned} has invalid step value"
 
     def test__slice_index(self):
         #### set expected base list to slice and compare with actual
@@ -114,19 +104,19 @@ class SliceLibTest(unittest.TestCase):
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
         starts = (
-            [start for start in expected_base]
+            list(expected_base)
             + [-start - 1 for start in expected_base]
             + [None]
             + [expected_base[-1] + 1, -expected_base[-1] - 2]
         )
         stops = (
-            [stop for stop in expected_base]
+            list(expected_base)
             + [-stop - 1 for stop in expected_base]
             + [None]
             + [expected_base[-1] + 1, -expected_base[-1] - 2]
         )
         steps = (
-            [step for step in expected_base[1:]]
+            list(expected_base[1:])
             + [-step for step in expected_base[1:]]
             + [None]
             + [expected_base[-1] + 1, -expected_base[-1] - 1]
@@ -155,13 +145,9 @@ class SliceLibTest(unittest.TestCase):
         expected_base = [0, 1, 2, 3, 4, 5]
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
-        starts = [start for start in range(-expected_base[-1] - 3, expected_base[-1] + 3)] + [None]
-        stops = [stop for stop in range(-expected_base[-1] - 3, expected_base[-1] + 3)] + [None]
-        steps = (
-            [step for step in range(-expected_base[-1] - 3, 0)]
-            + [step for step in range(1, expected_base[-1] + 3)]
-            + [None]
-        )
+        starts = list(range(-expected_base[-1] - 3, expected_base[-1] + 3)) + [None]
+        stops = list(range(-expected_base[-1] - 3, expected_base[-1] + 3)) + [None]
+        steps = list(range(-expected_base[-1] - 3, 0)) + list(range(1, expected_base[-1] + 3)) + [None]
         slices = [slice(start, stop, step) for start in starts for stop in stops for step in steps]
         #### iterate over slices and test function
         for s in slices:
@@ -173,13 +159,9 @@ class SliceLibTest(unittest.TestCase):
         expected_base = [0, 1, 2]
         expected_base_length = len(expected_base)
         #### generate slices to use for testing
-        starts = [start for start in range(-expected_base[-1] - 2, expected_base[-1] + 2)] + [None]
-        stops = [stop for stop in range(-expected_base[-1] - 2, expected_base[-1] + 2)] + [None]
-        steps = (
-            [step for step in range(-expected_base[-1], 0)]
-            + [step for step in range(1, expected_base[-1] + 1)]
-            + [None]
-        )
+        starts = list(range(-expected_base[-1] - 2, expected_base[-1] + 2)) + [None]
+        stops = list(range(-expected_base[-1] - 2, expected_base[-1] + 2)) + [None]
+        steps = list(range(-expected_base[-1], 0)) + list(range(1, expected_base[-1] + 1)) + [None]
         slices = [slice(start, stop, step) for start in starts for stop in stops for step in steps]
         #### iterate over slices and test function
         for s1 in slices:

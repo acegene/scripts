@@ -1,0 +1,232 @@
+---
+references:
+  relatives:
+    gws:
+      path: "${ENV_VAR:GWS}"
+    gwsa:
+      path: "${ENV_VAR:GWSA}"
+    gwsl:
+      path: "${ENV_VAR:GWSL}"
+    gwslew:
+      path: "${ENV_VAR:GWSLEW}"
+    gwsm:
+      path: "${ENV_VAR:GWSM}"
+    gwss:
+      path: "${ENV_VAR:GWSS}"
+    gwssh:
+      path: "${ENV_VAR:GWSSH}"
+    gwsahk:
+      path: "${ENV_VAR:GWSAHK}"
+    repos:
+      path: "${ENV_VAR:REPOS}"
+actions:
+  - action_type: cp
+    kwargs:
+      dsts:
+        - relative_type: gwsa
+          path: "/.gitattributes"
+        - relative_type: gwsl
+          path: "/.gitattributes"
+        - relative_type: gwslew
+          path: "/.gitattributes"
+        - relative_type: gwsm
+          path: "/.gitattributes"
+        - relative_type: gwss
+          path: "/.gitattributes"
+        - relative_type: gwssh
+          path: "/.gitattributes"
+        - relative_type: gwsahk
+          path: "/.gitattributes"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/.gitattributes"
+  - action_type: cp
+    kwargs:
+      dsts:
+        - relative_type: gwsa
+          path: "/.gitignore"
+        - relative_type: gwsl
+          path: "/.gitignore"
+        - relative_type: gwslew
+          path: "/.gitignore"
+        - relative_type: gwsm
+          path: "/.gitignore"
+        - relative_type: gwss
+          path: "/.gitignore"
+        - relative_type: gwssh
+          path: "/.gitignore"
+        - relative_type: gwsahk
+          path: "/.gitignore"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/.gitignore"
+  - action_type: cp
+    kwargs:
+      dsts:
+        - relative_type: gwsa
+          path: "/.gitlint"
+        - relative_type: gwsl
+          path: "/.gitlint"
+        - relative_type: gwslew
+          path: "/.gitlint"
+        - relative_type: gwsm
+          path: "/.gitlint"
+        - relative_type: gwss
+          path: "/.gitlint"
+        - relative_type: gwssh
+          path: "/.gitlint"
+        - relative_type: gwsahk
+          path: "/.gitlint"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/.gitlint"
+  - action_type: cp
+    kwargs:
+      dsts:
+        - relative_type: gwsa
+          path: "/LICENSE.md"
+        - relative_type: gwsl
+          path: "/LICENSE.md"
+        - relative_type: gwslew
+          path: "/LICENSE.md"
+        - relative_type: gwsm
+          path: "/LICENSE.md"
+        - relative_type: gwss
+          path: "/LICENSE.md"
+        - relative_type: gwssh
+          path: "/LICENSE.md"
+        - relative_type: gwsahk
+          path: "/LICENSE.md"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/LICENSE.md"
+  - action_type: cp
+    kwargs:
+      dsts:
+        - relative_type: gwslew
+          path: "/pyproject.toml"
+        - relative_type: gwsm
+          path: "/pyproject.toml"
+        - relative_type: gwss
+          path: "/pyproject.toml"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/pyproject.toml"
+  ## hadolint uses a docker container, passing symlink cfg does not work
+  - action_type: cp
+    kwargs:
+      dsts:
+        - relative_type: gwsa
+          path: "/.hadolint.yaml"
+        - relative_type: gwsl
+          path: "/.hadolint.yaml"
+        - relative_type: gwslew
+          path: "/.hadolint.yaml"
+        - relative_type: gwsm
+          path: "/.hadolint.yaml"
+        - relative_type: gwss
+          path: "/.hadolint.yaml"
+        - relative_type: gwssh
+          path: "/.hadolint.yaml"
+        - relative_type: gwsahk
+          path: "/.hadolint.yaml"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/.hadolint.yaml"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: gwsa
+          path: "/.pre-commit-config.yaml"
+        - relative_type: gwsl
+          path: "/.pre-commit-config.yaml"
+        - relative_type: gwslew
+          path: "/.pre-commit-config.yaml"
+        - relative_type: gwsm
+          path: "/.pre-commit-config.yaml"
+        - relative_type: gwss
+          path: "/.pre-commit-config.yaml"
+        - relative_type: gwssh
+          path: "/.pre-commit-config.yaml"
+        - relative_type: gwsahk
+          path: "/.pre-commit-config.yaml"
+      options:
+        overwite_status: YES_W_DIFF_W_PROMPT
+        preview: false
+      src:
+        relative_type: gws
+        path: "/.pre-commit-config.yaml"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/.clang-format"
+      src:
+        relative_type: gws
+        path: "/.clang-format"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/.editorconfig"
+      src:
+        relative_type: gws
+        path: "/.editorconfig"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/.jsbeautifyrc"
+      src:
+        relative_type: gws
+        path: "/.jsbeautifyrc"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/.mypy.ini"
+      src:
+        relative_type: gws
+        path: "/.mypy.ini"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/.pylintrc"
+      src:
+        relative_type: gws
+        path: "/.pylintrc"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/.shellcheckrc"
+      src:
+        relative_type: gws
+        path: "/.shellcheckrc"
+  - action_type: make_symlinks
+    kwargs:
+      links:
+        - relative_type: HOME
+          path: "/pyproject.toml"
+      src:
+        relative_type: gws
+        path: "/pyproject.toml"
