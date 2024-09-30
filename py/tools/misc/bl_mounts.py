@@ -9,7 +9,8 @@ import sys
 from collections import OrderedDict
 
 # TODO:
-# * parse lsblk by column
+# * parse lsblk by column -> lsblk -p -S --json
+# * most recent mountale paths should take priority
 
 if os.geteuid() != 0:
     print("WARNING: need to be sudo, relaunching as sudo")
@@ -132,18 +133,25 @@ def _get_most_recent_dir_mount_and_dir_bl(ls_blk_info_line, log_file):
 
 def _get_largest_integer_partition(path):
     largest_integer = 1
+    path_exists = False
     while True:
         file_path = f"{path}{largest_integer}"
         if os.path.exists(file_path):
             largest_integer += 1
+            path_exists = True
         else:
             break
-    return largest_integer - 1
+    return largest_integer - 1 if path_exists else None
 
 
 def _get_mountable_paths():
     sd_files = glob.glob("/dev/sd[a-z]")
-    return [(f, f"{f}{_get_largest_integer_partition(f)}") for f in sd_files]
+    mountable_paths = []
+    for f in sd_files:
+        largest_partition = _get_largest_integer_partition(f)
+        mountable_paths.append((f, None if largest_partition is None else f"{f}{largest_partition}"))
+    return mountable_paths
+    # return [(f, f"{f}{_get_largest_integer_partition(f)}") for f in sd_files]
 
 
 def _bl_mount(partition, dir_mount, dir_bl):
@@ -156,7 +164,7 @@ def _bl_mount(partition, dir_mount, dir_bl):
         subprocess.run(dislocker_cmd, shell=True, check=True, stderr=subprocess.PIPE)
         subprocess.run(mount_cmd, shell=True, check=True, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f"Error: {e.stderr.decode()}")
+        sys.stderr.write(f"ERROR: {e.stderr.decode()}")
         return 1, None
 
     lsblk_details_str = subprocess.run(["lsblk", "-p", "-S"], stdout=subprocess.PIPE, check=True, text=True).stdout
@@ -190,6 +198,7 @@ def main():
         mount_paths = _get_mount_paths()
         _unmount_all(bl_paths)
         _unmount_all(mount_paths)
+        print("INFO: unmout all complete")
         sys.exit(0)
 
     _create_file(_LOG, _HEADING)
@@ -197,6 +206,9 @@ def main():
     mountable_paths = _get_mountable_paths()
     mountable_paths_to_mount_points = OrderedDict()
     for mounted_name, mounted_partition in mountable_paths:
+        if mounted_partition is None:
+            print(f"WARNING: paritions do not exist for mounted_name={mounted_name}")
+            continue
         ls_blk_info = _get_lsblk_info(mounted_name)
         assert ls_blk_info is not None
         dir_mount_and_dir_bl = _get_most_recent_dir_mount_and_dir_bl(ls_blk_info, _LOG)
