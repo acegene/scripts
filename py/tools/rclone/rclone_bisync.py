@@ -14,6 +14,7 @@ from utils import path_utils
 ## TODO:
 ## - cannot specify force via prompt or per bisync execution
 ## - dry run with summary of expected changes
+## - does not create local dir if does not exist
 
 _LOG_BASE = os.path.splitext(os.path.basename(__file__))[0]
 _LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else f"/tmp/{_LOG_BASE}.log"
