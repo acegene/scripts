@@ -99,7 +99,7 @@ def formatter_basenames_to_lower(objs: str, mode) -> Sequence[Any]:
     elif mode == "prompt":
         for obj in objs:
             if not path_utils.is_path_basename_lower(obj):
-                if cli_utils.prompt_return_bool(f"    {obj} : rename (y/n)? ", ["yes", "y"]):
+                if cli_utils.prompt_once(f"    {obj} : rename (y/n)? ", ["yes", "y"]):
                     obj_changed = format_utils.path_basename_to_lower(obj)
                     objs_modified.append(obj_changed)
                     continue
@@ -151,7 +151,7 @@ def formatter_whitespace(objs: str, mode: str, eol: str) -> Sequence[Any]:
                         os.remove(tmp_obj)
                         raise err
 
-                if cli_utils.prompt_return_bool(
+                if cli_utils.prompt_once(
                     f"INFO: ############ change {obj} with diff shown above? ",
                     ["yes", "y"],
                 ):

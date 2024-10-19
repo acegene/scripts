@@ -21,9 +21,7 @@ from utils import path_utils
 ## * meshnet
 ## * login and logout not working right
 
-_LOG_BASE = os.path.splitext(os.path.basename(__file__))[0]
-_LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else f"/tmp/{_LOG_BASE}.log"
-_LOGGING_CFG_DEFAULT = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{_LOG_BASE}_logging_cfg.json")
+_LOG_FILE_PATH, _LOG_CFG_DEFAULT = log_manager.get_default_log_paths(__file__)
 logger = log_manager.LogManager()
 
 _NORD_DNS_IPS = ("103.86.96.100", "103.86.99.100")
@@ -486,22 +484,19 @@ def main(argparse_args: Sequence[str] | None = None) -> None:
     parser.add_argument("--file-out-vpn-status", default=file_status)
     parser.add_argument("--lock-timeout-duration-rm", default="120s")
     parser.add_argument("--log")
-    parser.add_argument("--log-cfg", help="Logging cfg, empty str uses LogManager default cfg")
+    parser.add_argument("--log-cfg", default=_LOG_CFG_DEFAULT, help="Log cfg; empty str uses LogManager default cfg")
     parser.add_argument("--vpn-provider", "--vpn", choices=["nordvpn"], default="nordvpn")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--connect", "-c", action="store_const", const="connect", dest="flag")
-    group.add_argument("--disconnect", "-d", action="store_const", const="disconnect", dest="flag")
-    group.add_argument("--login", "--li", "-l", action="store_const", const="login", dest="flag")
-    group.add_argument("--logout", "--lo", action="store_const", const="logout", dest="flag")
-    group.add_argument("--reconnect", "-r", action="store_const", const="reconnect", dest="flag")
-    group.add_argument("--status", "-s", action="store_const", const="status", dest="flag")
+    flag_group = parser.add_mutually_exclusive_group()
+    parser.set_defaults(flag="status")
+    flag_group.add_argument("--connect", "-c", action="store_const", const="connect", dest="flag")
+    flag_group.add_argument("--disconnect", "-d", action="store_const", const="disconnect", dest="flag")
+    flag_group.add_argument("--login", "--li", "-l", action="store_const", const="login", dest="flag")
+    flag_group.add_argument("--logout", "--lo", action="store_const", const="logout", dest="flag")
+    flag_group.add_argument("--reconnect", "-r", action="store_const", const="reconnect", dest="flag")
+    flag_group.add_argument("--status", "-s", action="store_const", const="status", dest="flag")
     args = parser.parse_args(argparse_args)
 
-    if args.flag is None:
-        args.flag = "status"
-
-    log_cfg = _LOGGING_CFG_DEFAULT if args.log_cfg is None else (None if args.log_cfg == "" else args.log_cfg)
-    log_manager.LogManager.setup_logger(globals(), log_cfg=log_cfg, log_file=args.log)
+    log_manager.LogManager.setup_logger(globals(), log_cfg=args.log_cfg, log_file=args.log)
 
     time_script_start = DateTimeUTC()
 

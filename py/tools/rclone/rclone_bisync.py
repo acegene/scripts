@@ -16,9 +16,7 @@ from utils import path_utils
 ## - dry run with summary of expected changes
 ## - does not create local dir if does not exist
 
-_LOG_BASE = os.path.splitext(os.path.basename(__file__))[0]
-_LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else f"/tmp/{_LOG_BASE}.log"
-_LOGGING_CFG_DEFAULT = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{_LOG_BASE}_logging_cfg.json")
+_LOG_FILE_PATH, _LOG_CFG_DEFAULT = log_manager.get_default_log_paths(__file__)
 logger = log_manager.LogManager()
 
 _CFG_DEFAULT = os.path.join(os.path.expanduser("~"), ".config", "cfg-gws.yaml")
@@ -141,12 +139,11 @@ def main(argparse_args: Sequence[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="Run in situations like too many deletes.")
     parser.add_argument("--cfg", default=_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
     parser.add_argument("--log")
-    parser.add_argument("--log-cfg", help="Logging cfg, empty str uses LogManager default cfg")
+    parser.add_argument("--log-cfg", default=_LOG_CFG_DEFAULT, help="Log cfg; empty str uses LogManager default cfg")
     parser.add_argument("--rclone", default="rclone", help="The rclone version to use")
     args = parser.parse_args(argparse_args)
 
-    log_cfg = _LOGGING_CFG_DEFAULT if args.log_cfg is None else (None if args.log_cfg == "" else args.log_cfg)
-    log_manager.LogManager.setup_logger(globals(), log_cfg=log_cfg, log_file=args.log)
+    log_manager.LogManager.setup_logger(globals(), log_cfg=args.log_cfg, log_file=args.log)
 
     with path_utils.open_unix_safely(args.cfg, encoding="utf-8") as f:
         yaml_data = yaml.safe_load(f)

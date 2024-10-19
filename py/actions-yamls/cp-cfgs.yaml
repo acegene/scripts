@@ -115,6 +115,8 @@ actions:
   - action_type: cp
     kwargs:
       dsts:
+        - relative_type: gwsa
+          path: "/pyproject.toml"
         - relative_type: gwslew
           path: "/pyproject.toml"
         - relative_type: gwsm

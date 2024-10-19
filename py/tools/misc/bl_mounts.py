@@ -7,27 +7,36 @@ import re
 import subprocess
 import sys
 from collections import OrderedDict
+from collections.abc import Sequence
+
+from utils import argparse_utils
+from utils import cli_utils
+from utils import log_manager
+from utils import path_utils
+
+_LOG_FILE_PATH, _LOG_CFG_DEFAULT = log_manager.get_default_log_paths(__file__)
+logger = log_manager.LogManager()
 
 # TODO:
 # * parse lsblk by column -> lsblk -p -S --json
 # * most recent mountale paths should take priority
 
 if os.geteuid() != 0:
-    print("WARNING: need to be sudo, relaunching as sudo")
-    # script = sys.argv[0]
+    logger.warning("need to be sudo, relaunching as sudo")
     result = subprocess.run(["sudo", "python3", os.path.abspath(__file__)] + sys.argv[1:], check=False)
     sys.exit(result.returncode)
 
 
 _USER = os.environ.get("SUDO_USER")
 assert isinstance(_USER, str)
-_LOG_BASE = os.path.splitext(os.path.basename(__file__))[0]
+
+_LOG_CACHE_BASE = os.path.splitext(os.path.basename(__file__))[0]
+_LOG_CACHE = os.path.join("/home", _USER, ".log", f"{_LOG_CACHE_BASE}.log")
 _HEADING = "time,partition,dir_mount,dir_bl,drive_details,lsblk -p -S\n"
-_LOG = os.path.join("/home", _USER, ".log", f"{_LOG_BASE}.log")
 
 
 def _append(file, s):
-    with open(file, "r+", encoding="utf-8") as f:
+    with path_utils.open_unix_safely(file, "r+") as f:
         f.seek(0, 2)
         f.write(s)
 
@@ -89,10 +98,10 @@ def _create_file(file_path, optional_str=None):
         gid = int(sudo_gid)
         os.makedirs(dir_)
         os.chown(dir_, uid, gid)
-        print(f"INFO: created dir={dir_}")
+        logger.info(f"created dir={dir_}")
     if not os.path.exists(file_path):
         with open(file_path, "w", encoding="utf-8") as f:
-            print(f"INFO: created file_path={file_path}")
+            logger.info(f"created file_path={file_path}")
             if optional_str is not None:
                 f.write(optional_str)
         # original_user = os.environ.get("SUDO_USER")
@@ -115,19 +124,23 @@ def _get_lsblk_info(mount):
 
 def _get_most_recent_dir_mount_and_dir_bl(ls_blk_info_line, log_file):
     ret_value = None
-    print(f"INFO: searching log_file={log_file}")
+    logger.info(f"searching log_file={log_file}")
+
+    log_str = ""
     with open(log_file, encoding="utf-8") as f:
         lines = f.readlines()[::-1]  # Read lines in reverse order
         for line in lines:
             ls_blk_info_line_1_space = " ".join(ls_blk_info_line.split()[2:])
             line_1_space = " ".join(line.split())
             if ls_blk_info_line_1_space in line_1_space:
-                print(("ls", ls_blk_info_line_1_space))
-                print(("ln", line_1_space))
+                log_str += f"  ls {ls_blk_info_line_1_space}\n"
+                log_str += f"  ln {line_1_space}\n"
                 parts = line_1_space.strip().split(",")
                 ret_value = (parts[2], parts[3])
                 break
-            print(f"{ls_blk_info_line_1_space} NOT in {line_1_space}")
+            log_str += f"  {ls_blk_info_line_1_space} NOT in {line_1_space}\n"
+    log_str = log_str[:-1] if log_str.endswith("\n") else log_str
+    logger.info(f"log_file={log_file} contents:\n{log_str}")
     return ret_value
 
 
@@ -161,6 +174,7 @@ def _bl_mount(partition, dir_mount, dir_bl):
     try:
         dislocker_cmd = f"sudo dislocker -V {partition} -u -- {dir_bl}"
         mount_cmd = f"sudo mount -o loop {dir_bl}/dislocker-file {dir_mount}"
+        ## TODO: check if shell=True can be rm'd
         subprocess.run(dislocker_cmd, shell=True, check=True, stderr=subprocess.PIPE)
         subprocess.run(mount_cmd, shell=True, check=True, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
@@ -186,11 +200,20 @@ def _bl_mount(partition, dir_mount, dir_bl):
     return ret_code, f"{formatted_time},{partition},{dir_mount},{dir_bl},{drive_details},'{lsblk_detail_name[0]}'\n"
 
 
-def main():
+def main(argparse_args: Sequence[str] | None = None):
     # pylint: disable=[too-many-locals,too-many-branches,too-many-statements]
     parser = argparse.ArgumentParser()
+    parser.add_argument("--log", default=_LOG_FILE_PATH)
+    parser.add_argument("--log-cfg", default=_LOG_CFG_DEFAULT, help="Log cfg; empty str uses LogManager default cfg")
     # parser.add_argument("--no-auto", "--na", action="store_true")
     parser.add_argument("--unmount-all", "--ua", action="store_true")
+    args = parser.parse_args(argparse_args)
+
+    log_manager.LogManager.setup_logger(globals(), log_cfg=args.log_cfg, log_file=args.log)
+
+    logger.debug(f"argparse args:\n{argparse_utils.parsed_args_to_str(args)}")
+
+    parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
     if args.unmount_all:
@@ -198,26 +221,24 @@ def main():
         mount_paths = _get_mount_paths()
         _unmount_all(bl_paths)
         _unmount_all(mount_paths)
-        print("INFO: unmout all complete")
+        logger.info("unmout all complete")
         sys.exit(0)
 
-    _create_file(_LOG, _HEADING)
+    _create_file(_LOG_CACHE, _HEADING)
 
     mountable_paths = _get_mountable_paths()
     mountable_paths_to_mount_points = OrderedDict()
     for mounted_name, mounted_partition in mountable_paths:
         if mounted_partition is None:
-            print(f"WARNING: paritions do not exist for mounted_name={mounted_name}")
+            logger.warning(f"partitions do not exist for mounted_name={mounted_name}")
             continue
         ls_blk_info = _get_lsblk_info(mounted_name)
         assert ls_blk_info is not None
-        dir_mount_and_dir_bl = _get_most_recent_dir_mount_and_dir_bl(ls_blk_info, _LOG)
-        print(f"mounted_name={mounted_name}")
-        print(f"  mounted_partition={mounted_partition}")
-        print(f"  ls_blk_info={ls_blk_info}")
+        dir_mount_and_dir_bl = _get_most_recent_dir_mount_and_dir_bl(ls_blk_info, _LOG_CACHE)
+        log_str = f"mounted_name={mounted_name}\n  mounted_partition={mounted_partition}\n  ls_blk_info={ls_blk_info}"
         if dir_mount_and_dir_bl is not None:
-            print(f"  dir_mount={dir_mount_and_dir_bl[0]}")
-            print(f"  dir_bl={dir_mount_and_dir_bl[1]}")
+            log_str += f"  dir_mount={dir_mount_and_dir_bl[0]}\n  dir_bl={dir_mount_and_dir_bl[1]}"
+        logger.info(log_str)
         mountable_paths_to_mount_points[mounted_partition] = dir_mount_and_dir_bl
 
     # need_prompt = False
@@ -226,25 +247,31 @@ def main():
     for mountable_path, mount_point in mountable_paths_to_mount_points.items():
         if mount_point is None:
             prompt_mountable_paths.append(mountable_path)
-            print(f"WARNING: could not find mount_point for mountable_path={mountable_path}")
+            logger.warning(f"could not find mount_point for mountable_path={mountable_path}")
             # need_prompt = True
         else:
             no_prompt_mountable_paths_to_mount_points[mountable_path] = mount_point
-            print(f"INFO: found mountable_path={mountable_path}; mount_point={mount_point}")
+            logger.info(f"found mountable_path={mountable_path}; mount_point={mount_point}")
 
     input_str = input("PROMPT: Accept found mountable paths above? (y/n): ").lower()
     if input_str != "y":
-        for i, (path, mount_path) in enumerate(no_prompt_mountable_paths_to_mount_points.items()):
-            print(f"{i}: mount path='{path}' to {mount_path}")
+        logger.info(
+            "no_prompt_mountable_paths_to_mount_points:%s%s",
+            ("" if len(no_prompt_mountable_paths_to_mount_points) == 0 else "\n  "),
+            "\n  ".join(
+                f"{i}: mount path='{path}' to {mount_path}"
+                for i, (path, mount_path) in enumerate(no_prompt_mountable_paths_to_mount_points.items())
+            ),
+        )
         while True:
-            change_indices_str = input(
-                "PROMPT: Give space delimited integers for for the above indices you wish to change: ",
-            )
+            prompt_msg = "PROMPT: Give space delimited integers for for the above indices you wish to change: "
+            change_indices_str = input(prompt_msg)
+            logger.debug(f"PROMPT: prompt_msg='{prompt_msg}' prompt_input='{change_indices_str}'")
             try:
                 change_indices = tuple(int(s) for s in change_indices_str.split())
                 break
             except ValueError:
-                print("ERROR: invalid input")
+                logger.error("invalid input")
 
         change_keys = []
         for i, (k, v) in enumerate(no_prompt_mountable_paths_to_mount_points.items()):
@@ -258,26 +285,29 @@ def main():
 
     if len(prompt_mountable_paths) > 0:
         while True:
-            input_str = input(f"PROMPT: Give space delimited integers for mount paths for {prompt_mountable_paths}: ")
+            prompt_msg = f"PROMPT: Give space delimited integers for mount paths for {prompt_mountable_paths}: "
+            input_str = input(prompt_msg)
+            logger.debug(f"PROMPT: prompt_msg='{prompt_msg}' prompt_input='{input_str}'")
             try:
                 input_mount_integers = [int(s) for s in input_str.split()]
             except ValueError:
-                print("ERROR: invalid input")
+                logger.error("invalid input")
                 continue
             if len(input_mount_integers) != len(set(input_mount_integers)):
-                print("ERROR: cannot repeat integers")
+                logger.error("cannot repeat integers")
                 continue
             if len(input_mount_integers) != len(prompt_mountable_paths):
-                print(
-                    f"ERROR: len(input_mount_integers) != len(prompt_mountable_paths): {len(input_mount_integers)} != {len(prompt_mountable_paths)}",
+                logger.error(
+                    f"len(input_mount_integers) != len(prompt_mountable_paths): {len(input_mount_integers)} != {len(prompt_mountable_paths)}",
                 )
                 continue
             if any(
                 _make_mount_names_from_index(i) in no_prompt_mountable_paths_to_mount_points.values()
                 for i in input_mount_integers
             ):
-                print("ERROR: cannot propose to mount to same location as found mounts:")
-                print(no_prompt_mountable_paths_to_mount_points)
+                logger.error(
+                    f"cannot propose to mount to same location as found mounts:\n{no_prompt_mountable_paths_to_mount_points}",
+                )
                 continue
             break
 
@@ -290,18 +320,17 @@ def main():
     paths_to_mount = []
     for mountable_path, mount_point in mountable_paths_to_mount_points.items():
         if os.path.exists(os.path.join(mount_point[0], "README.md")):
-            print(f"INFO: skipping as exists already: mountable_path={mountable_path}; mount_point={mount_point}")
+            logger.info(f"skipping as exists already: mountable_path={mountable_path}; mount_point={mount_point}")
         else:
-            print(f"INFO: will attempt mountable_path={mountable_path}; mount_point={mount_point}")
+            logger.info(f"will attempt mountable_path={mountable_path}; mount_point={mount_point}")
             paths_to_mount.append(mountable_path)
 
     if len(paths_to_mount) == 0:
-        print("INFO: no paths to mount")
+        logger.info("no paths to mount")
         sys.exit(0)
 
-    input_str = input("PROMPT: Continue? (y/n): ").lower()
-    if input_str != "y":
-        print(f"ERROR: aborted due to input_str={input_str}")
+    if not cli_utils.prompt_once("PROMPT: Continue? (y/n): "):
+        logger.error("aborted due to prompt input")
         sys.exit(1)
 
     for path_to_mount in paths_to_mount:
@@ -313,12 +342,13 @@ def main():
             if bl_mount_ec == 0:
                 break
             if bl_mount_ec == 2:
-                print("ERROR: seems encrypt passed but the readme could not be read, create one then try again")
+                logger.error("seems encrypt passed but the readme could not be read, create one then try again")
                 input("PROMPT: press enter when ready to continue")
+                logger.debug("PROMPT: press enter when ready to continue")
             else:
-                print("ERROR: failed decrypt, try again")
-        print(f"INFO: {bl_mount_result_str}")
-        _append(_LOG, bl_mount_result_str)
+                logger.error("failed decrypt, try again")
+        logger.info(f"{bl_mount_result_str}")
+        _append(_LOG_CACHE, bl_mount_result_str)
 
 
 if __name__ == "__main__":

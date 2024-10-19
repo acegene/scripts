@@ -3,6 +3,7 @@ import argparse
 import os
 import sys
 from collections.abc import Iterable
+from collections.abc import Sequence
 
 import git
 from utils import argparse_utils
@@ -15,9 +16,7 @@ from utils import log_manager
 
 ## https://stackoverflow.com/a/4157435
 
-_LOG_BASE = os.path.splitext(os.path.basename(__file__))[0]
-_LOG_FILE_PATH = f'{os.environ["TEMP"]}/{_LOG_BASE}.log' if os.name == "nt" else f"/tmp/{_LOG_BASE}.log"
-_LOGGING_CFG_DEFAULT = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{_LOG_BASE}_logging_cfg.json")
+_LOG_FILE_PATH, _LOG_CFG_DEFAULT = log_manager.get_default_log_paths(__file__)
 logger = log_manager.LogManager()
 
 _stash_behaviors_to_file_types: dict[str, set[str]] = {
@@ -209,7 +208,7 @@ def _update_branch_head_to_git_ref(repo: git.Repo, branch: str, git_ref: str, gi
         repo.git.update_ref("-m", git_ref_msg, f"refs/heads/{branch}", git_ref)
 
 
-def main(argparse_args: list[str] | None = None) -> None:
+def main(argparse_args: Sequence[str] | None = None) -> None:
     # pylint: disable=[too-many-branches,too-many-locals,too-many-statements]
 
     ask_no_yes_options: dict[str, tuple[str, ...] | str] = {"choices": ("ask", "no", "yes"), "default": "ask"}
@@ -221,7 +220,7 @@ def main(argparse_args: list[str] | None = None) -> None:
     parser.add_argument("--git-ref", "--gr")
     parser.add_argument("--fetch", action="store_true")
     parser.add_argument("--log")
-    parser.add_argument("--log-cfg", help="Logging cfg, empty str uses LogManager default cfg")
+    parser.add_argument("--log-cfg", default=_LOG_CFG_DEFAULT, help="Log cfg; empty str uses LogManager default cfg")
     parser.add_argument("--override-simple-ff-only", "--osfo", "-o", **ask_no_yes_options)  # type: ignore[arg-type]
     parser.add_argument("--overwrite-staged", "--os", **ask_no_yes_options)  # type: ignore[arg-type]
     parser.add_argument("--overwrite-tracked-changed", "--ot", **ask_no_yes_options)  # type: ignore[arg-type]
@@ -234,8 +233,7 @@ def main(argparse_args: list[str] | None = None) -> None:
     stash_group.add_argument("--stash-pop", "--sp", action="store_true")
     args = parser.parse_args(args=argparse_args)
 
-    log_cfg = _LOGGING_CFG_DEFAULT if args.log_cfg is None else (None if args.log_cfg == "" else args.log_cfg)
-    log_manager.LogManager.setup_logger(globals(), log_cfg=log_cfg, log_file=args.log)
+    log_manager.LogManager.setup_logger(globals(), log_cfg=args.log_cfg, log_file=args.log)
 
     logger.debug(f"argparse args:\n{argparse_utils.parsed_args_to_str(args)}")
 

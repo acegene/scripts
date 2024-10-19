@@ -1,6 +1,9 @@
+import logging
 import os
 import re
 import sys
+
+logger = logging.getLogger(__name__)
 
 
 def expand_env_vars(input_string: str) -> str:
@@ -35,7 +38,7 @@ def create_path_from_relative_type(relative_type: str, relatives: dict[str, dict
     if relative_type == "HOME":
         return os.path.expanduser("~")
 
-    print(f"FATAL: unexpected relative_type={relative_type}; relatives={relatives}")
+    logger.fatal(f"unexpected relative_type={relative_type}; relatives={relatives}")
     sys.exit(1)
 
 

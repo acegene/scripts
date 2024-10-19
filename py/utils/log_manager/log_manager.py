@@ -28,7 +28,7 @@ LVL_E = logging.getLevelName(logging.ERROR)
 LVL_F = logging.getLevelName(logging.FATAL)
 LVL_C = logging.getLevelName(logging.CRITICAL)
 
-_LOG_MANAGER_DEFAULT_LOGGING_CFG = os.path.join(os.path.dirname(__file__), "log_manager_logging_cfg.json")
+_LOG_CFG_DEFAULT = os.path.join(os.path.dirname(__file__), "log_manager_logging_cfg.json")
 
 ExceptableException = tuple[type[BaseException], ...] | tuple[()] | type[BaseException]
 MaybeCatchableExceptions = Iterable[type[BaseException]] | type[BaseException] | None
@@ -48,14 +48,14 @@ def _get_exceptions_tuple(excs: MaybeCatchableExceptions) -> ExceptableException
     raise ValueError
 
 
-def cfg_replace_w_global_vars(cfg, globals_):
+def _cfg_replace_w_global_vars(cfg, globals_: dict):
     if isinstance(cfg, dict):
         for key, value in cfg.items():
             if isinstance(value, dict):
-                cfg_replace_w_global_vars(value, globals_)
+                _cfg_replace_w_global_vars(value, globals_)
             elif isinstance(value, list):
                 for idx, item in enumerate(value):
-                    value[idx] = cfg_replace_w_global_vars(item, globals_)
+                    value[idx] = _cfg_replace_w_global_vars(item, globals_)
             elif isinstance(value, str) and value.startswith("global_var://"):
                 global_var_name = value[len("global_var://") :]
                 global_var_value = globals_.get(global_var_name)
@@ -64,23 +64,23 @@ def cfg_replace_w_global_vars(cfg, globals_):
     return cfg
 
 
-def get_cfg_file_as_cfg_dict(cfg_file, globals_=None):
-    with path_utils.open_unix_safely(_LOG_MANAGER_DEFAULT_LOGGING_CFG if cfg_file is None else cfg_file) as f:
+def _get_cfg_file_as_cfg_dict(cfg_file: str | None, globals_: dict | None = None):
+    with path_utils.open_unix_safely(_LOG_CFG_DEFAULT if (cfg_file is None or cfg_file == "") else cfg_file) as f:
         if globals_ is None:
             return json.load(f)
-        return cfg_replace_w_global_vars(json.load(f), globals_)
+        return _cfg_replace_w_global_vars(json.load(f), globals_)
 
 
-def full_stack(stacklevel=0, include_exc=True):
+def _full_stack(stacklevel: int = 0, include_exc: bool = True):
     """Get full calling stack of calling function as a string.
 
     https://stackoverflow.com/a/16589622
     """
 
     exc = sys.exc_info()[0]
-    stack = traceback.extract_stack()[: -(1 + stacklevel)]  # last one would be full_stack()
+    stack = traceback.extract_stack()[: -(1 + stacklevel)]  # last one would be _full_stack()
     if exc is not None:  # i.e. an exception is present
-        del stack[-1]  # remove call of full_stack, the printed exception
+        del stack[-1]  # remove call of _full_stack, the printed exception
     trc = "Traceback (most recent call last):\n"
     stackstr = trc + "".join(traceback.format_list(stack))
     if include_exc is True and exc is not None:
@@ -89,8 +89,9 @@ def full_stack(stacklevel=0, include_exc=True):
     return stackstr.rstrip("\n")
 
 
+## TODO: unused
 @contextmanager
-def disable_raise_exception_traceback_print():
+def _disable_raise_exception_traceback_print():
     """All traceback information is suppressed and only the exception type and value are printed.
 
     https://stackoverflow.com/a/63657211
@@ -102,7 +103,7 @@ def disable_raise_exception_traceback_print():
 
 
 @contextmanager
-def disable_raise_exception_print():
+def _disable_raise_exception_print():
     """Suppresses printing of the exception details (type, value, traceback)"""
     original_hook = sys.excepthook
 
@@ -112,6 +113,13 @@ def disable_raise_exception_print():
     sys.excepthook = custom_excepthook
     yield
     sys.excepthook = original_hook  # revert changes
+
+
+def get_default_log_paths(file_path: str) -> tuple[str, str]:
+    log_base = os.path.splitext(os.path.basename(file_path))[0]
+    log_file_path = f'{os.environ["TEMP"]}/{log_base}.log' if os.name == "nt" else f"/tmp/{log_base}.log"
+    log_cfg_default = os.path.join(os.path.dirname(os.path.realpath(file_path)), f"{log_base}_logging_cfg.json")
+    return log_file_path, log_cfg_default
 
 
 class LFFileHandler(logging.handlers.RotatingFileHandler):
@@ -133,7 +141,7 @@ class LogManager:
     # pylint: disable=[too-many-arguments, too-many-public-methods]
 
     def __init__(self, name: str | None = None):
-        ## specify logger to be root or not depending on source of instantion
+        ## specify logger to be root or not depending on source of instantiation
         self._logger = logging.getLogger(name)
 
     def add_stderr_hdlr(self, formatter=None, datefmt="%y%m%dT%H%M%S%z"):
@@ -147,7 +155,7 @@ class LogManager:
 
     def __exit__(self, type_, value, _tb):
         if type_ is not None:
-            self.error("%s", f"\n{full_stack()}")
+            self.error("%s", f"\n{_full_stack()}")
 
     def __getattr__(self, attr: Any) -> Any:
         """Pass unknown attributes to self._logger."""
@@ -359,7 +367,7 @@ class LogManager:
     ) -> None:
         """Log and throw <exc_to_log> if <expr_result> == False."""
         if not expr_result:
-            tb_str = f"\n{full_stack(stacklevel+1)}" if log_exc else ""
+            tb_str = f"\n{_full_stack(stacklevel+1)}" if log_exc else ""
             msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc_to_log
             if exc_to_log is None:
                 self._logger.log(
@@ -372,7 +380,7 @@ class LogManager:
                     **kwargs,
                 )
                 if print_exc is False or (print_exc is None and log_exc is True):
-                    with disable_raise_exception_print():
+                    with _disable_raise_exception_print():
                         raise AssertionError() if raise_exc is None else raise_exc
                 raise AssertionError() if raise_exc is None else raise_exc
             self._logger.log(
@@ -385,7 +393,7 @@ class LogManager:
                 **kwargs,
             )
             if print_exc is False or (print_exc is None and log_exc is True):
-                with disable_raise_exception_print():
+                with _disable_raise_exception_print():
                     raise exc_to_log if raise_exc is None else raise_exc
             raise exc_to_log if raise_exc is None else raise_exc
 
@@ -604,7 +612,7 @@ class LogManager:
             try:
                 return callable_(*args, **kwargs)
             except _get_exceptions_tuple(catch_excs) as e:  # pylint: disable=[catching-non-exception]
-                tb_str = f"\n{full_stack(stacklevel)}" if log_exc else ""
+                tb_str = f"\n{_full_stack(stacklevel)}" if log_exc else ""
                 self._logger.log(
                     level,
                     msg,
@@ -617,17 +625,17 @@ class LogManager:
                 )
                 if raise_exc is not None:
                     if print_exc is False or (print_exc is None and log_exc is True):
-                        with disable_raise_exception_print():
+                        with _disable_raise_exception_print():
                             raise raise_exc from e  # TODO: should this have a 'from e', does this matter in a with?
                     raise raise_exc from e  # TODO: should this have a 'from e'
                 if skip_hndld_excs:
                     return None
                 if print_exc is False or (print_exc is None and log_exc is True):
-                    with disable_raise_exception_print():
+                    with _disable_raise_exception_print():
                         raise e
                 raise e
             except BaseException as e:  # pylint: disable=broad-exception-caught
-                tb_str = full_stack(stacklevel)
+                tb_str = _full_stack(stacklevel)
                 self._logger.log(
                     LVL_E,
                     f"Unhandled Exception encountered: {msg}" if msg_unhdld is None else msg_unhdld,
@@ -638,7 +646,7 @@ class LogManager:
                     **kwargs_log,
                     # extra=kwargs_log.get("extra", None), # TODO: is there a reason this instead of **kwargs_log
                 )
-                with disable_raise_exception_print():
+                with _disable_raise_exception_print():
                     raise e if raise_unhdld_exc is None else raise_unhdld_exc
 
         return _callable_with_log_and_exc_handling
@@ -808,7 +816,7 @@ class LogManager:
     ) -> NoReturn:
         """Log then throw <err>"""
         msg = "%s" * (len(msg_objs) + 2) if msg is None else msg  # + 2 from tb_str and exc_to_log
-        tb_str = f"\n{full_stack(stacklevel + 1)}" if log_exc else ""
+        tb_str = f"\n{_full_stack(stacklevel + 1)}" if log_exc else ""
         self._logger.log(
             level,
             msg,
@@ -819,7 +827,7 @@ class LogManager:
             **kwargs,
         )
         if print_exc is False or (print_exc is None and log_exc is True):
-            with disable_raise_exception_print():
+            with _disable_raise_exception_print():
                 raise exc_to_log if raise_exc is None else raise_exc
         raise exc_to_log if raise_exc is None else raise_exc
 
@@ -831,30 +839,30 @@ class LogManager:
         return f"{err.__class__.__name__}: {err}"
 
     @staticmethod
-    def make_default_formatter(datefmt="%y%m%dT%H%M%S%z"):
+    def make_default_formatter(datefmt: str = "%y%m%dT%H%M%S%z") -> logging.Formatter:
         return logging.Formatter(
             "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s",
             datefmt=datefmt,
         )
 
     @staticmethod
-    def set_cfg(cfg_dict):
+    def set_cfg(cfg_dict: dict) -> None:
         logging.config.dictConfig(cfg_dict)
 
     @staticmethod
-    def set_cfg_from_cfg_file(cfg_file, globals_=None):
-        logging.config.dictConfig(get_cfg_file_as_cfg_dict(cfg_file, globals_=globals_))
+    def set_cfg_from_cfg_file(cfg_file: str | None, globals_=None) -> None:
+        logging.config.dictConfig(_get_cfg_file_as_cfg_dict(cfg_file, globals_=globals_))
 
     @staticmethod
     def setup_logger(
-        globals_,
+        globals_: dict,
         /,
-        name=None,
-        log_cfg=None,
-        log_file=None,
-        log_file_var_name="_LOG_FILE_PATH",
-        logger_var_name="logger",
-    ):
+        name: str | None = None,
+        log_cfg: str | None = None,
+        log_file: str | None = None,
+        log_file_var_name: str = "_LOG_FILE_PATH",
+        logger_var_name: str = "logger",
+    ) -> None:
         if name is None:
             stack = inspect.stack()
             caller_frame = stack[1]
@@ -862,7 +870,6 @@ class LogManager:
 
         if log_file is not None:
             globals_[log_file_var_name] = log_file
-        if log_cfg is not None:
-            LogManager.set_cfg_from_cfg_file(log_cfg, globals_)
+        LogManager.set_cfg_from_cfg_file(log_cfg, globals_)
 
         globals_[logger_var_name] = LogManager(name)

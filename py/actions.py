@@ -11,6 +11,7 @@ import os
 import shutil
 import sys
 from collections.abc import Callable
+from collections.abc import Sequence
 
 import yaml  # type: ignore[import-untyped]
 from utils import cfg_utils
@@ -94,7 +95,7 @@ def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> dict:
             print(f"INFO: cp '{src_path}' '{dst_path}'")
             cp_func(src_path, dst_path)
         elif overwrite_status == "YES_W_PROMPT":
-            if cli_utils.prompt_return_bool(f"PROMPT: overwrite dst_path='{dst_path}'? [Y/y] ", ["y", "Y"]):
+            if cli_utils.prompt_once(f"PROMPT: overwrite dst_path='{dst_path}'? [Y/y] ", ["y", "Y"]):
                 print(f"INFO: overwriting dst_path='{dst_path}'")
                 print(f"INFO: cp '{src_path}' '{dst_path}'")
                 cp_func(src_path, dst_path)
@@ -103,7 +104,7 @@ def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> dict:
                 return {"error_code": 0, "dst_path": None}
         elif overwrite_status == "YES_W_DIFF_W_PROMPT":
             print_diff(src_path, dst_path)
-            if cli_utils.prompt_return_bool(f"PROMPT: overwrite dst_path='{dst_path}'? [Y/y] ", ["y", "Y"]):
+            if cli_utils.prompt_once(f"PROMPT: overwrite dst_path='{dst_path}'? [Y/y] ", ["y", "Y"]):
                 print(f"INFO: overwriting dst_path='{dst_path}'")
                 print(f"INFO: cp '{src_path}' '{dst_path}'")
                 cp_func(src_path, dst_path)
@@ -111,7 +112,7 @@ def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> dict:
                 print(f"INFO: skipping: cp '{src_path}' '{dst_path}', due to prompt response")
                 return {"error_code": 0, "dst_path": None}
         elif overwrite_status == "YES_W_PROMPT_W_ABORT_ON_NO":
-            if cli_utils.prompt_return_bool(f"PROMPT: overwrite dst_path='{dst_path}'? [Y/y] ", ["y", "Y"]):
+            if cli_utils.prompt_once(f"PROMPT: overwrite dst_path='{dst_path}'? [Y/y] ", ["y", "Y"]):
                 print(f"INFO: overwriting dst_path='{dst_path}'")
                 print(f"INFO: cp '{src_path}' '{dst_path}'")
                 cp_func(src_path, dst_path)
@@ -120,7 +121,7 @@ def action_cp_to_dst_file(src, dst, options=None, relatives=None) -> dict:
                 print("INFO: aborting due to prompt response")
                 return {"error_code": 1}
         elif overwrite_status == "YES_W_DIFF_W_PROMPT_W_ABORT_ON_NO":
-            if cli_utils.prompt_return_bool(f"PROMPT: overwrite dst_path='{dst_path}'? Y/y", ["y", "Y"]):
+            if cli_utils.prompt_once(f"PROMPT: overwrite dst_path='{dst_path}'? Y/y", ["y", "Y"]):
                 print(f"INFO: overwriting dst_path='{dst_path}'")
                 print(f"INFO: cp '{src_path}' '{dst_path}'")
                 cp_func(src_path, dst_path)
@@ -192,7 +193,7 @@ def parse_yaml_and_execute_actions(action_yaml):
         prev_ret_val = handle_action(action, references, prev_ret_val=prev_ret_val)
 
 
-def parse_inputs(argparse_args: list[str] | None = None) -> dict:
+def parse_inputs(argparse_args: Sequence[str] | None = None) -> dict:
     """Parse cmd line inputs; set, check, and fix script's default variables."""
     #### cmd line args parser
     parser = argparse.ArgumentParser()
@@ -202,7 +203,7 @@ def parse_inputs(argparse_args: list[str] | None = None) -> dict:
     return {"yaml_path": args.yaml}
 
 
-def main(argparse_args: list[str] | None = None):
+def main(argparse_args: Sequence[str] | None = None):
     inputs = parse_inputs(argparse_args)
     parse_yaml_and_execute_actions(inputs["yaml_path"])
 

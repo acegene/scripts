@@ -17,6 +17,7 @@ from typing import Any
 from typing import BinaryIO
 from typing import TextIO
 
+from utils import python_utils
 from utils.lock_manager import LockManager
 
 # https://www.programcreek.com/python/?code=lanbing510%2FGTDWeb%2FGTDWeb-master%2Fdjango%2Fcore%2Ffiles%2Fmove.py
@@ -271,12 +272,81 @@ def path_clean(path: str) -> str:
     return str(pathlib.Path(path).resolve(strict=False))
 
 
+def path_as_posix_if_windows(path):
+    return path_windows_to_posix(path) if python_utils.is_os_windows() else path
+
+
+def path_posix_to_windows(path):
+    return pathlib.PureWindowsPath(pathlib.PurePosixPath(path))
+
+
+def path_windows_to_posix(path):
+    return path.replace("\\", "/")
+
+
 #### File content interactions
 
 LE_CR_B = b"\r"
 LE_CRLF_B = b"\r\n"
 LE_LF_B = b"\n"
 LINE_ENDINGS_B = (LE_CR_B, LE_CRLF_B, LE_LF_B)
+
+
+def append_missing_lines_to_file(file, lines, is_windows=False, check_only: bool = False):
+    if not os.path.exists(file):
+        if check_only:
+            logger.info(f"file does not exist: {file}")
+            return False
+        if is_windows:
+            open(file, "a", encoding="utf-8").close()  # pylint: disable=consider-using-with
+        else:
+            open_unix_safely(file, "a").close()
+        logger.info(f"created {file}")
+
+    missing_line = False
+    open_wrapper = lambda is_windows: (
+        open(file, "r+", encoding="utf-8")  # pylint: disable=consider-using-with
+        if is_windows
+        else open_unix_safely(file, "r+")
+    )
+    with open_wrapper(is_windows) as f:
+        content = f.read()
+        prepend_nl_necessary = content and not content.endswith("\n")
+        for line in lines:
+            if line not in content:
+                if check_only:
+                    logger.info(f"file={file} is missing line={line}")
+                    missing_line = True
+                else:
+                    if prepend_nl_necessary:
+                        prepend_nl_necessary = False
+                        f.write("\n")
+                    f.write(line + "\n")
+                    logger.info(f"wrote to file={file} line={line}")
+    return not missing_line
+
+
+def cp_with_replace(src: str, dst: str, replacements: Sequence[tuple[str, str]], check_only: bool = False) -> bool:
+    if not os.path.exists(dst):
+        logger.info(f"file={dst} does not exist")
+        return False
+
+    with open_unix_safely(src, "r") as f:
+        content = f.read()
+
+    for orig_str, repl_str in replacements:
+        content = content.replace(orig_str, repl_str)
+
+    if check_only:
+        with open_unix_safely(dst, "r") as f:
+            dst_content = f.read()
+            if content != dst_content:
+                logger.info(f"src={src} does not match dst={dst}")
+                return False
+    else:
+        with open_unix_safely(dst, "w") as f:
+            f.write(content)
+    return True
 
 
 def eol_str_to_bin_str(str_in: bytes | str) -> bytes:
@@ -368,8 +438,6 @@ def open_unix_safely(
             if tmp_file and os.path.exists(str(tmp_file)):
                 os.unlink(str(tmp_file))
     assert "b" not in mode, mode
-    if "b" in mode:
-        raise ValueError("Binary mode not supported in this function.")
     forbidden_keywords = {"closefd", "errors", "newline"}
     assert not any(key in kwargs for key in forbidden_keywords), kwargs
     return open(path, mode=mode, buffering=buffering, encoding=encoding, errors="strict", newline="\n", **kwargs)  # type: ignore[return-value]

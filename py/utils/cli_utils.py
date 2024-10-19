@@ -6,6 +6,7 @@
 #
 # author: acegene <acegene22@gmail.com>
 import json
+import logging
 import os
 import re
 import shlex
@@ -13,6 +14,9 @@ import subprocess
 import sys
 from collections.abc import Callable
 from collections.abc import Sequence
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 def parse_range(range_in: str, raise_: bool = True) -> list[int] | None:
@@ -47,7 +51,7 @@ def parse_range(range_in: str, raise_: bool = True) -> list[int] | None:
     )
     error = ValueError if not error and not all(c.isdigit() for c in [range_in[0], range_in[-1]]) else error
     if error:
-        print(f"ERROR: expect str with only positive ints, commas and hyphens, given {range_in}")
+        logger.error(f"expect str with only positive ints, commas and hyphens, given {range_in}")
         if raise_:
             raise error
         return None
@@ -58,19 +62,27 @@ def parse_range(range_in: str, raise_: bool = True) -> list[int] | None:
     return sorted(result)
 
 
-def prompt_return_bool(msg: str, true_strs: Sequence[str]) -> bool:
-    choice = input(msg)
-    if choice in true_strs:
-        return True
-    return False
+def prompt(msg: str, true_strs: Sequence[str] = ("y",), false_strs: Sequence[str] = ("n",)) -> bool:
+    while True:
+        prompt_input = input(msg)
+        logger.debug(f"PROMPT: msg='{msg}' prompt_input='{prompt_input}'")
+        if prompt_input.lower() in true_strs:
+            return True
+        if prompt_input.lower() in false_strs:
+            return False
+        logger.error(
+            f"Unexpected prompt_input={prompt_input}; must be one of true_strs={true_strs} or false_strs={false_strs}",
+        )
 
 
-def prompt_with_exec(msg: str, exec_strs: Sequence[str], callable_: Callable, *args, **kwargs) -> bool:
-    choice = input(msg)
-    if choice in exec_strs:
-        callable_(*args, **kwargs)
-        return True
-    return False
+def prompt_once(msg: str, true_strs: Sequence[str] = ("y",)) -> bool:
+    prompt_input = input(msg)
+    logger.debug(f"PROMPT: msg='{msg}' prompt_input='{prompt_input}'")
+    return prompt_input.lower() in true_strs
+
+
+def prompt_with_exec(msg: str, exec_strs: Sequence[str], callable_: Callable, *args, **kwargs) -> tuple[bool, Any]:
+    return (True, callable_(*args, **kwargs)) if prompt_once(msg, exec_strs) else (False, None)
 
 
 def cmdline_split(s, platform="this"):
