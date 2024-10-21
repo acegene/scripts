@@ -37,7 +37,7 @@ def _init_rclone_bisync(rclone, rclone_bk_details: dict, relatives: dict[str, di
     for rclone_bk_detail in rclone_bk_details:
         local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["loc"], relatives)
         bk_local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["bk_loc"], relatives)
-        remote = os.path.expandvars(rclone_bk_detail["rem"])
+        remote = rclone_bk_detail["rem"]
 
         if not os.path.exists(local):
             os.makedirs(local, exist_ok=True)
@@ -58,7 +58,7 @@ def _init_rclone_bisync(rclone, rclone_bk_details: dict, relatives: dict[str, di
                 logger.error(f"{cmd_str}; rclone_result.returncode={rclone_result.returncode}")
                 return rclone_result.returncode
 
-            resync_params = ["bisync", "--resync", local, remote, "--check-access", "--verbose"]
+            resync_params = ["bisync", "--resync", local, remote, "--check-access", "-v"]
             resync_params_str = "' '".join(resync_params)
             cmd_str = f"'{rclone}' '{resync_params_str}'"
             resync_result = subprocess.run([rclone] + resync_params, check=False, capture_output=False)
@@ -79,19 +79,52 @@ def _init_rclone_bisync(rclone, rclone_bk_details: dict, relatives: dict[str, di
     return 0
 
 
+def _run_rclone_bk_clean(
+    rclone,
+    rclone_bk_details: dict,
+    /,
+    dry_run: bool,
+    force: bool,
+) -> int:
+    for rclone_bk_detail in rclone_bk_details:
+        bk_remote = rclone_bk_detail["bk_rem"]
+        bk_clean_args = rclone_bk_detail.get("bk_clean_args", tuple())
+
+        bisync_params = [
+            "delete",
+            bk_remote,
+            *bk_clean_args,
+            "-v",
+        ]
+
+        if dry_run:
+            bisync_params.append("--dry-run")
+        if force:
+            bisync_params.append("--force")
+
+        bisync_params_str = "' '".join(bisync_params)
+        cmd_str = f"'{rclone}' '{bisync_params_str}'"
+        logger.info(f"EXEC: {cmd_str}")
+        bisync_result = subprocess.run([rclone] + bisync_params, check=False, capture_output=False)
+        if bisync_result.returncode != 0:
+            logger.error(f"{cmd_str}; bisync_result.returncode={bisync_result.returncode}")
+            return bisync_result.returncode
+    return 0
+
+
 def _run_rclone_bisync(
     rclone,
     rclone_bk_details: dict,
     relatives: dict[str, dict],
     /,
-    dry_run: bool = True,
-    force: bool = False,
+    dry_run: bool,
+    force: bool,
 ) -> int:
     for rclone_bk_detail in rclone_bk_details:
         local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["loc"], relatives)
         bk_local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["bk_loc"], relatives)
-        remote = os.path.expandvars(rclone_bk_detail["rem"])
-        bk_remote = os.path.expandvars(rclone_bk_detail["bk_rem"])
+        remote = rclone_bk_detail["rem"]
+        bk_remote = rclone_bk_detail["bk_rem"]
 
         formatted_utc_time = datetime.datetime.utcnow().strftime("%y%m%dt%H%M%Sz")
 
@@ -114,7 +147,7 @@ def _run_rclone_bisync(
             "--suffix-keep-extension",
             "--check-access",
             "--resilient",
-            "--verbose",
+            "-v",
         ]
 
         if dry_run:
@@ -134,13 +167,20 @@ def _run_rclone_bisync(
 
 def main(argparse_args: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run rclone bisync with details extracted from json.")
-    parser.add_argument("--dry-run", "--dry", action="store_true")
-    parser.add_argument("--init", action="store_true", help="TODO")
-    parser.add_argument("--force", action="store_true", help="Run in situations like too many deletes.")
-    parser.add_argument("--cfg", default=_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
     parser.add_argument("--log")
     parser.add_argument("--log-cfg", default=_LOG_CFG_DEFAULT, help="Log cfg; empty str uses LogManager default cfg")
+
+    parser.add_argument("--cfg", default=_CFG_DEFAULT, help="Json cfg file to extract bisync backup settings")
+    parser.add_argument("--dry-run", "--dry", action="store_true", help="Prevent modifications, show changes preview")
+    parser.add_argument("--force", action="store_true", help="Run even in situations like too many deletes")
     parser.add_argument("--rclone", default="rclone", help="The rclone version to use")
+
+    flag_group = parser.add_mutually_exclusive_group()
+    parser.set_defaults(flag="sync")
+    flag_group.add_argument("--bk-clean", action="store_const", const="bk_clean", dest="flag")
+    flag_group.add_argument("--init", action="store_const", const="init", dest="flag")
+    flag_group.add_argument("--sync", "--bisync", action="store_const", const="sync", dest="flag")
+
     args = parser.parse_args(argparse_args)
 
     log_manager.LogManager.setup_logger(globals(), log_cfg=args.log_cfg, log_file=args.log)
@@ -151,10 +191,21 @@ def main(argparse_args: Sequence[str] | None = None) -> int:
     rclone_bk_details = yaml_data["rclone_bk_details"]
     references = yaml_data.get("references", {})
 
-    if args.init:
-        return _init_rclone_bisync(args.rclone, rclone_bk_details, references)
-
-    return _run_rclone_bisync(args.rclone, rclone_bk_details, references, dry_run=args.dry_run, force=args.force)
+    match args.flag:
+        case "init":
+            return _init_rclone_bisync(args.rclone, rclone_bk_details, references)
+        case "bk_clean":
+            return _run_rclone_bk_clean(args.rclone, rclone_bk_details, dry_run=args.dry_run, force=args.force)
+        case "sync":
+            return _run_rclone_bisync(
+                args.rclone,
+                rclone_bk_details,
+                references,
+                dry_run=args.dry_run,
+                force=args.force,
+            )
+        case _:
+            assert False, args.flag
 
 
 if __name__ == "__main__":
