@@ -21,11 +21,19 @@ logger = log_manager.LogManager()
 # * parse lsblk by column -> lsblk -p -S --json
 # * most recent mountale paths should take priority
 
-if os.geteuid() != 0:
-    logger.warning("need to be sudo, relaunching as sudo")
-    result = subprocess.run(["sudo", "python3", os.path.abspath(__file__)] + sys.argv[1:], check=False)
-    sys.exit(result.returncode)
 
+def run_as_sudo() -> int:
+    logger.warning("need to be sudo, relaunching as sudo")
+    pythonpath = os.environ.get("PYTHONPATH", "")
+    result = subprocess.run(
+        ["sudo", f"PYTHONPATH={pythonpath}", "python3", os.path.abspath(__file__)] + sys.argv[1:],
+        check=False,
+    )
+    return result.returncode
+
+
+if os.geteuid() != 0:
+    sys.exit(run_as_sudo())
 
 _USER = os.environ.get("SUDO_USER")
 assert isinstance(_USER, str)
@@ -35,13 +43,13 @@ _LOG_CACHE = os.path.join("/home", _USER, ".log", f"{_LOG_CACHE_BASE}.log")
 _HEADING = "time,partition,dir_mount,dir_bl,drive_details,lsblk -p -S\n"
 
 
-def _append(file, s):
+def _append(file: str, s: str) -> None:
     with path_utils.open_unix_safely(file, "r+") as f:
         f.seek(0, 2)
         f.write(s)
 
 
-def _get_bl_paths():
+def _get_bl_paths() -> list[str]:
     bl_paths = []
     pattern = re.compile(r"/media/bl(?:-\d+)?")
     for entry in os.listdir("/media"):
@@ -52,7 +60,7 @@ def _get_bl_paths():
     return bl_paths
 
 
-def _get_mount_paths():
+def _get_mounted_paths() -> list[str]:
     mount_paths = []
     pattern = re.compile(r"/media/mount(?:-\d+)?")
     for entry in os.listdir("/media"):
@@ -63,30 +71,66 @@ def _get_mount_paths():
     return mount_paths
 
 
-def _make_mount_names_from_index(index):
+def _get_aligned_bl_and_mount_paths() -> list[tuple[str, str]]:
+    bl_paths = _get_bl_paths()
+    mounted_paths = _get_mounted_paths()
+    if len(bl_paths) != len(mounted_paths):
+        logger.error(f"bl_paths={bl_paths}\nmounted_paths={mounted_paths}")
+        sys.exit(1)
+
+    aligned_bl_and_mount_paths = []
+    for mounted_path in mounted_paths:
+        mounted_path_index = int(mounted_path[13:])
+        for bl_path in bl_paths:
+            if mounted_path_index == int(bl_path[10:]):
+                aligned_bl_and_mount_paths.append((bl_path, mounted_path))
+                break
+
+    if len(aligned_bl_and_mount_paths) != len(mounted_paths):
+        logger.error(
+            f"bl_paths={bl_paths}\nmounted_paths={mounted_paths}\naligned_bl_and_mount_paths={aligned_bl_and_mount_paths}",
+        )
+        sys.exit(1)
+
+    return aligned_bl_and_mount_paths
+
+
+def _make_mount_names_from_index(index: int) -> tuple[str, str]:
     return f"/media/mount-{index}", f"/media/bl-{index}"
 
 
-def _unmount(directory):
-    subprocess.run(
-        ["sudo", "umount", "-l", directory],
+def _unmount_and_rm_dir(directory: str) -> None:
+    if not os.path.exists(directory):
+        return
+
+    findmnt_result = subprocess.run(
+        ("findmnt", "-M", directory),
         stderr=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
-        check=True,
+        check=False,
     )
 
+    if findmnt_result.returncode == 0:
+        cmd = ("sudo", "umount", directory)  # TODO: -l option was used but seems incorrect
+        logger.info(f"EXEC: {cmd}")
+        subprocess.run(
+            cmd,
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            check=True,
+        )
 
-def _unmount_all(directories):
-    for d in directories:
-        _unmount(d)
+    assert len(os.listdir(directory)) == 0, directory
+    logger.info(f"INFO: rm'ing directory={directory}")
+    os.rmdir(directory)
 
 
-def _unmount_if_exists_else_create_dir(directory):
-    _unmount(directory)
+def _unmount_and_rm_dir_then_create_dir(directory: str) -> None:
+    _unmount_and_rm_dir(directory)
     os.makedirs(directory, exist_ok=True)
 
 
-def _create_file(file_path, optional_str=None):
+def _create_file(file_path, optional_str: str | None = None) -> None:
     dir_ = os.path.dirname(file_path)
     if not os.path.exists(dir_):
         # original_user = os.environ.get("SUDO_USER")
@@ -114,7 +158,7 @@ def _create_file(file_path, optional_str=None):
         os.chown(file_path, uid, gid)
 
 
-def _get_lsblk_info(mount):
+def _get_lsblk_info(mount) -> str | None:
     lsblk_output = subprocess.run(["lsblk", "-p", "-S"], stdout=subprocess.PIPE, check=True, text=True).stdout
     for line in lsblk_output.strip().split("\n"):
         if mount in line:
@@ -122,7 +166,7 @@ def _get_lsblk_info(mount):
     return None
 
 
-def _get_most_recent_dir_mount_and_dir_bl(ls_blk_info_line, log_file):
+def _get_most_recent_dir_mount_and_dir_bl(ls_blk_info_line: str, log_file: str) -> tuple[str, str] | None:
     ret_value = None
     logger.info(f"searching log_file={log_file}")
 
@@ -168,8 +212,8 @@ def _get_mountable_paths():
 
 
 def _bl_mount(partition, dir_mount, dir_bl):
-    _unmount_if_exists_else_create_dir(dir_bl)
-    _unmount_if_exists_else_create_dir(dir_mount)
+    _unmount_and_rm_dir_then_create_dir(dir_mount)
+    _unmount_and_rm_dir_then_create_dir(dir_bl)
 
     try:
         dislocker_cmd = f"sudo dislocker -V {partition} -u -- {dir_bl}"
@@ -213,16 +257,45 @@ def main(argparse_args: Sequence[str] | None = None):
 
     logger.debug(f"argparse args:\n{argparse_utils.parsed_args_to_str(args)}")
 
-    parser = argparse.ArgumentParser()
-    args = parser.parse_args()
+    bl_and_mounted_paths = _get_aligned_bl_and_mount_paths()
 
-    if args.unmount_all:
-        bl_paths = _get_bl_paths()
-        mount_paths = _get_mount_paths()
-        _unmount_all(bl_paths)
-        _unmount_all(mount_paths)
-        logger.info("unmout all complete")
-        sys.exit(0)
+    ## ask user whether to unmount
+    if len(bl_and_mounted_paths) > 0:
+        logger.info(
+            "There are %s mounted_paths:\n  %s",
+            len(bl_and_mounted_paths),
+            "\n  ".join(
+                f"index={i}: mounted_path={mounted_path}"
+                for i, (_bl_path, mounted_path) in enumerate(bl_and_mounted_paths)
+            ),
+        )
+        while True:
+            input_str = input("PROMPT: Give space delimited indices to unmount: ")
+            try:
+                unmount_indices = tuple(int(s) for s in input_str.split())
+            except ValueError:
+                logger.error("invalid prompt input; could not convert to ints")
+                continue
+            if len(unmount_indices) != len(set(unmount_indices)):
+                logger.error("invalid prompt input; cannot repeat ints")
+                continue
+            if not all(0 <= unmount_index < len(bl_and_mounted_paths) for unmount_index in unmount_indices):
+                logger.error(f"invalid prompt input; all ints must be within [0, {len(bl_and_mounted_paths)}) ")
+                continue
+
+            for i in unmount_indices:
+                for path in bl_and_mounted_paths[i]:
+                    _unmount_and_rm_dir(path)
+            break
+
+    ## get mounted paths following unmounts
+    bl_and_mounted_paths = _get_aligned_bl_and_mount_paths()
+    logger.info(
+        "There are %s mounted_paths:%s%s",
+        len(bl_and_mounted_paths),
+        "" if len(bl_and_mounted_paths) == 0 else "\n",
+        "\n  ".join(f"mounted_path={mounted_path}" for _bl_path, mounted_path in bl_and_mounted_paths),
+    )
 
     _create_file(_LOG_CACHE, _HEADING)
 
@@ -241,65 +314,76 @@ def main(argparse_args: Sequence[str] | None = None):
         logger.info(log_str)
         mountable_paths_to_mount_points[mounted_partition] = dir_mount_and_dir_bl
 
-    # need_prompt = False
     no_prompt_mountable_paths_to_mount_points = OrderedDict()
     prompt_mountable_paths = []
-    for mountable_path, mount_point in mountable_paths_to_mount_points.items():
+    for i, (mountable_path, mount_point) in enumerate(mountable_paths_to_mount_points.items()):
         if mount_point is None:
             prompt_mountable_paths.append(mountable_path)
-            logger.warning(f"could not find mount_point for mountable_path={mountable_path}")
-            # need_prompt = True
+            logger.warning(f"index={i}; could not find mount_point for mountable_path={mountable_path}")
         else:
             no_prompt_mountable_paths_to_mount_points[mountable_path] = mount_point
-            logger.info(f"found mountable_path={mountable_path}; mount_point={mount_point}")
+            logger.info(f"index={i}; found mountable_path={mountable_path}; mount_point={mount_point}")
 
-    input_str = input("PROMPT: Accept found mountable paths above? (y/n): ").lower()
-    if input_str != "y":
+    ## prompt user for cached mountable paths they wish to change
+    if len(no_prompt_mountable_paths_to_mount_points) > 0:
         logger.info(
-            "no_prompt_mountable_paths_to_mount_points:%s%s",
-            ("" if len(no_prompt_mountable_paths_to_mount_points) == 0 else "\n  "),
+            "no_prompt_mountable_paths_to_mount_points:\n  %s",
             "\n  ".join(
-                f"{i}: mount path='{path}' to {mount_path}"
+                f"  index={i}: mount path='{path}' to {mount_path}"
                 for i, (path, mount_path) in enumerate(no_prompt_mountable_paths_to_mount_points.items())
             ),
         )
         while True:
-            prompt_msg = "PROMPT: Give space delimited integers for for the above indices you wish to change: "
+            prompt_msg = "PROMPT: Give space delimited ints for above cached mountable paths you wish to change: "
             change_indices_str = input(prompt_msg)
             logger.debug(f"PROMPT: prompt_msg='{prompt_msg}' prompt_input='{change_indices_str}'")
             try:
                 change_indices = tuple(int(s) for s in change_indices_str.split())
-                break
             except ValueError:
-                logger.error("invalid input")
+                logger.error("invalid prompt input; could not convert to ints")
+            if len(change_indices) != len(set(change_indices)):
+                logger.error("invalid prompt input; cannot repeat ints")
+                continue
+            if not all(
+                0 <= change_index < len(no_prompt_mountable_paths_to_mount_points) for change_index in change_indices
+            ):
+                logger.error(
+                    f"invalid prompt input; all ints must be within [0, {len(no_prompt_mountable_paths_to_mount_points)}) ",
+                )
+                continue
+            break
 
         change_keys = []
-        for i, (k, v) in enumerate(no_prompt_mountable_paths_to_mount_points.items()):
+        for i, (k, _v) in enumerate(no_prompt_mountable_paths_to_mount_points.items()):
             if i in change_indices:
                 change_keys.append(k)
         for k in change_keys:
             prompt_mountable_paths.append(k)
             no_prompt_mountable_paths_to_mount_points.pop(k)
             mountable_paths_to_mount_points[k] = None
-            # mountable_paths_to_mount_points  # TODO: why is this here?
 
     if len(prompt_mountable_paths) > 0:
         while True:
-            prompt_msg = f"PROMPT: Give space delimited integers for mount paths for {prompt_mountable_paths}: "
+            prompt_msg = f"PROMPT: Give space delimited ints for mount paths for {prompt_mountable_paths} (-1 means do not mount): "
             input_str = input(prompt_msg)
             logger.debug(f"PROMPT: prompt_msg='{prompt_msg}' prompt_input='{input_str}'")
             try:
                 input_mount_integers = [int(s) for s in input_str.split()]
             except ValueError:
-                logger.error("invalid input")
+                logger.error("invalid prompt input")
                 continue
-            if len(input_mount_integers) != len(set(input_mount_integers)):
-                logger.error("cannot repeat integers")
+            if len([i for i in input_mount_integers if i != -1]) != len(
+                {i for i in input_mount_integers if i != -1},
+            ):
+                logger.error("cannot repeat ints")
                 continue
             if len(input_mount_integers) != len(prompt_mountable_paths):
                 logger.error(
                     f"len(input_mount_integers) != len(prompt_mountable_paths): {len(input_mount_integers)} != {len(prompt_mountable_paths)}",
                 )
+                continue
+            if any(input_mount_index < -1 for input_mount_index in input_mount_integers):
+                logger.error("invalid prompt input; all ints must be within [-1, inf)")
                 continue
             if any(
                 _make_mount_names_from_index(i) in no_prompt_mountable_paths_to_mount_points.values()
@@ -313,14 +397,20 @@ def main(argparse_args: Sequence[str] | None = None):
 
         for i, mountable_path in enumerate(prompt_mountable_paths):
             assert mountable_paths_to_mount_points[mountable_path] is None
-            mountable_paths_to_mount_points[mountable_path] = _make_mount_names_from_index(input_mount_integers[i])
+            if input_mount_integers[i] == -1:
+                del mountable_paths_to_mount_points[mountable_path]
+            else:
+                mountable_paths_to_mount_points[mountable_path] = _make_mount_names_from_index(input_mount_integers[i])
 
     assert all(v is not None for v in mountable_paths_to_mount_points.values())
 
     paths_to_mount = []
     for mountable_path, mount_point in mountable_paths_to_mount_points.items():
+        assert mount_point is not None, mountable_paths_to_mount_points
         if os.path.exists(os.path.join(mount_point[0], "README.md")):
-            logger.info(f"skipping as exists already: mountable_path={mountable_path}; mount_point={mount_point}")
+            logger.info(
+                f"skipping as README.md exists already: mountable_path={mountable_path}; mount_point={mount_point}",
+            )
         else:
             logger.info(f"will attempt mountable_path={mountable_path}; mount_point={mount_point}")
             paths_to_mount.append(mountable_path)
@@ -330,14 +420,16 @@ def main(argparse_args: Sequence[str] | None = None):
         sys.exit(0)
 
     if not cli_utils.prompt_once("PROMPT: Continue? (y/n): "):
-        logger.error("aborted due to prompt input")
-        sys.exit(1)
+        logger.info("aborted due to prompt input")
+        sys.exit(0)
 
     for path_to_mount in paths_to_mount:
-        dir_mount, dir_bl = mountable_paths_to_mount_points[path_to_mount]
+        mount_point = mountable_paths_to_mount_points[path_to_mount]
+        assert mount_point is not None, (mountable_paths_to_mount_points, path_to_mount)
+        dir_mount, dir_bl = mount_point
         while True:
-            _unmount_if_exists_else_create_dir(dir_mount)
-            _unmount_if_exists_else_create_dir(dir_bl)
+            _unmount_and_rm_dir_then_create_dir(dir_mount)
+            _unmount_and_rm_dir_then_create_dir(dir_bl)
             bl_mount_ec, bl_mount_result_str = _bl_mount(path_to_mount, dir_mount, dir_bl)
             if bl_mount_ec == 0:
                 break
