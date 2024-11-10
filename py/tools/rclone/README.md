@@ -44,7 +44,8 @@ rclone touch secret:content/RCLONE_TEST # creates content dir
 ### One time setup of local bisync directories
 
 ```bash
-rclone copy secret:content/cfg/cfg-gws.yaml .
-rclone_bisync.py --cfg cfg-gws.yaml --init
-rm cfg-gws.yaml
+rclone copy secret:content/cfg/cfg-gws.yaml . &&
+mv cfg-gws.yaml cfg-gws-tmp.yaml &&
+rclone_bisync.py --cfg cfg-gws-tmp.yaml --init &&
+rm cfg-gws-tmp.yaml
 ```
