@@ -15,6 +15,8 @@ from utils import path_utils
 ## - cannot specify force via prompt or per bisync execution
 ## - dry run with summary of expected changes
 ## - does not create local dir if does not exist
+## - specify remotes
+## - in case of conflicts, a diff should be shown prior to making changes
 
 _LOG_FILE_PATH, _LOG_CFG_DEFAULT = log_manager.get_default_log_paths(__file__)
 logger = log_manager.LogManager()
@@ -34,10 +36,23 @@ def find_cfg_file(dir_: str) -> str | None:
 def _init_rclone_bisync(rclone, rclone_bk_details: dict, relatives: dict[str, dict]) -> int:
     # pylint: disable=too-many-locals
     found_cfg = _CFG_DEFAULT if os.path.exists(_CFG_DEFAULT) else None
+
+    listremotes_result = subprocess.run([rclone] + ["listremotes"], check=True, capture_output=True)
+    remotes = tuple(r.decode().rstrip(":") for r in listremotes_result.stdout.split())
+
+    if len(remotes) == 0:
+        logger.error("no remotes have been configured!")
+        return 1
+
     for rclone_bk_detail in rclone_bk_details:
         local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["loc"], relatives)
         bk_local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["bk_loc"], relatives)
         remote = rclone_bk_detail["rem"]
+
+        remote_base = remote.split(":")[0]
+        if remote_base not in remotes:
+            logger.info(f"remote={remote_base} will be skipped as it is not configured")
+            continue
 
         if not os.path.exists(local):
             os.makedirs(local, exist_ok=True)
@@ -86,9 +101,21 @@ def _run_rclone_bk_clean(
     dry_run: bool,
     force: bool,
 ) -> int:
+    listremotes_result = subprocess.run([rclone] + ["listremotes"], check=True, capture_output=True)
+    remotes = tuple(r.decode().rstrip(":") for r in listremotes_result.stdout.split())
+
+    if len(remotes) == 0:
+        logger.error("no remotes have been configured!")
+        return 1
+
     for rclone_bk_detail in rclone_bk_details:
         bk_remote = rclone_bk_detail["bk_rem"]
         bk_clean_args = rclone_bk_detail.get("bk_clean_args", tuple())
+
+        remote_base = bk_remote.split(":")[0]
+        if remote_base not in remotes:
+            logger.info(f"remote={remote_base} will be skipped as it is not configured")
+            continue
 
         bisync_params = [
             "delete",
@@ -120,11 +147,24 @@ def _run_rclone_bisync(
     dry_run: bool,
     force: bool,
 ) -> int:
+    # pylint: disable=too-many-locals
+    listremotes_result = subprocess.run([rclone] + ["listremotes"], check=True, capture_output=True)
+    remotes = tuple(r.decode().rstrip(":") for r in listremotes_result.stdout.split())
+
+    if len(remotes) == 0:
+        logger.error("no remotes have been configured!")
+        return 1
+
     for rclone_bk_detail in rclone_bk_details:
         local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["loc"], relatives)
         bk_local = cfg_utils.create_path_from_relative_path(rclone_bk_detail["bk_loc"], relatives)
         remote = rclone_bk_detail["rem"]
         bk_remote = rclone_bk_detail["bk_rem"]
+
+        remote_base = remote.split(":")[0]
+        if remote_base not in remotes:
+            logger.info(f"remote={remote_base} will be skipped as it is not configured")
+            continue
 
         formatted_utc_time = datetime.datetime.utcnow().strftime("%y%m%dt%H%M%Sz")
 
