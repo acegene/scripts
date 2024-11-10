@@ -327,7 +327,7 @@ def append_missing_lines_to_file(file, lines, is_windows=False, check_only: bool
 
 
 def cp_with_replace(src: str, dst: str, replacements: Sequence[tuple[str, str]], check_only: bool = False) -> bool:
-    if not os.path.exists(dst):
+    if check_only is True and not os.path.exists(dst):
         logger.info(f"file={dst} does not exist")
         return False
 
