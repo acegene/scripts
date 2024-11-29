@@ -9,6 +9,7 @@ import sys
 from collections import OrderedDict
 from collections.abc import Sequence
 
+import yaml  # type: ignore[import-untyped]
 from utils import argparse_utils
 from utils import cli_utils
 from utils import log_manager
@@ -212,6 +213,7 @@ def _get_mountable_paths():
 
 
 def _bl_mount(partition, dir_mount, dir_bl):
+    # pylint: disable=[too-many-locals]
     _unmount_and_rm_dir_then_create_dir(dir_mount)
     _unmount_and_rm_dir_then_create_dir(dir_bl)
 
@@ -222,7 +224,7 @@ def _bl_mount(partition, dir_mount, dir_bl):
         subprocess.run(dislocker_cmd, shell=True, check=True, stderr=subprocess.PIPE)
         subprocess.run(mount_cmd, shell=True, check=True, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f"ERROR: {e.stderr.decode()}")
+        logger.error(f"{e.stderr.decode()}")
         return 1, None
 
     lsblk_details_str = subprocess.run(["lsblk", "-p", "-S"], stdout=subprocess.PIPE, check=True, text=True).stdout
@@ -234,10 +236,24 @@ def _bl_mount(partition, dir_mount, dir_bl):
     current_time_utc = datetime.datetime.utcnow()
     formatted_time = current_time_utc.strftime("%y%m%dt%H%M%Sz")
 
+    about_yaml = f"{dir_mount}/about.yaml"
     try:
-        with open(f"{dir_mount}/README.md", encoding="utf-8") as f:
+        with path_utils.open_unix_safely(about_yaml) as f:
+            yaml_data = yaml.safe_load(f)
+            if "name" in yaml_data:
+                name = yaml_data["name"]
+                return 0, f"{formatted_time},{partition},{dir_mount},{dir_bl},{name},'{lsblk_detail_name[0]}'\n"
+            logger.warning(f"{about_yaml} does not contain field 'name'")
+    except FileNotFoundError:
+        logger.warning(f"{about_yaml} does not exist")
+        drive_details = None
+
+    readme = f"{dir_mount}/README.md"
+    try:
+        with open(readme, encoding="utf-8") as f:
             drive_details = f.read().strip("\n")
     except FileNotFoundError:
+        logger.warning(f"{readme} does not exist")
         drive_details = None
 
     ret_code = 2 if drive_details is None else 0
@@ -434,8 +450,8 @@ def main(argparse_args: Sequence[str] | None = None):
             if bl_mount_ec == 0:
                 break
             if bl_mount_ec == 2:
-                logger.error("seems encrypt passed but the readme could not be read, create one then try again")
-                input("PROMPT: press enter when ready to continue")
+                logger.error("encrypt passed but neither about.yaml nor README.md exists with correct content")
+                input("PROMPT: press enter aftyer file created/filled")
                 logger.debug("PROMPT: press enter when ready to continue")
             else:
                 logger.error("failed decrypt, try again")
