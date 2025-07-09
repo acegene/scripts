@@ -9,6 +9,7 @@ import errno
 import logging
 import os
 import pathlib
+import re
 import shutil
 import tempfile
 import uuid
@@ -272,8 +273,16 @@ def path_clean(path: str) -> str:
     return str(pathlib.Path(path).resolve(strict=False))
 
 
+def path_with_linux_normalized_drive_letter_if_windows(path):
+    if python_utils.is_os_windows() and re.match(r"^[A-Za-z]:/", path):
+        return re.sub(r"^([A-Za-z]):", lambda m: f"/{m.group(1).lower()}", path)
+    return path
+
+
 def path_as_posix_if_windows(path):
-    return path_windows_to_posix(path) if python_utils.is_os_windows() else path
+    if python_utils.is_os_windows():
+        return path_with_linux_normalized_drive_letter_if_windows(path_windows_to_posix(path))
+    return path
 
 
 def path_posix_to_windows(path):

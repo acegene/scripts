@@ -158,7 +158,7 @@ def shell_split(cmd: str) -> Sequence[str]:
     if not cmd:  # TODO: check if this always works
         return []
     full_cmd = (
-        f"{subprocess.list2cmdline([sys.executable, '-c', 'import sys, json; print(json.dumps(sys.argv[1:]))',])} {cmd}"
+        f"{subprocess.list2cmdline([sys.executable, '-c', 'import sys, json; print(json.dumps(sys.argv[1:]))'])} {cmd}"
     )
     ret = subprocess.check_output(full_cmd).decode()
     ret_val: Sequence[str] = json.loads(ret)

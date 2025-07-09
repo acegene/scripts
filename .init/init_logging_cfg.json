@@ -1,0 +1,40 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple": {
+            "format": "%(levelname)s: %(message)s"
+        },
+        "detailed_utc": {
+            "()": "utils.log_manager.UTCFormatter",
+            "format": "%(asctime)s %(levelname)s: %(module)s:L%(lineno)d: %(message)s",
+            "datefmt": "%y%m%dT%H%M%SZ"
+        }
+    },
+    "handlers": {
+        "stderr": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "simple",
+            "stream": "ext://sys.stderr"
+        },
+        "file_rotating_lf": {
+            "()": "utils.log_manager.LFFileHandler",
+            "level": "DEBUG",
+            "encoding": "utf-8",
+            "formatter": "detailed_utc",
+            "filename": "global_var://_LOG_FILE_PATH",
+            "maxBytes": 1000000,
+            "backupCount": 3
+        }
+    },
+    "loggers": {
+        "root": {
+            "level": "DEBUG",
+            "handlers": [
+                "stderr",
+                "file_rotating_lf"
+            ]
+        }
+    }
+}

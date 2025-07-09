@@ -14,6 +14,7 @@ from utils import argparse_utils
 from utils import cli_utils
 from utils import log_manager
 from utils import path_utils
+from utils import python_utils
 
 _LOG_FILE_PATH, _LOG_CFG_DEFAULT = log_manager.get_default_log_paths(__file__)
 logger = log_manager.LogManager()
@@ -33,7 +34,7 @@ def run_as_sudo() -> int:
     return result.returncode
 
 
-if os.geteuid() != 0:
+if os.geteuid() != 0:  # pylint: disable=[no-member]
     sys.exit(run_as_sudo())
 
 _USER = os.environ.get("SUDO_USER")
@@ -142,7 +143,7 @@ def _create_file(file_path, optional_str: str | None = None) -> None:
         uid = int(sudo_uid)
         gid = int(sudo_gid)
         os.makedirs(dir_)
-        os.chown(dir_, uid, gid)
+        os.chown(dir_, uid, gid)  # pylint: disable=[no-member]
         logger.info(f"created dir={dir_}")
     if not os.path.exists(file_path):
         with open(file_path, "w", encoding="utf-8") as f:
@@ -156,7 +157,7 @@ def _create_file(file_path, optional_str: str | None = None) -> None:
         assert isinstance(sudo_gid, str)
         uid = int(sudo_uid)
         gid = int(sudo_gid)
-        os.chown(file_path, uid, gid)
+        os.chown(file_path, uid, gid)  # pylint: disable=[no-member]
 
 
 def _get_lsblk_info(mount) -> str | None:
@@ -272,6 +273,10 @@ def main(argparse_args: Sequence[str] | None = None):
     log_manager.LogManager.setup_logger(globals(), log_cfg=args.log_cfg, log_file=args.log)
 
     logger.debug(f"argparse args:\n{argparse_utils.parsed_args_to_str(args)}")
+
+    if python_utils.is_os_windows():
+        logger.error("script is not meant for windows")
+        sys.exit(1)
 
     bl_and_mounted_paths = _get_aligned_bl_and_mount_paths()
 

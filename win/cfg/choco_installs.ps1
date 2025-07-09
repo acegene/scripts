@@ -26,8 +26,7 @@ try {choco -v} catch {
 # $ninite_maybe = 'teamviewer', 'itunes'
 
 $pkgs_always = 'autohotkey', 'ffmpeg', 'git', 'gitkraken', 'nordvpn', 'shellcheck',
-$pkgs_maybe = 'bitnami-xampp', 'microsoft-windows-terminal', 'razer-synapse-2'
-$pkgs_broken = 'battle.net'
+$pkgs_maybe = 'bitnami-xampp'
 # $packages_untested = bazelisk buildifier
 
 ForEach ($PackageName in $pkgs_always) {
