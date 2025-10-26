@@ -113,7 +113,7 @@ def _unmount_and_rm_dir(directory: str) -> None:
     )
 
     if findmnt_result.returncode == 0:
-        cmd = ("sudo", "umount", directory)  # TODO: -l option was used but seems incorrect
+        cmd = ("sudo", "umount", "-f", directory)  # TODO: -l option was used but seems incorrect
         logger.info(f"EXEC: {cmd}")
         subprocess.run(
             cmd,
@@ -122,7 +122,7 @@ def _unmount_and_rm_dir(directory: str) -> None:
             check=True,
         )
 
-    assert len(os.listdir(directory)) == 0, directory
+    # assert len(os.listdir(directory)) == 0, directory  # TODO: this does not work reliably to check unmounted
     logger.info(f"INFO: rm'ing directory={directory}")
     os.rmdir(directory)
 
@@ -220,7 +220,7 @@ def _bl_mount(partition, dir_mount, dir_bl):
 
     try:
         dislocker_cmd = f"sudo dislocker -V {partition} -u -- {dir_bl}"
-        mount_cmd = f"sudo mount -o loop {dir_bl}/dislocker-file {dir_mount}"
+        mount_cmd = f"sudo mount -o loop,uid=1000,gid=1000,umask=000 {dir_bl}/dislocker-file {dir_mount}"  # addition of ',uid=1000,gid=1000,umask=000' helps with non ntfs (exfat)
         ## TODO: check if shell=True can be rm'd
         subprocess.run(dislocker_cmd, shell=True, check=True, stderr=subprocess.PIPE)
         subprocess.run(mount_cmd, shell=True, check=True, stderr=subprocess.PIPE)
@@ -237,7 +237,14 @@ def _bl_mount(partition, dir_mount, dir_bl):
     current_time_utc = datetime.datetime.utcnow()
     formatted_time = current_time_utc.strftime("%y%m%dt%H%M%Sz")
 
+    ## TODO: example yaml maybe create it then prompt
     about_yaml = f"{dir_mount}/about.yaml"
+    about_yaml_default_lines = [  # pylint: disable=[unused-variable]
+        "---",
+        "date: 250529",
+        "name: hd-250529",
+        "type: hd  # this needs to have comment to prevent pre-commit error",
+    ]
     try:
         with path_utils.open_unix_safely(about_yaml) as f:
             yaml_data = yaml.safe_load(f)
@@ -305,7 +312,8 @@ def main(argparse_args: Sequence[str] | None = None):
                 continue
 
             for i in unmount_indices:
-                for path in bl_and_mounted_paths[i]:
+                for path in reversed(bl_and_mounted_paths[i]):
+                    ## got unmount error for doing bl first, says busy, fixed by unmounting mount first
                     _unmount_and_rm_dir(path)
             break
 
@@ -356,8 +364,9 @@ def main(argparse_args: Sequence[str] | None = None):
         )
         while True:
             prompt_msg = "PROMPT: Give space delimited ints for above cached mountable paths you wish to change: "
+            logger.debug(prompt_msg)
             change_indices_str = input(prompt_msg)
-            logger.debug(f"PROMPT: prompt_msg='{prompt_msg}' prompt_input='{change_indices_str}'")
+            logger.debug(f"prompt_input='{change_indices_str}'")
             try:
                 change_indices = tuple(int(s) for s in change_indices_str.split())
             except ValueError:
@@ -386,8 +395,9 @@ def main(argparse_args: Sequence[str] | None = None):
     if len(prompt_mountable_paths) > 0:
         while True:
             prompt_msg = f"PROMPT: Give space delimited ints for mount paths for {prompt_mountable_paths} (-1 means do not mount): "
+            logger.debug(prompt_msg)
             input_str = input(prompt_msg)
-            logger.debug(f"PROMPT: prompt_msg='{prompt_msg}' prompt_input='{input_str}'")
+            logger.debug(f"prompt_input='{input_str}'")
             try:
                 input_mount_integers = [int(s) for s in input_str.split()]
             except ValueError:
@@ -428,9 +438,11 @@ def main(argparse_args: Sequence[str] | None = None):
     paths_to_mount = []
     for mountable_path, mount_point in mountable_paths_to_mount_points.items():
         assert mount_point is not None, mountable_paths_to_mount_points
-        if os.path.exists(os.path.join(mount_point[0], "README.md")):
+        if os.path.exists(os.path.join(mount_point[0], "README.md")) or os.path.exists(
+            os.path.join(mount_point[0], "about.yaml"),
+        ):
             logger.info(
-                f"skipping as README.md exists already: mountable_path={mountable_path}; mount_point={mount_point}",
+                f"skipping as about.yaml or README.md exists already: mountable_path={mountable_path}; mount_point={mount_point}",
             )
         else:
             logger.info(f"will attempt mountable_path={mountable_path}; mount_point={mount_point}")
@@ -456,8 +468,9 @@ def main(argparse_args: Sequence[str] | None = None):
                 break
             if bl_mount_ec == 2:
                 logger.error("encrypt passed but neither about.yaml nor README.md exists with correct content")
-                input("PROMPT: press enter aftyer file created/filled")
-                logger.debug("PROMPT: press enter when ready to continue")
+                msg = "PROMPT: press enter after file created/filled"
+                logger.debug(msg)
+                input(msg)
             else:
                 logger.error("failed decrypt, try again")
         logger.info(f"{bl_mount_result_str}")

@@ -433,6 +433,7 @@ def open_unix_safely(
         The file object.
     """
     # pylint: disable=[too-many-arguments]
+    tmp_file = None
     if os.path.exists(path):
         try:
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
@@ -442,9 +443,9 @@ def open_unix_safely(
                         mv(tmp_file.name, path, overwrite=True)
                         logger.warning("Newlines needed adjusting to lf for path=%s", path)
                     else:
-                        raise ValueError(f"Unexpected newlines in path={path}")
+                        raise ValueError(f"Unexpected newline type in path={path}")
         finally:
-            if tmp_file and os.path.exists(str(tmp_file)):
+            if tmp_file is not None and os.path.exists(str(tmp_file)):
                 os.unlink(str(tmp_file))
     assert "b" not in mode, mode
     forbidden_keywords = {"closefd", "errors", "newline"}

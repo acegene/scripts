@@ -78,7 +78,7 @@ _NORD_SET_SETTING_NAME_TO_PRINTED = {
     "Firewall": "firewall",
     # "Firewall Mark": "Firewall Mark",
     # "Routing": "Routing",
-    "Analytics": "analytics",
+    "User Consent": "analytics",  # used to be Analytics
     "Kill Switch": "killswitch",
     # "Threat Protection Lite": "Threat Protection Lite",
     "Notify": "notify",
@@ -260,6 +260,10 @@ def _strip_nl_and_hyphens(s: str) -> str:
     return out_s
 
 
+def _add_spaces_after_nls(s: str, n: int) -> str:
+    return s.replace("\n", "\n" + (" " * n))
+
+
 def _get_dict_from_json_file(json_file: str) -> dict:
     if not os.path.exists(json_file):
         return {}
@@ -331,7 +335,12 @@ def get_settings() -> dict:
             ## accumulate multiline settings into single key
             if ": " in line or line.endswith(":"):
                 settings_w_value.append(line)
+            elif line in ("A new version of NordVPN is available!", "Please update the application."):
+                logger.warning(line)
             else:
+                if len(settings_w_value) == 0:
+                    logger.error(f"unexpected line: settings_w_value={settings_w_value}; line={line}")
+                    sys.exit(1)
                 settings_w_value[-1] += f"\n{line}"
         for setting_w_value in settings_w_value:
             setting_w_value_colon_split = [e.strip() for e in setting_w_value.split(":")]
@@ -349,7 +358,7 @@ def get_status() -> bool:
     cmd = _NORD_CMDS["status"]
     result = subprocess_run_wrapped(cmd)
     if result.returncode == 0:
-        logger.info(_strip_nl_and_hyphens(result.stdout))
+        logger.info(_add_spaces_after_nls(_strip_nl_and_hyphens(result.stdout), 6))
     else:
         _log_cmd_w_output(cmd, result)
         sys.exit(1)
@@ -358,6 +367,9 @@ def get_status() -> bool:
         return True
     if "Status: Disconnected" in result.stdout:
         return False
+    if "Status: Connecting" in result.stdout:
+        return False
+
     logger.fatal(f"unexpected stdout:\n{result.stdout}")
     assert False, result.stdout
 
@@ -398,11 +410,14 @@ def nordvpn_cmd_execution(flag, vpn_status, status, duration_fail_connect_until_
             else vpn_status["earliest_fail_connect"]
         )
         earliest_fail_connect = DateTimeUTC.from_utc_time_str(vpn_status["earliest_fail_connect"])
-        if time_now - earliest_fail_connect > duration_fail_connect_until_notification:
+        if (time_now - earliest_fail_connect).total_seconds() > DateTimeUTC.str_time_duration_to_secs(
+            duration_fail_connect_until_notification,
+        ):
             msg = f"vpn disconnected for time > duration_fail_connect_until_notification={duration_fail_connect_until_notification}"
             logger.error(msg)
             vpn_status["earliest_fail_connect"] = None
             sys.exit(1)
+    return connect_success is True
 
 
 def nordvpn_main(args: argparse.Namespace, vpn_status: dict) -> None:
@@ -441,7 +456,7 @@ def nordvpn_main(args: argparse.Namespace, vpn_status: dict) -> None:
     logger.info(
         "#### SETTINGS PRE CMD\n%s",
         "\n".join(
-            f"  {setting_name}: {pre_value}"
+            f"      {setting_name}: {pre_value}"
             for setting_name, pre_value in sorted(list((k, v) for k, v in pre_settings.items()), key=lambda t: t[0])
         ),
     )
